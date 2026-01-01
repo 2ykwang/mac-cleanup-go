@@ -211,6 +211,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.report = msg.report
 		m.report.Duration = time.Since(m.startTime)
 		m.view = ViewReport
+		// Save selection for --clean mode
+		m.saveLastSelection()
 	}
 	return m, nil
 }
@@ -612,6 +614,18 @@ func (m *Model) saveExcludedPaths() {
 		}
 		m.userConfig.SetExcludedPaths(catID, paths)
 	}
+	_ = m.userConfig.Save() // ignore error
+}
+
+// saveLastSelection saves selected categories for --clean mode
+func (m *Model) saveLastSelection() {
+	var selectedIDs []string
+	for id, sel := range m.selected {
+		if sel {
+			selectedIDs = append(selectedIDs, id)
+		}
+	}
+	m.userConfig.SetLastSelection(selectedIDs)
 	_ = m.userConfig.Save() // ignore error
 }
 

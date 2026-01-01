@@ -16,6 +16,23 @@ const (
 type UserConfig struct {
 	// ExcludedPaths maps category ID to list of excluded paths
 	ExcludedPaths map[string][]string `yaml:"excluded_paths,omitempty"`
+	// LastSelection stores the last selected category IDs for --clean mode
+	LastSelection []string `yaml:"last_selection,omitempty"`
+}
+
+// SetLastSelection saves the selected category IDs
+func (c *UserConfig) SetLastSelection(categoryIDs []string) {
+	c.LastSelection = categoryIDs
+}
+
+// GetLastSelection returns the last selected category IDs
+func (c *UserConfig) GetLastSelection() []string {
+	return c.LastSelection
+}
+
+// HasLastSelection checks if there's a saved selection
+func (c *UserConfig) HasLastSelection() bool {
+	return len(c.LastSelection) > 0
 }
 
 // configPath returns the full path to the config file

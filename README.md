@@ -27,12 +27,22 @@ brew install mac-cleanup-go
 ## Usage
 
 ```bash
-mac-cleanup                       # Default: moves to Trash
+mac-cleanup                       # TUI mode (interactive)
 mac-cleanup --dangerously-delete  # Permanent deletion
 mac-cleanup --version             # Show version
 ```
 
-> **Full Disk Access (Optional)**: Some items (Trash, Mail, etc.) require Full Disk Access.  
+### CLI Mode
+
+After running TUI mode once, your selection is saved. Use `--clean` for quick cleanup:
+
+```bash
+mac-cleanup --clean               # Clean with saved profile
+mac-cleanup --clean --dry-run     # Preview only (no deletion)
+mac-cleanup --clean --dangerously-delete  # Permanent deletion
+```
+
+> **Full Disk Access (Optional)**: Some items (Trash, Mail, etc.) require Full Disk Access.
 > System Settings → Privacy & Security → Full Disk Access → Add your terminal app
 
 ## How It Works
