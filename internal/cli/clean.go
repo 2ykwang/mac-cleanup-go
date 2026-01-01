@@ -18,7 +18,6 @@ import (
 )
 
 var (
-	// Styles
 	titleStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39"))
 	successStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
 	warningStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
@@ -27,64 +26,50 @@ var (
 	sizeStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("39"))
 )
 
-// Run executes the CLI clean mode
-func Run(cfg *types.Config, dangerouslyDelete, dryRun bool) error {
-	// Load user config
-	userCfg, err := userconfig.Load()
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+// filterItems returns items that are not in the excluded map
+func filterItems(items []types.CleanableItem, excluded map[string]bool) []types.CleanableItem {
+	if excluded == nil {
+		return items
 	}
-
-	// Check if there's a saved selection
-	if !userCfg.HasLastSelection() {
-		return errors.New("no saved profile found. Run mac-cleanup in TUI mode first to create a profile")
+	var filtered []types.CleanableItem
+	for _, item := range items {
+		if !excluded[item.Path] {
+			filtered = append(filtered, item)
+		}
 	}
+	return filtered
+}
 
-	selectedIDs := userCfg.GetLastSelection()
-	fmt.Printf("%s\n\n", titleStyle.Render("mac-cleanup --clean"))
-
-	// Show warning for dangerous delete
-	if dangerouslyDelete {
-		fmt.Printf("%s\n\n", dangerStyle.Render("⚠ WARNING: Permanent deletion mode enabled!"))
+// buildExcludedMap converts userconfig excluded paths to a lookup map
+func buildExcludedMap(userCfg *userconfig.UserConfig) map[string]map[string]bool {
+	excluded := make(map[string]map[string]bool)
+	for catID, paths := range userCfg.ExcludedPaths {
+		excluded[catID] = make(map[string]bool)
+		for _, path := range paths {
+			excluded[catID][path] = true
+		}
 	}
+	return excluded
+}
 
-	registry := scanner.DefaultRegistry(cfg)
-	categoryMap := make(map[string]types.Category)
-	for _, cat := range cfg.Categories {
-		categoryMap[cat.ID] = cat
-	}
-
-	var safeIDs []string
-	var skippedCategories []string
-
+// filterSafeCategories separates safe categories from moderate/risky ones
+func filterSafeCategories(selectedIDs []string, categoryMap map[string]types.Category) (safeIDs, skippedNames []string) {
 	for _, id := range selectedIDs {
 		if cat, ok := categoryMap[id]; ok {
 			if cat.Safety == types.SafetyLevelSafe {
 				safeIDs = append(safeIDs, id)
 			} else {
-				skippedCategories = append(skippedCategories, cat.Name)
+				skippedNames = append(skippedNames, cat.Name)
 			}
 		}
 	}
+	return
+}
 
-	if len(skippedCategories) > 0 {
-		fmt.Printf("%s\n", mutedStyle.Render("Skipped (CLI only supports safe categories):"))
-		for _, name := range skippedCategories {
-			fmt.Printf("  %s %s\n", mutedStyle.Render("⊘"), mutedStyle.Render(name))
-		}
-		fmt.Println()
-	}
-
-	if len(safeIDs) == 0 {
-		fmt.Println(mutedStyle.Render("No safe categories to clean. Use TUI mode for moderate/risky categories."))
-		return nil
-	}
-
-	fmt.Printf("%s", mutedStyle.Render("Scanning..."))
-
-	// Scan only safe categories
+// scanCategories scans the given category IDs and returns results with size > 0
+func scanCategories(ids []string, registry *scanner.Registry) []*types.ScanResult {
 	var results []*types.ScanResult
-	for _, id := range safeIDs {
+	for _, id := range ids {
 		if s, ok := registry.Get(id); ok {
 			if s.IsAvailable() {
 				result, _ := s.Scan()
@@ -94,76 +79,40 @@ func Run(cfg *types.Config, dangerouslyDelete, dryRun bool) error {
 			}
 		}
 	}
-	fmt.Printf("\r%s\n\n", strings.Repeat(" ", 20)) // Clear "Scanning..."
+	return results
+}
 
-	if len(results) == 0 {
-		fmt.Println(mutedStyle.Render("Nothing to clean."))
-		return nil
-	}
-
-	// Load excluded paths
-	excluded := make(map[string]map[string]bool)
-	for catID, paths := range userCfg.ExcludedPaths {
-		excluded[catID] = make(map[string]bool)
-		for _, path := range paths {
-			excluded[catID][path] = true
-		}
-	}
-
-	// Calculate totals and show preview
-	var totalSize int64
-	var totalItems int
-
+// showPreview displays the cleanup preview and returns totals
+func showPreview(results []*types.ScanResult, excluded map[string]map[string]bool) (totalSize int64, totalItems int) {
 	fmt.Println(titleStyle.Render("Preview:"))
 	fmt.Println(strings.Repeat("─", 50))
 
 	for _, result := range results {
-		catID := result.Category.ID
-		excludedMap := excluded[catID]
-
-		var catSize int64
-		var catItems int
-		for _, item := range result.Items {
-			if excludedMap == nil || !excludedMap[item.Path] {
-				catSize += item.Size
-				catItems++
-			}
-		}
-
-		if catItems == 0 {
+		items := filterItems(result.Items, excluded[result.Category.ID])
+		if len(items) == 0 {
 			continue
 		}
 
-		totalSize += catSize
-		totalItems += catItems
-
-		// Safety indicator
-		var safetyDot string
-		switch result.Category.Safety {
-		case types.SafetyLevelSafe:
-			safetyDot = successStyle.Render("●")
-		case types.SafetyLevelModerate:
-			safetyDot = warningStyle.Render("●")
-		case types.SafetyLevelRisky:
-			safetyDot = dangerStyle.Render("●")
-		default:
-			safetyDot = mutedStyle.Render("●")
+		var catSize int64
+		for _, item := range items {
+			catSize += item.Size
 		}
 
+		totalSize += catSize
+		totalItems += len(items)
+
+		safetyDot := successStyle.Render("●") // CLI only has safe categories
 		size := fmt.Sprintf("%10s", utils.FormatSize(catSize))
 		fmt.Printf("%s %-30s %s\n", safetyDot, result.Category.Name, sizeStyle.Render(size))
 	}
 
 	fmt.Println(strings.Repeat("─", 50))
 	fmt.Printf("Total: %s (%d items)\n\n", sizeStyle.Render(utils.FormatSize(totalSize)), totalItems)
+	return
+}
 
-	// Dry run - just show preview
-	if dryRun {
-		fmt.Println(mutedStyle.Render("Dry run - no files were deleted."))
-		return nil
-	}
-
-	// Ask for confirmation
+// confirmCleanup asks for user confirmation
+func confirmCleanup(dangerouslyDelete bool) bool {
 	deleteMethod := "Trash"
 	if dangerouslyDelete {
 		deleteMethod = dangerStyle.Render("PERMANENT DELETE")
@@ -175,33 +124,26 @@ func Run(cfg *types.Config, dangerouslyDelete, dryRun bool) error {
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(strings.ToLower(input))
 
-	if input != "y" && input != "yes" {
-		fmt.Println(mutedStyle.Render("Cancelled."))
-		return nil
-	}
+	return input == "y" || input == "yes"
+}
 
-	// Execute cleaning
-	fmt.Printf("\n%s\n\n", titleStyle.Render("Cleaning..."))
-
+// executeCleanup performs the actual cleanup and returns report
+func executeCleanup(
+	results []*types.ScanResult,
+	excluded map[string]map[string]bool,
+	registry *scanner.Registry,
+	dangerouslyDelete bool,
+) types.Report {
 	c := cleaner.New()
-	startTime := time.Now()
 	var report types.Report
 	report.Results = make([]types.CleanResult, 0)
 
 	for _, result := range results {
-		catID := result.Category.ID
 		if result.Category.Method == types.MethodManual {
 			continue
 		}
 
-		var items []types.CleanableItem
-		excludedMap := excluded[catID]
-		for _, item := range result.Items {
-			if excludedMap == nil || !excludedMap[item.Path] {
-				items = append(items, item)
-			}
-		}
-
+		items := filterItems(result.Items, excluded[result.Category.ID])
 		if len(items) == 0 {
 			continue
 		}
@@ -213,7 +155,7 @@ func Run(cfg *types.Config, dangerouslyDelete, dryRun bool) error {
 
 		var cleanResult *types.CleanResult
 		if cat.Method == types.MethodSpecial {
-			if s, ok := registry.Get(catID); ok {
+			if s, ok := registry.Get(cat.ID); ok {
 				cleanResult, _ = s.Clean(items, false)
 			}
 		} else {
@@ -226,30 +168,120 @@ func Run(cfg *types.Config, dangerouslyDelete, dryRun bool) error {
 			report.CleanedItems += cleanResult.CleanedItems
 			report.FailedItems += len(cleanResult.Errors)
 
-			// Show progress
-			if cleanResult.CleanedItems > 0 || len(cleanResult.Errors) > 0 {
-				if len(cleanResult.Errors) == 0 {
-					size := fmt.Sprintf("%10s", utils.FormatSize(cleanResult.FreedSpace))
-					fmt.Printf("%s %-30s %s\n", successStyle.Render("✓"), cat.Name, sizeStyle.Render(size))
-				} else if cleanResult.CleanedItems > 0 {
-					size := fmt.Sprintf("%10s", utils.FormatSize(cleanResult.FreedSpace))
-					fmt.Printf("%s %-30s %s\n", warningStyle.Render("△"), cat.Name, sizeStyle.Render(size))
-				} else {
-					fmt.Printf("%s %-30s %s\n", dangerStyle.Render("✗"), cat.Name, mutedStyle.Render("failed"))
-				}
-			}
+			printCleanResult(cat.Name, cleanResult)
 		}
 	}
+	return report
+}
 
-	duration := time.Since(startTime)
+// printCleanResult prints the result of cleaning a single category
+func printCleanResult(name string, result *types.CleanResult) {
+	if result.CleanedItems == 0 && len(result.Errors) == 0 {
+		return
+	}
 
-	// Show final report
+	size := fmt.Sprintf("%10s", utils.FormatSize(result.FreedSpace))
+	switch {
+	case len(result.Errors) == 0:
+		fmt.Printf("%s %-30s %s\n", successStyle.Render("✓"), name, sizeStyle.Render(size))
+	case result.CleanedItems > 0:
+		fmt.Printf("%s %-30s %s\n", warningStyle.Render("△"), name, sizeStyle.Render(size))
+	default:
+		fmt.Printf("%s %-30s %s\n", dangerStyle.Render("✗"), name, mutedStyle.Render("failed"))
+	}
+}
+
+// showReport displays the final cleanup report
+func showReport(report types.Report, duration time.Duration) {
 	fmt.Println(strings.Repeat("─", 50))
 	fmt.Printf("Freed: %s\n", sizeStyle.Render(utils.FormatSize(report.FreedSpace)))
 	fmt.Printf("Succeeded: %s  Failed: %s  Time: %s\n",
 		successStyle.Render(fmt.Sprintf("%d", report.CleanedItems)),
 		dangerStyle.Render(fmt.Sprintf("%d", report.FailedItems)),
 		mutedStyle.Render(duration.Round(time.Millisecond).String()))
+}
+
+// Run executes the CLI clean mode
+func Run(cfg *types.Config, dangerouslyDelete, dryRun bool) error {
+	// Load user config
+	userCfg, err := userconfig.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	if !userCfg.HasLastSelection() {
+		return errors.New("no saved profile found. Run mac-cleanup in TUI mode first to create a profile")
+	}
+
+	fmt.Printf("%s\n\n", titleStyle.Render("mac-cleanup --clean"))
+
+	if dangerouslyDelete {
+		fmt.Printf("%s\n\n", dangerStyle.Render("⚠ WARNING: Permanent deletion mode enabled!"))
+	}
+
+	// Build category map
+	categoryMap := make(map[string]types.Category)
+	for _, cat := range cfg.Categories {
+		categoryMap[cat.ID] = cat
+	}
+
+	// Filter safe categories only
+	safeIDs, skippedNames := filterSafeCategories(userCfg.GetLastSelection(), categoryMap)
+
+	if len(skippedNames) > 0 {
+		fmt.Printf("%s\n", mutedStyle.Render("Skipped (CLI only supports safe categories):"))
+		for _, name := range skippedNames {
+			fmt.Printf("  %s %s\n", mutedStyle.Render("⊘"), mutedStyle.Render(name))
+		}
+		fmt.Println()
+	}
+
+	if len(safeIDs) == 0 {
+		fmt.Println(mutedStyle.Render("No safe categories to clean. Use TUI mode for moderate/risky categories."))
+		return nil
+	}
+
+	// Scan
+	fmt.Printf("%s", mutedStyle.Render("Scanning..."))
+	registry := scanner.DefaultRegistry(cfg)
+	results := scanCategories(safeIDs, registry)
+	fmt.Printf("\r%s\n\n", strings.Repeat(" ", 20))
+
+	if len(results) == 0 {
+		fmt.Println(mutedStyle.Render("Nothing to clean."))
+		return nil
+	}
+
+	// Build excluded paths map
+	excluded := buildExcludedMap(userCfg)
+
+	// Show preview
+	totalSize, _ := showPreview(results, excluded)
+	if totalSize == 0 {
+		fmt.Println(mutedStyle.Render("Nothing to clean."))
+		return nil
+	}
+
+	// Dry run - stop here
+	if dryRun {
+		fmt.Println(mutedStyle.Render("Dry run - no files were deleted."))
+		return nil
+	}
+
+	// Confirm
+	if !confirmCleanup(dangerouslyDelete) {
+		fmt.Println(mutedStyle.Render("Cancelled."))
+		return nil
+	}
+
+	// Execute cleanup
+	fmt.Printf("\n%s\n\n", titleStyle.Render("Cleaning..."))
+	startTime := time.Now()
+	report := executeCleanup(results, excluded, registry, dangerouslyDelete)
+	duration := time.Since(startTime)
+
+	// Show report
+	showReport(report, duration)
 
 	return nil
 }
