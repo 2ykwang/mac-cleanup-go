@@ -150,12 +150,10 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "y":
 		m.view = ViewConfirm
 	case "a", "A":
-		// Include all items in current category
+		// Include all items in current category (clear exclusions)
 		r := m.getPreviewCatResult()
 		if r != nil {
-			if m.excluded[r.Category.ID] != nil {
-				m.excluded[r.Category.ID] = make(map[string]bool)
-			}
+			m.clearExcludeCategory(r.Category.ID)
 		}
 	case "d", "D":
 		// Exclude all items in current category
