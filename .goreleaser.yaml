@@ -1,0 +1,48 @@
+version: 2
+
+project_name: mac-cleanup-go
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - main: ./cmd/mac-cleanup
+    binary: mac-cleanup
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+brews:
+  - repository:
+      owner: 2ykwang
+      name: homebrew-mac-cleanup-go
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: "https://github.com/2ykwang/mac-cleanup-go"
+    description: "Interactive TUI for cleaning macOS caches, logs, and temporary files"
+    license: "MIT"
+    install: |
+      bin.install "mac-cleanup"
+    test: |
+      system "#{bin}/mac-cleanup", "--version"
