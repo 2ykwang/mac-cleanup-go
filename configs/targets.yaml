@@ -34,17 +34,6 @@ categories:
       - "/Library/Logs/DiagnosticReports/*"
       - "~/Library/Logs/*"
 
-  - id: temp-files
-    name: Temp Files
-    group: system
-    safety: moderate
-    method: permanent
-    confirm: true
-    note: System temp files - close apps first, some may be in use
-    paths:
-      - "/tmp/*"
-      - "/private/var/folders/*/*/*/*"
-
   - id: quicklook
     name: QuickLook Cache
     group: system

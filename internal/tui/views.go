@@ -8,8 +8,8 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"mac-cleanup-go/pkg/types"
 	"mac-cleanup-go/internal/utils"
+	"mac-cleanup-go/pkg/types"
 )
 
 const (
@@ -410,18 +410,68 @@ func (m *Model) viewConfirm() string {
 func (m *Model) viewCleaning() string {
 	var b strings.Builder
 
-	b.WriteString("\n")
-	b.WriteString(Logo())
+	b.WriteString(HeaderStyle.Render("Cleaning..."))
 	b.WriteString("\n\n")
-	b.WriteString(m.spinner.View() + " ")
-	b.WriteString(TitleStyle.Render("Cleaning..."))
-	b.WriteString("\n\n")
-	b.WriteString(MutedStyle.Render("Removing selected items."))
 
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, b.String())
+	// Progress info
+	if m.cleaningTotal > 0 {
+		progress := fmt.Sprintf("[%d/%d]", m.cleaningCurrent, m.cleaningTotal)
+		b.WriteString(SizeStyle.Render(progress))
+		b.WriteString("\n\n")
+	}
+
+	b.WriteString(Divider(50))
+	b.WriteString("\n\n")
+
+	// Show completed categories
+	for _, cat := range m.cleaningCompleted {
+		if cat.errors == 0 {
+			// Full success
+			size := fmt.Sprintf("%*s", colSize, utils.FormatSize(cat.freedSpace))
+			b.WriteString(fmt.Sprintf("%s %-30s %s\n",
+				SuccessStyle.Render("✓"),
+				cat.name,
+				SizeStyle.Render(size)))
+		} else if cat.cleaned > 0 {
+			// Partial success
+			size := fmt.Sprintf("%*s", colSize, utils.FormatSize(cat.freedSpace))
+			b.WriteString(fmt.Sprintf("%s %-30s %s\n",
+				WarningStyle.Render("△"),
+				cat.name,
+				SizeStyle.Render(size)))
+		} else {
+			// All failed
+			b.WriteString(fmt.Sprintf("%s %-30s %s\n",
+				DangerStyle.Render("✗"),
+				cat.name,
+				MutedStyle.Render("failed")))
+		}
+	}
+
+	// Show current category being processed
+	if m.cleaningCategory != "" {
+		b.WriteString(fmt.Sprintf("%s %s\n",
+			m.spinner.View(),
+			m.cleaningCategory))
+
+		if m.cleaningItem != "" {
+			item := m.cleaningItem
+			if len(item) > 45 {
+				item = "..." + item[len(item)-42:]
+			}
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("  └ %s\n", item)))
+		}
+	}
+
+	return b.String()
 }
 
 func (m *Model) viewReport() string {
+	// Build report lines if not already built
+	if m.reportLines == nil {
+		m.reportLines = m.buildReportLines()
+	}
+
 	var b strings.Builder
 
 	b.WriteString(HeaderStyle.Render("Cleanup Complete"))
@@ -435,18 +485,71 @@ func (m *Model) viewReport() string {
 	}
 	b.WriteString(fmt.Sprintf("Time:      %s\n\n", m.report.Duration.Round(time.Millisecond)))
 
-	b.WriteString(Divider(50) + "\n\n")
+	b.WriteString(Divider(50) + "\n")
 
-	// Successful items first
+	// Calculate visible range
+	visible := m.reportVisibleLines()
+	totalLines := len(m.reportLines)
+	start := m.reportScroll
+	end := start + visible
+	if end > totalLines {
+		end = totalLines
+	}
+
+	// Show scroll indicator at top if scrolled
+	if m.reportScroll > 0 {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("  ↑ %d more lines above\n", m.reportScroll)))
+	} else {
+		b.WriteString("\n")
+	}
+
+	// Display visible lines
+	for i := start; i < end; i++ {
+		b.WriteString(m.reportLines[i])
+		b.WriteString("\n")
+	}
+
+	// Show scroll indicator at bottom if more content
+	remaining := totalLines - end
+	if remaining > 0 {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("  ↓ %d more lines below\n", remaining)))
+	} else {
+		b.WriteString("\n")
+	}
+
+	b.WriteString("\n")
+	b.WriteString(HelpStyle.Render("↑↓ Scroll  enter Rescan  q Quit"))
+	return b.String()
+}
+
+func (m *Model) buildReportLines() []string {
+	var lines []string
+
+	// Successful items first (no errors at all)
 	hasSuccess := false
 	for _, result := range m.report.Results {
 		if len(result.Errors) == 0 && result.CleanedItems > 0 {
 			if !hasSuccess {
-				b.WriteString(SuccessStyle.Render("Succeeded:") + "\n")
+				lines = append(lines, SuccessStyle.Render("Succeeded:"))
 				hasSuccess = true
 			}
 			size := fmt.Sprintf("%*s", colSize, utils.FormatSize(result.FreedSpace))
-			b.WriteString(fmt.Sprintf("  %s %-26s %s\n", SuccessStyle.Render("✓"), result.Category.Name, SizeStyle.Render(size)))
+			lines = append(lines, fmt.Sprintf("  %s %-26s %s", SuccessStyle.Render("✓"), result.Category.Name, SizeStyle.Render(size)))
+		}
+	}
+
+	// Partial success items (some succeeded, some failed)
+	for _, result := range m.report.Results {
+		if len(result.Errors) > 0 && result.CleanedItems > 0 {
+			if !hasSuccess {
+				lines = append(lines, SuccessStyle.Render("Succeeded:"))
+				hasSuccess = true
+			}
+			size := fmt.Sprintf("%*s", colSize, utils.FormatSize(result.FreedSpace))
+			lines = append(lines, fmt.Sprintf("  %s %-26s %s",
+				WarningStyle.Render("△"),
+				result.Category.Name,
+				SizeStyle.Render(size)))
 		}
 	}
 
@@ -456,32 +559,38 @@ func (m *Model) viewReport() string {
 		if len(result.Errors) > 0 {
 			if !hasFailed {
 				if hasSuccess {
-					b.WriteString("\n")
+					lines = append(lines, "") // blank line
 				}
-				b.WriteString(DangerStyle.Render("Failed:") + "\n")
+				lines = append(lines, DangerStyle.Render("Failed:"))
 				hasFailed = true
 			}
-			b.WriteString(fmt.Sprintf("  %s %s\n", DangerStyle.Render("✗"), result.Category.Name))
+
+			// Show category with error count
+			if result.CleanedItems > 0 {
+				lines = append(lines, fmt.Sprintf("  %s %s: %s succeeded, %s failed",
+					WarningStyle.Render("⚠"),
+					result.Category.Name,
+					SuccessStyle.Render(fmt.Sprintf("%d", result.CleanedItems)),
+					DangerStyle.Render(fmt.Sprintf("%d", len(result.Errors)))))
+			} else {
+				lines = append(lines, fmt.Sprintf("  %s %s: %s failed",
+					DangerStyle.Render("✗"),
+					result.Category.Name,
+					DangerStyle.Render(fmt.Sprintf("%d", len(result.Errors)))))
+			}
+
+			// Show individual errors (truncate long paths)
 			for _, err := range result.Errors {
-				b.WriteString(MutedStyle.Render(fmt.Sprintf("    └ %s\n", err)))
+				displayErr := err
+				if len(displayErr) > 60 {
+					displayErr = "..." + displayErr[len(displayErr)-57:]
+				}
+				lines = append(lines, MutedStyle.Render(fmt.Sprintf("    └ %s", displayErr)))
 			}
 		}
 	}
 
-	// Partial success (some items succeeded, some failed)
-	for _, result := range m.report.Results {
-		if len(result.Errors) > 0 && result.CleanedItems > 0 {
-			b.WriteString(fmt.Sprintf("\n%s %s: %d succeeded, %d failed\n",
-				WarningStyle.Render("⚠"),
-				result.Category.Name,
-				result.CleanedItems,
-				len(result.Errors)))
-		}
-	}
-
-	b.WriteString("\n")
-	b.WriteString(HelpStyle.Render("enter Rescan  q Quit"))
-	return b.String()
+	return lines
 }
 
 // Helper functions

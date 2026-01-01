@@ -6,21 +6,6 @@ Inspired by [mac-cleanup-py](https://github.com/mac-cleanup/mac-cleanup-py).
 
 ![demo](assets/demo.gif)
 
-## How It Works
-
-1. **Scan** - Searches for cleanable files in system, browsers, dev tools, and apps
-2. **Select** - Choose items to delete (sorted by size, safety levels displayed)
-3. **Preview** - Review detailed file lists and exclude individual items (exclusions are remembered)
-4. **Clean** - Move to Trash (default) or permanently delete with `--dangerously-delete`
-
-### Safety Levels
-
-| Level    | Description                              |
-|----------|------------------------------------------|
-| Safe     | Auto-regenerated caches                  |
-| Moderate | May require re-download or re-login      |
-| Risky    | May contain important data - review first |
-
 ## Installation
 
 ### Build from Source
@@ -42,13 +27,28 @@ brew install mac-cleanup-go
 ## Usage
 
 ```bash
-mac-cleanup                    # Default: moves to Trash
+mac-cleanup                       # Default: moves to Trash
 mac-cleanup --dangerously-delete  # Permanent deletion
-mac-cleanup --version          # Show version
+mac-cleanup --version             # Show version
 ```
 
-> **Full Disk Access (Optional)**: Some items (Trash, Mail, etc.) require Full Disk Access.
+> **Full Disk Access (Optional)**: Some items (Trash, Mail, etc.) require Full Disk Access.  
 > System Settings → Privacy & Security → Full Disk Access → Add your terminal app
+
+## How It Works
+
+1. **Scan** - Searches for cleanable files in system, browsers, dev tools, and apps
+2. **Select** - Choose items to delete (sorted by size, safety levels displayed)
+3. **Preview** - Review detailed file lists and exclude individual items (exclusions are remembered)
+4. **Clean** - Move to Trash (default) or permanently delete with `--dangerously-delete`
+
+### Safety Levels
+
+| Level    | Description                              |
+|----------|------------------------------------------|
+| Safe     | Auto-regenerated caches                  |
+| Moderate | May require re-download or re-login      |
+| Risky    | May contain important data - review first |
 
 ## Keyboard Shortcuts
 
@@ -59,7 +59,7 @@ mac-cleanup --version          # Show version
 
 ## Cleanup Targets
 
-- **System**: Trash, App Caches, Logs, Temp Files
+- **System**: Trash, App Caches, Logs, QuickLook
 - **Browsers**: Chrome, Safari, Firefox, Arc, Edge, Brave
 - **Dev Tools**: Xcode, npm, Yarn, pip, Docker, Homebrew, Go, Gradle, etc.
 - **Apps**: Discord, Slack, Spotify, VS Code, JetBrains, etc.

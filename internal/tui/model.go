@@ -58,14 +58,28 @@ type Model struct {
 	previewScroll    int
 	drillDownStack   []drillDownState
 
-	report    *types.Report
-	startTime time.Time
-	scroll    int
+	report       *types.Report
+	startTime    time.Time
+	scroll       int
+	reportScroll int
+	reportLines  []string // Pre-rendered report lines for scrolling
 
 	hasFullDiskAccess    bool
 	allowPermanentDelete bool // --dangerously-delete flag
 
 	userConfig *userconfig.UserConfig
+
+	// Cleaning progress
+	cleaningCategory  string
+	cleaningItem      string
+	cleaningCurrent   int
+	cleaningTotal     int
+	cleaningCompleted []cleanedCategory // Completed categories
+
+	// Channels for cleaning progress
+	cleanProgressChan   chan cleanProgressMsg
+	cleanDoneChan       chan cleanDoneMsg
+	cleanCategoryDoneCh chan cleanCategoryDoneMsg
 
 	err error
 }
@@ -80,6 +94,26 @@ type drillDownState struct {
 // Messages
 type scanResultMsg struct{ result *types.ScanResult }
 type cleanDoneMsg struct{ report *types.Report }
+type cleanProgressMsg struct {
+	categoryName string
+	currentItem  string
+	current      int
+	total        int
+}
+type cleanCategoryDoneMsg struct {
+	categoryName string
+	freedSpace   int64
+	cleanedItems int
+	errorCount   int
+}
+
+// cleanedCategory tracks a completed category during cleaning
+type cleanedCategory struct {
+	name       string
+	freedSpace int64
+	cleaned    int
+	errors     int
+}
 
 // NewModel creates a new model
 func NewModel(cfg *types.Config, allowPermanentDelete bool) *Model {
@@ -148,13 +182,31 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 		return m, nil
 	case spinner.TickMsg:
-		if m.scanning {
+		if m.scanning || m.view == ViewCleaning {
 			var cmd tea.Cmd
 			m.spinner, cmd = m.spinner.Update(msg)
 			return m, cmd
 		}
 	case scanResultMsg:
 		m.handleScanResult(msg.result)
+	case cleanProgressMsg:
+		m.cleaningCategory = msg.categoryName
+		m.cleaningItem = msg.currentItem
+		m.cleaningCurrent = msg.current
+		m.cleaningTotal = msg.total
+		// Continue waiting for next progress or done message
+		return m, m.waitForCleanProgress()
+	case cleanCategoryDoneMsg:
+		// Add completed category to list
+		m.cleaningCompleted = append(m.cleaningCompleted, cleanedCategory{
+			name:       msg.categoryName,
+			freedSpace: msg.freedSpace,
+			cleaned:    msg.cleanedItems,
+			errors:     msg.errorCount,
+		})
+		m.cleaningCategory = ""
+		m.cleaningItem = ""
+		return m, m.waitForCleanProgress()
 	case cleanDoneMsg:
 		m.report = msg.report
 		m.report.Duration = time.Since(m.startTime)
@@ -310,6 +362,14 @@ func (m *Model) visibleLines() int {
 	return lines
 }
 
+func (m *Model) reportVisibleLines() int {
+	lines := m.height - 12 // Header + summary + footer
+	if lines < 5 {
+		return 5
+	}
+	return lines
+}
+
 func (m *Model) adjustScroll() {
 	visible := m.visibleLines()
 	if m.cursor < m.scroll {
@@ -384,52 +444,107 @@ func (m *Model) tryDrillDown() bool {
 }
 
 func (m *Model) doClean() tea.Cmd {
-	return func() tea.Msg {
+	// Collect items to clean
+	type cleanJob struct {
+		category  types.Category
+		items     []types.CleanableItem
+		isSpecial bool
+	}
+	var jobs []cleanJob
+
+	for id, sel := range m.selected {
+		if !sel {
+			continue
+		}
+		r, ok := m.resultMap[id]
+		if !ok {
+			continue
+		}
+		if r.Category.Method == types.MethodManual {
+			continue
+		}
+
+		var items []types.CleanableItem
+		excludedMap := m.excluded[id]
+		for _, item := range r.Items {
+			if excludedMap == nil || !excludedMap[item.Path] {
+				items = append(items, item)
+			}
+		}
+		if len(items) == 0 {
+			continue
+		}
+
+		jobs = append(jobs, cleanJob{
+			category:  r.Category,
+			items:     items,
+			isSpecial: r.Category.Method == types.MethodSpecial,
+		})
+	}
+
+	// Calculate total items
+	totalItems := 0
+	for _, job := range jobs {
+		totalItems += len(job.items)
+	}
+	m.cleaningTotal = totalItems
+	m.cleaningCurrent = 0
+	m.cleaningCompleted = nil // Reset completed list
+
+	// Create channels for progress communication
+	m.cleanProgressChan = make(chan cleanProgressMsg, 1)
+	m.cleanDoneChan = make(chan cleanDoneMsg, 1)
+	m.cleanCategoryDoneCh = make(chan cleanCategoryDoneMsg, 1)
+
+	// Start cleaning in background goroutine
+	go func() {
 		report := &types.Report{Results: make([]types.CleanResult, 0)}
+		currentItem := 0
 
-		for id, sel := range m.selected {
-			if !sel {
-				continue
-			}
-			r, ok := m.resultMap[id]
-			if !ok {
-				continue
-			}
-
-			// Skip manual method - user must clean via app
-			if r.Category.Method == types.MethodManual {
-				continue
-			}
-
-			// Filter out excluded items
-			var items []types.CleanableItem
-			excludedMap := m.excluded[id]
-			for _, item := range r.Items {
-				if excludedMap == nil || !excludedMap[item.Path] {
-					items = append(items, item)
-				}
-			}
-			if len(items) == 0 {
-				continue
-			}
-
+		for _, job := range jobs {
 			var result *types.CleanResult
 
-			// For special method (Docker), use the scanner's Clean method
-			if r.Category.Method == types.MethodSpecial {
-				if s, ok := m.registry.Get(id); ok {
-					result, _ = s.Clean(items, false)
+			if job.isSpecial {
+				// Send progress for special jobs
+				m.cleanProgressChan <- cleanProgressMsg{
+					categoryName: job.category.Name,
+					currentItem:  "",
+					current:      currentItem,
+					total:        totalItems,
 				}
-			} else {
-				// Create a copy of category to modify method if needed
-				cat := r.Category
 
-				// Default to Trash unless --dangerously-delete is set
+				if s, ok := m.registry.Get(job.category.ID); ok {
+					result, _ = s.Clean(job.items, false)
+				}
+				currentItem += len(job.items)
+			} else {
+				cat := job.category
 				if cat.Method == types.MethodPermanent && !m.allowPermanentDelete {
 					cat.Method = types.MethodTrash
 				}
 
-				result = m.cleaner.Clean(cat, items, false)
+				// Clean items one by one for progress tracking
+				itemResult := &types.CleanResult{
+					Category: cat,
+					Errors:   make([]string, 0),
+				}
+				for _, item := range job.items {
+					currentItem++
+
+					// Send progress update
+					m.cleanProgressChan <- cleanProgressMsg{
+						categoryName: job.category.Name,
+						currentItem:  item.Name,
+						current:      currentItem,
+						total:        totalItems,
+					}
+
+					singleResult := m.cleaner.Clean(cat, []types.CleanableItem{item}, false)
+					itemResult.FreedSpace += singleResult.FreedSpace
+					itemResult.CleanedItems += singleResult.CleanedItems
+					itemResult.Errors = append(itemResult.Errors, singleResult.Errors...)
+				}
+				result = itemResult
 			}
 
 			if result != nil {
@@ -437,10 +552,35 @@ func (m *Model) doClean() tea.Cmd {
 				report.FreedSpace += result.FreedSpace
 				report.CleanedItems += result.CleanedItems
 				report.FailedItems += len(result.Errors)
+
+				// Send category done message
+				m.cleanCategoryDoneCh <- cleanCategoryDoneMsg{
+					categoryName: job.category.Name,
+					freedSpace:   result.FreedSpace,
+					cleanedItems: result.CleanedItems,
+					errorCount:   len(result.Errors),
+				}
 			}
 		}
 
-		return cleanDoneMsg{report: report}
+		m.cleanDoneChan <- cleanDoneMsg{report: report}
+	}()
+
+	// Return command to wait for first progress/done message
+	return m.waitForCleanProgress()
+}
+
+// waitForCleanProgress returns a command that waits for the next progress or done message
+func (m *Model) waitForCleanProgress() tea.Cmd {
+	return func() tea.Msg {
+		select {
+		case progress := <-m.cleanProgressChan:
+			return progress
+		case catDone := <-m.cleanCategoryDoneCh:
+			return catDone
+		case done := <-m.cleanDoneChan:
+			return done
+		}
 	}
 }
 

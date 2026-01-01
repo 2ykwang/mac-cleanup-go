@@ -24,6 +24,18 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
+		case "up", "k":
+			if m.reportScroll > 0 {
+				m.reportScroll--
+			}
+		case "down", "j":
+			maxScroll := len(m.reportLines) - m.reportVisibleLines()
+			if maxScroll < 0 {
+				maxScroll = 0
+			}
+			if m.reportScroll < maxScroll {
+				m.reportScroll++
+			}
 		case "enter", " ":
 			// Return to main screen and rescan
 			m.view = ViewList
@@ -33,6 +45,8 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.resultMap = make(map[string]*types.ScanResult)
 			m.cursor = 0
 			m.scroll = 0
+			m.reportScroll = 0
+			m.reportLines = nil
 			m.scanning = true
 			return m, tea.Batch(m.spinner.Tick, m.startScan())
 		}
@@ -172,7 +186,7 @@ func (m *Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "y", "Y", "enter":
 		m.view = ViewCleaning
 		m.startTime = time.Now()
-		return m, m.doClean()
+		return m, tea.Batch(m.spinner.Tick, m.doClean())
 	case "n", "N", "esc":
 		m.view = ViewPreview
 	}

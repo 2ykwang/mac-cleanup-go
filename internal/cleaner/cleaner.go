@@ -1,12 +1,16 @@
 package cleaner
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
+	"time"
 
 	"mac-cleanup-go/pkg/types"
 )
+
+const commandTimeout = 10 * time.Second
 
 type Cleaner struct{}
 
@@ -43,9 +47,17 @@ func (c *Cleaner) Clean(cat types.Category, items []types.CleanableItem, dryRun 
 func (c *Cleaner) moveToTrash(items []types.CleanableItem, result *types.CleanResult) {
 	for _, item := range items {
 		script := fmt.Sprintf(`tell application "Finder" to delete POSIX file "%s"`, item.Path)
-		cmd := exec.Command("osascript", "-e", script)
-		if err := cmd.Run(); err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Name, err))
+		ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+		cmd := exec.CommandContext(ctx, "osascript", "-e", script)
+		err := cmd.Run()
+		cancel()
+
+		if err != nil {
+			if ctx.Err() == context.DeadlineExceeded {
+				result.Errors = append(result.Errors, fmt.Sprintf("%s: timeout", item.Name))
+			} else {
+				result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Name, err))
+			}
 		} else {
 			result.FreedSpace += item.Size
 			result.CleanedItems++
@@ -76,15 +88,22 @@ func (c *Cleaner) runCommand(cat types.Category, result *types.CleanResult) {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	var cmd *exec.Cmd
 	if cat.Sudo {
-		cmd = exec.Command("sudo", "sh", "-c", cat.Command)
+		cmd = exec.CommandContext(ctx, "sudo", "sh", "-c", cat.Command)
 	} else {
-		cmd = exec.Command("sh", "-c", cat.Command)
+		cmd = exec.CommandContext(ctx, "sh", "-c", cat.Command)
 	}
 
 	if err := cmd.Run(); err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("command failed: %v", err))
+		if ctx.Err() == context.DeadlineExceeded {
+			result.Errors = append(result.Errors, "command timeout")
+		} else {
+			result.Errors = append(result.Errors, fmt.Sprintf("command failed: %v", err))
+		}
 	} else {
 		result.CleanedItems = 1
 	}
