@@ -1,22 +1,21 @@
 package config
 
 import (
-	"os"
+	_ "embed"
 
 	"gopkg.in/yaml.v3"
+
 	"mac-cleanup-go/pkg/types"
 )
 
-func Load(path string) (*types.Config, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
+//go:embed targets.yaml
+var embeddedConfig []byte
 
+// LoadEmbedded loads the embedded config
+func LoadEmbedded() (*types.Config, error) {
 	var cfg types.Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	if err := yaml.Unmarshal(embeddedConfig, &cfg); err != nil {
 		return nil, err
 	}
-
 	return &cfg, nil
 }
