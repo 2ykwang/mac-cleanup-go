@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"mac-cleanup-go/pkg/types"
-	"mac-cleanup-go/pkg/utils"
+	"mac-cleanup-go/internal/utils"
 )
 
 type BaseScanner struct {
