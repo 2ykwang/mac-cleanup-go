@@ -13,8 +13,9 @@ import (
 
 	"mac-cleanup-go/internal/cleaner"
 	"mac-cleanup-go/internal/scanner"
+	"mac-cleanup-go/internal/userconfig"
+	"mac-cleanup-go/internal/utils"
 	"mac-cleanup-go/pkg/types"
-	"mac-cleanup-go/pkg/utils"
 )
 
 // View state
@@ -61,7 +62,10 @@ type Model struct {
 	startTime time.Time
 	scroll    int
 
-	hasFullDiskAccess bool
+	hasFullDiskAccess    bool
+	allowPermanentDelete bool // --dangerously-delete flag
+
+	userConfig *userconfig.UserConfig
 
 	err error
 }
@@ -78,24 +82,38 @@ type scanResultMsg struct{ result *types.ScanResult }
 type cleanDoneMsg struct{ report *types.Report }
 
 // NewModel creates a new model
-func NewModel(cfg *types.Config) *Model {
+func NewModel(cfg *types.Config, allowPermanentDelete bool) *Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(ColorPrimary)
 
+	// Load user config
+	userCfg, _ := userconfig.Load()
+
+	// Initialize excluded from saved config
+	excluded := make(map[string]map[string]bool)
+	for catID, paths := range userCfg.ExcludedPaths {
+		excluded[catID] = make(map[string]bool)
+		for _, path := range paths {
+			excluded[catID][path] = true
+		}
+	}
+
 	return &Model{
-		config:            cfg,
-		registry:          scanner.DefaultRegistry(cfg),
-		cleaner:           cleaner.New(),
-		selected:          make(map[string]bool),
-		excluded:          make(map[string]map[string]bool),
-		resultMap:         make(map[string]*types.ScanResult),
-		results:           make([]*types.ScanResult, 0),
-		drillDownStack:    make([]drillDownState, 0),
-		view:              ViewList,
-		spinner:           s,
-		scanning:          true,
-		hasFullDiskAccess: utils.CheckFullDiskAccess(),
+		config:               cfg,
+		registry:             scanner.DefaultRegistry(cfg),
+		cleaner:              cleaner.New(),
+		selected:             make(map[string]bool),
+		excluded:             excluded,
+		resultMap:            make(map[string]*types.ScanResult),
+		results:              make([]*types.ScanResult, 0),
+		drillDownStack:       make([]drillDownState, 0),
+		view:                 ViewList,
+		spinner:              s,
+		scanning:             true,
+		hasFullDiskAccess:    utils.CheckFullDiskAccess(),
+		allowPermanentDelete: allowPermanentDelete,
+		userConfig:           userCfg,
 	}
 }
 
@@ -403,8 +421,15 @@ func (m *Model) doClean() tea.Cmd {
 					result, _ = s.Clean(items, false)
 				}
 			} else {
-				// For other methods, use the cleaner
-				result = m.cleaner.Clean(r.Category, items, false)
+				// Create a copy of category to modify method if needed
+				cat := r.Category
+
+				// Default to Trash unless --dangerously-delete is set
+				if cat.Method == types.MethodPermanent && !m.allowPermanentDelete {
+					cat.Method = types.MethodTrash
+				}
+
+				result = m.cleaner.Clean(cat, items, false)
 			}
 
 			if result != nil {
@@ -433,6 +458,21 @@ func (m *Model) toggleExclude(catID, path string) {
 		m.excluded[catID] = make(map[string]bool)
 	}
 	m.excluded[catID][path] = !m.excluded[catID][path]
+	m.saveExcludedPaths()
+}
+
+// saveExcludedPaths saves excluded paths to user config
+func (m *Model) saveExcludedPaths() {
+	for catID, pathMap := range m.excluded {
+		var paths []string
+		for path, excluded := range pathMap {
+			if excluded {
+				paths = append(paths, path)
+			}
+		}
+		m.userConfig.SetExcludedPaths(catID, paths)
+	}
+	_ = m.userConfig.Save() // ignore error
 }
 
 // autoExcludeCategory marks all items in a category as excluded
@@ -442,5 +482,14 @@ func (m *Model) autoExcludeCategory(catID string, r *types.ScanResult) {
 	}
 	for _, item := range r.Items {
 		m.excluded[catID][item.Path] = true
+	}
+	m.saveExcludedPaths()
+}
+
+// clearExcludeCategory clears all exclusions for a category
+func (m *Model) clearExcludeCategory(catID string) {
+	if m.excluded[catID] != nil {
+		m.excluded[catID] = make(map[string]bool)
+		m.saveExcludedPaths()
 	}
 }

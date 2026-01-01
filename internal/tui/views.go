@@ -9,7 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"mac-cleanup-go/pkg/types"
-	"mac-cleanup-go/pkg/utils"
+	"mac-cleanup-go/internal/utils"
 )
 
 const (
@@ -27,6 +27,12 @@ func (m *Model) viewList() string {
 			m.spinner.View(), m.scanCompleted, m.scanTotal, m.scanRegistered))
 	}
 	b.WriteString("\n")
+
+	// Deletion mode indicator
+	if m.allowPermanentDelete {
+		b.WriteString(DangerStyle.Render("[!] PERMANENT DELETE MODE (--dangerously-delete)"))
+		b.WriteString("\n")
+	}
 
 	// Permission warning
 	if !m.hasFullDiskAccess {
@@ -100,12 +106,18 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult) string {
 	dot := safetyDot(r.Category.Safety)
 
 	name := r.Category.Name
-	// Add method badge for non-permanent methods
+	// Add method badge only for special methods
 	switch r.Category.Method {
 	case types.MethodManual:
 		name += " [Manual]"
-	case types.MethodTrash:
-		name += " [Trash]"
+	case types.MethodCommand:
+		name += " [Command]"
+	case types.MethodSpecial:
+		name += " [Special]"
+	}
+	// Show [Permanent] only in --dangerously-delete mode
+	if m.allowPermanentDelete && r.Category.Method == types.MethodPermanent {
+		name += " [Permanent]"
 	}
 	name = fmt.Sprintf("%-*s", colName, name)
 	if isCurrent {
@@ -148,10 +160,15 @@ func (m *Model) viewPreview() string {
 	if cat != nil {
 
 		badge := safetyBadge(cat.Category.Safety)
-		methodBadge := methodBadge(cat.Category.Method)
+		mBadge := m.methodBadge(cat.Category.Method)
 		effectiveSize := m.getEffectiveSize(cat)
-		b.WriteString(fmt.Sprintf("%s %s  %s  │  %d items\n",
-			badge, methodBadge, SizeStyle.Render(formatSize(effectiveSize)), len(cat.Items)))
+		if mBadge != "" {
+			b.WriteString(fmt.Sprintf("%s %s  %s  │  %d items\n",
+				badge, mBadge, SizeStyle.Render(formatSize(effectiveSize)), len(cat.Items)))
+		} else {
+			b.WriteString(fmt.Sprintf("%s  %s  │  %d items\n",
+				badge, SizeStyle.Render(formatSize(effectiveSize)), len(cat.Items)))
+		}
 		if cat.Category.Note != "" {
 			b.WriteString(MutedStyle.Render(cat.Category.Note) + "\n")
 		}
@@ -352,6 +369,18 @@ func (m *Model) viewConfirm() string {
 	b.WriteString("\n\n")
 	b.WriteString(HeaderStyle.Render("Confirm Deletion"))
 	b.WriteString("\n\n")
+
+	// Show deletion mode
+	if m.allowPermanentDelete {
+		b.WriteString(DangerStyle.Render("  ⚠ PERMANENT DELETE MODE"))
+		b.WriteString("\n")
+		b.WriteString(DangerStyle.Render("  Files will be permanently deleted!"))
+		b.WriteString("\n\n")
+	} else {
+		b.WriteString(SuccessStyle.Render("  → Files will be moved to Trash"))
+		b.WriteString("\n\n")
+	}
+
 	b.WriteString(Divider(50) + "\n\n")
 
 	b.WriteString(fmt.Sprintf("  Total %s will be deleted.\n\n",
@@ -366,7 +395,11 @@ func (m *Model) viewConfirm() string {
 	}
 
 	b.WriteString("\n" + Divider(50) + "\n\n")
-	b.WriteString(WarningStyle.Render("  This action cannot be undone!"))
+	if m.allowPermanentDelete {
+		b.WriteString(DangerStyle.Render("  ⚠ This action cannot be undone!"))
+	} else {
+		b.WriteString(MutedStyle.Render("  Items can be recovered from Trash"))
+	}
 	b.WriteString("\n\n")
 	b.WriteString(fmt.Sprintf("  %s Press y or Enter to delete\n", SuccessStyle.Render("▸")))
 	b.WriteString(fmt.Sprintf("  %s Press n or Esc to cancel\n", DangerStyle.Render("▸")))
@@ -394,26 +427,55 @@ func (m *Model) viewReport() string {
 	b.WriteString(HeaderStyle.Render("Cleanup Complete"))
 	b.WriteString("\n\n")
 
-	b.WriteString(fmt.Sprintf("Freed:   %s\n", SizeStyle.Render(formatSize(m.report.FreedSpace))))
-	b.WriteString(fmt.Sprintf("Items:   %d\n", m.report.CleanedItems))
+	// Summary
+	b.WriteString(fmt.Sprintf("Freed:     %s\n", SizeStyle.Render(formatSize(m.report.FreedSpace))))
+	b.WriteString(fmt.Sprintf("Succeeded: %s\n", SuccessStyle.Render(fmt.Sprintf("%d", m.report.CleanedItems))))
 	if m.report.FailedItems > 0 {
-		b.WriteString(DangerStyle.Render(fmt.Sprintf("Failed:  %d\n", m.report.FailedItems)))
+		b.WriteString(fmt.Sprintf("Failed:    %s\n", DangerStyle.Render(fmt.Sprintf("%d", m.report.FailedItems))))
 	}
-	b.WriteString(fmt.Sprintf("Time:    %s\n\n", m.report.Duration.Round(time.Millisecond)))
+	b.WriteString(fmt.Sprintf("Time:      %s\n\n", m.report.Duration.Round(time.Millisecond)))
 
 	b.WriteString(Divider(50) + "\n\n")
 
+	// Successful items first
+	hasSuccess := false
 	for _, result := range m.report.Results {
-		status := SuccessStyle.Render("✓")
-		if len(result.Errors) > 0 {
-			status = DangerStyle.Render("✗")
+		if len(result.Errors) == 0 && result.CleanedItems > 0 {
+			if !hasSuccess {
+				b.WriteString(SuccessStyle.Render("Succeeded:") + "\n")
+				hasSuccess = true
+			}
+			size := fmt.Sprintf("%*s", colSize, utils.FormatSize(result.FreedSpace))
+			b.WriteString(fmt.Sprintf("  %s %-26s %s\n", SuccessStyle.Render("✓"), result.Category.Name, SizeStyle.Render(size)))
 		}
+	}
 
-		size := fmt.Sprintf("%*s", colSize, utils.FormatSize(result.FreedSpace))
-		b.WriteString(fmt.Sprintf("%s %-28s %s\n", status, result.Category.Name, SizeStyle.Render(size)))
+	// Failed items
+	hasFailed := false
+	for _, result := range m.report.Results {
+		if len(result.Errors) > 0 {
+			if !hasFailed {
+				if hasSuccess {
+					b.WriteString("\n")
+				}
+				b.WriteString(DangerStyle.Render("Failed:") + "\n")
+				hasFailed = true
+			}
+			b.WriteString(fmt.Sprintf("  %s %s\n", DangerStyle.Render("✗"), result.Category.Name))
+			for _, err := range result.Errors {
+				b.WriteString(MutedStyle.Render(fmt.Sprintf("    └ %s\n", err)))
+			}
+		}
+	}
 
-		for _, err := range result.Errors {
-			b.WriteString(DangerStyle.Render(fmt.Sprintf("  └ %s\n", err)))
+	// Partial success (some items succeeded, some failed)
+	for _, result := range m.report.Results {
+		if len(result.Errors) > 0 && result.CleanedItems > 0 {
+			b.WriteString(fmt.Sprintf("\n%s %s: %d succeeded, %d failed\n",
+				WarningStyle.Render("⚠"),
+				result.Category.Name,
+				result.CleanedItems,
+				len(result.Errors)))
 		}
 	}
 
@@ -453,18 +515,21 @@ func safetyBadge(level types.SafetyLevel) string {
 	}
 }
 
-func methodBadge(method types.CleanupMethod) string {
+func (m *Model) methodBadge(method types.CleanupMethod) string {
 	switch method {
-	case types.MethodTrash:
-		return MutedStyle.Render("[Trash]")
 	case types.MethodManual:
 		return WarningStyle.Render("[Manual]")
 	case types.MethodCommand:
 		return MutedStyle.Render("[Command]")
 	case types.MethodSpecial:
 		return MutedStyle.Render("[Special]")
+	case types.MethodPermanent:
+		if m.allowPermanentDelete {
+			return DangerStyle.Render("[Permanent]")
+		}
+		return "" // Will use Trash, no badge needed
 	default:
-		return MutedStyle.Render("[Delete]")
+		return "" // Trash is default, no badge needed
 	}
 }
 
