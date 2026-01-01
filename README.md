@@ -1,0 +1,61 @@
+# mac-cleanup-go
+
+A terminal utility to clean up macOS caches, logs, and temporary files.
+
+Inspired by [mac-cleanup-py](https://github.com/mac-cleanup/mac-cleanup-py).
+
+![demo](assets/demo.gif)
+
+## How It Works
+
+1. **Scan** - Searches for cleanable files in system, browsers, dev tools, and apps
+2. **Select** - Choose items to delete (sorted by size, safety levels displayed)
+3. **Preview** - Review detailed file lists and exclude individual items
+4. **Clean** - Move to Trash or permanently delete selected items
+
+### Safety Levels
+
+| Level    | Description                              |
+|----------|------------------------------------------|
+| Safe     | Auto-regenerated caches                  |
+| Moderate | May require re-download or re-login      |
+| Risky    | May contain important data - review first |
+
+## Installation
+
+### Build from Source
+
+```bash
+git clone https://github.com/2ykwang/mac-cleanup-go.git
+cd mac-cleanup-go
+go build -o bin/mac-cleanup ./cmd/mac-cleanup
+./bin/mac-cleanup
+```
+
+### Homebrew
+
+```bash
+brew tap 2ykwang/mac-cleanup-go
+brew install mac-cleanup-go
+```
+
+> **Full Disk Access (Optional)**: Some items (Trash, Mail, etc.) require Full Disk Access.
+> System Settings → Privacy & Security → Full Disk Access → Add your terminal app
+
+## Keyboard Shortcuts
+
+| Screen  | Keys |
+|---------|------|
+| Main    | `↑↓` Navigate / `Space` Select / `a` Select All / `d` Deselect All / `Enter` Preview |
+| Preview | `←→` Switch tabs / `Space` Exclude item / `a` Include All / `d` Exclude All / `y` Delete |
+
+## Cleanup Targets
+
+- **System**: Trash, App Caches, Logs, Temp Files
+- **Browsers**: Chrome, Safari, Firefox, Arc, Edge, Brave
+- **Dev Tools**: Xcode, npm, Yarn, pip, Docker, Homebrew, Go, Gradle, etc.
+- **Apps**: Discord, Slack, Spotify, VS Code, JetBrains, etc.
+
+## License
+
+MIT
