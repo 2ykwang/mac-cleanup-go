@@ -10,8 +10,8 @@ Inspired by [mac-cleanup-py](https://github.com/mac-cleanup/mac-cleanup-py).
 
 1. **Scan** - Searches for cleanable files in system, browsers, dev tools, and apps
 2. **Select** - Choose items to delete (sorted by size, safety levels displayed)
-3. **Preview** - Review detailed file lists and exclude individual items
-4. **Clean** - Move to Trash or permanently delete selected items
+3. **Preview** - Review detailed file lists and exclude individual items (exclusions are remembered)
+4. **Clean** - Move to Trash (default) or permanently delete with `--dangerously-delete`
 
 ### Safety Levels
 
@@ -37,6 +37,14 @@ go build -o bin/mac-cleanup ./cmd/mac-cleanup
 ```bash
 brew tap 2ykwang/mac-cleanup-go
 brew install mac-cleanup-go
+```
+
+## Usage
+
+```bash
+mac-cleanup                    # Default: moves to Trash
+mac-cleanup --dangerously-delete  # Permanent deletion
+mac-cleanup --version          # Show version
 ```
 
 > **Full Disk Access (Optional)**: Some items (Trash, Mail, etc.) require Full Disk Access.
