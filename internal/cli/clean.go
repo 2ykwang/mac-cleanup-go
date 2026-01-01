@@ -48,13 +48,43 @@ func Run(cfg *types.Config, dangerouslyDelete, dryRun bool) error {
 		fmt.Printf("%s\n\n", dangerStyle.Render("⚠ WARNING: Permanent deletion mode enabled!"))
 	}
 
-	// Initialize registry and scan
 	registry := scanner.DefaultRegistry(cfg)
+	categoryMap := make(map[string]types.Category)
+	for _, cat := range cfg.Categories {
+		categoryMap[cat.ID] = cat
+	}
+
+	var safeIDs []string
+	var skippedCategories []string
+
+	for _, id := range selectedIDs {
+		if cat, ok := categoryMap[id]; ok {
+			if cat.Safety == types.SafetyLevelSafe {
+				safeIDs = append(safeIDs, id)
+			} else {
+				skippedCategories = append(skippedCategories, cat.Name)
+			}
+		}
+	}
+
+	if len(skippedCategories) > 0 {
+		fmt.Printf("%s\n", mutedStyle.Render("Skipped (CLI only supports safe categories):"))
+		for _, name := range skippedCategories {
+			fmt.Printf("  %s %s\n", mutedStyle.Render("⊘"), mutedStyle.Render(name))
+		}
+		fmt.Println()
+	}
+
+	if len(safeIDs) == 0 {
+		fmt.Println(mutedStyle.Render("No safe categories to clean. Use TUI mode for moderate/risky categories."))
+		return nil
+	}
+
 	fmt.Printf("%s", mutedStyle.Render("Scanning..."))
 
-	// Scan only selected categories
+	// Scan only safe categories
 	var results []*types.ScanResult
-	for _, id := range selectedIDs {
+	for _, id := range safeIDs {
 		if s, ok := registry.Get(id); ok {
 			if s.IsAvailable() {
 				result, _ := s.Scan()

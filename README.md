@@ -36,6 +36,9 @@ mac-cleanup --version             # Show version
 
 After running TUI mode once, your selection is saved. Use `--clean` for quick cleanup:
 
+> CLI mode only cleans **safe** categories (caches, trash, etc.).
+> Moderate/risky categories (Downloads, Docker, etc.) require TUI mode for file-level review.
+
 ```bash
 mac-cleanup --clean               # Clean with saved profile
 mac-cleanup --clean --dry-run     # Preview only (no deletion)

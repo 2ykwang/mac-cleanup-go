@@ -323,6 +323,28 @@ categories:
     note: Unused images, containers, volumes, and build cache
     check_cmd: "docker"
 
+  - id: flutter
+    name: Flutter Cache
+    group: dev
+    safety: safe
+    method: permanent
+    note: Flutter engine cache and pub packages
+    check: "~/.pub-cache/"
+    paths:
+      - "~/Library/Caches/flutter_engine/*"
+      - "~/.pub-cache/hosted/*"
+      - "~/.pub-cache/git/*"
+
+  - id: mongodb-compass
+    name: MongoDB Compass Cache
+    group: dev
+    safety: safe
+    method: permanent
+    note: MongoDB Compass app cache
+    check: "~/Library/Caches/com.mongodb.compass/"
+    paths:
+      - "~/Library/Caches/com.mongodb.compass/*"
+
   # ===== Applications =====
   - id: steam
     name: Steam Cache
@@ -545,6 +567,46 @@ categories:
       - "~/Library/Application Support/Linear/Cache/*"
       - "~/Library/Application Support/Linear/Code Cache/*"
       - "~/Library/Caches/com.linear/*"
+
+  - id: claude-desktop
+    name: Claude Cache
+    group: app
+    safety: safe
+    method: permanent
+    note: Claude desktop app and CLI cache
+    check: "~/Library/Caches/com.anthropic.claudefordesktop/"
+    paths:
+      - "~/Library/Caches/com.anthropic.claudefordesktop/*"
+      - "~/Library/Caches/claude-cli-nodejs/*"
+
+  - id: chatgpt
+    name: ChatGPT Cache
+    group: app
+    safety: safe
+    method: permanent
+    note: ChatGPT desktop app cache
+    check: "~/Library/Caches/com.openai.chat/"
+    paths:
+      - "~/Library/Caches/com.openai.chat/*"
+
+  - id: electron-updaters
+    name: App Updaters (ShipIt)
+    group: app
+    safety: safe
+    method: permanent
+    note: Electron app auto-updater downloads - safe to remove
+    paths:
+      - "~/Library/Caches/*.ShipIt/*"
+
+  - id: iina
+    name: IINA Cache
+    group: app
+    safety: safe
+    method: permanent
+    note: IINA video player cache
+    check: "~/Library/Caches/com.colliderli.iina/"
+    paths:
+      - "~/Library/Caches/com.colliderli.iina/*"
 
   # ===== Storage (Risky) =====
   - id: ios-backups
