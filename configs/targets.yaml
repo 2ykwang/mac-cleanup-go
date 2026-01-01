@@ -1,0 +1,618 @@
+# Cleanup Targets
+# safety: safe | moderate | risky
+# method: trash | permanent | command | special
+
+categories:
+  # ===== System =====
+  - id: trash
+    name: Trash
+    group: system
+    safety: safe
+    method: permanent
+    note: Files already deleted by user, waiting in Trash
+    paths:
+      - "~/.Trash/*"
+      - "/Volumes/*/.Trashes/*"
+
+  - id: system-cache
+    name: App Caches
+    group: system
+    safety: moderate
+    method: trash
+    note: Application caches - automatically regenerated when needed
+    paths:
+      - "~/Library/Caches/*"
+
+  - id: system-logs
+    name: System Logs
+    group: system
+    safety: moderate
+    method: permanent
+    note: Old log files for debugging - usually not needed
+    paths:
+      - "/private/var/log/asl/*.asl"
+      - "/Library/Logs/DiagnosticReports/*"
+      - "~/Library/Logs/*"
+
+  - id: temp-files
+    name: Temp Files
+    group: system
+    safety: moderate
+    method: permanent
+    confirm: true
+    note: System temp files - close apps first, some may be in use
+    paths:
+      - "/tmp/*"
+      - "/private/var/folders/*/*/*/*"
+
+  - id: quicklook
+    name: QuickLook Cache
+    group: system
+    safety: safe
+    method: permanent
+    note: Thumbnail previews for Finder - regenerated automatically
+    paths:
+      - "~/Library/Caches/com.apple.QuickLook.thumbnailcache/*"
+
+  - id: saved-state
+    name: Saved App State
+    group: system
+    safety: moderate
+    method: permanent
+    note: App window positions and open documents - apps will start fresh
+    paths:
+      - "~/Library/Saved Application State/*"
+
+  # ===== Browsers =====
+  - id: browser-chrome
+    name: Chrome Cache
+    group: browser
+    safety: safe
+    method: permanent
+    note: Web page cache and GPU cache - regenerated on browsing
+    check: "~/Library/Application Support/Google/Chrome/"
+    paths:
+      - "~/Library/Application Support/Google/Chrome/Default/Application Cache/*"
+      - "~/Library/Application Support/Google/Chrome/Default/GPUCache/*"
+      - "~/Library/Application Support/Google/Chrome/Default/Service Worker/CacheStorage/*"
+      - "~/Library/Caches/Google/Chrome/*"
+
+  - id: browser-safari
+    name: Safari Cache
+    group: browser
+    safety: safe
+    method: permanent
+    note: Safari browsing cache - regenerated automatically
+    paths:
+      - "~/Library/Caches/com.apple.Safari/*"
+
+  - id: browser-firefox
+    name: Firefox Cache
+    group: browser
+    safety: safe
+    method: permanent
+    note: Firefox browsing cache - regenerated automatically
+    check: "~/Library/Application Support/Firefox/"
+    paths:
+      - "~/Library/Caches/Firefox/*"
+
+  - id: browser-arc
+    name: Arc Cache
+    group: browser
+    safety: safe
+    method: permanent
+    note: Arc browser cache - regenerated automatically
+    check: "~/Library/Application Support/Arc/"
+    paths:
+      - "~/Library/Caches/Arc/*"
+      - "~/Library/Caches/company.thebrowser.Browser/*"
+
+  - id: browser-chromium
+    name: Chromium Cache
+    group: browser
+    safety: safe
+    method: permanent
+    note: Chromium browsing cache - regenerated automatically
+    check: "~/Library/Application Support/Chromium/"
+    paths:
+      - "~/Library/Application Support/Chromium/Default/Application Cache/*"
+      - "~/Library/Application Support/Chromium/Default/GPUCache/*"
+      - "~/Library/Caches/Chromium/*"
+
+  - id: browser-brave
+    name: Brave Cache
+    group: browser
+    safety: safe
+    method: permanent
+    note: Brave browser cache - regenerated automatically
+    check: "~/Library/Application Support/BraveSoftware/Brave-Browser/"
+    paths:
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/Default/Application Cache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/Default/GPUCache/*"
+      - "~/Library/Caches/BraveSoftware/*"
+
+  - id: browser-edge
+    name: Edge Cache
+    group: browser
+    safety: safe
+    method: permanent
+    note: Microsoft Edge cache - regenerated automatically
+    check: "~/Library/Application Support/Microsoft Edge/"
+    paths:
+      - "~/Library/Application Support/Microsoft Edge/Default/Application Cache/*"
+      - "~/Library/Application Support/Microsoft Edge/Default/GPUCache/*"
+      - "~/Library/Caches/Microsoft Edge/*"
+
+  # ===== Development =====
+  - id: xcode
+    name: Xcode Cache
+    group: dev
+    safety: moderate
+    method: permanent
+    confirm: true
+    note: Includes Archives (past builds) - check before deleting if you need old symbols
+    check: "~/Library/Developer/Xcode/"
+    paths:
+      - "~/Library/Developer/Xcode/DerivedData/*"
+      - "~/Library/Developer/Xcode/Archives/*"
+      - "~/Library/Developer/Xcode/iOS Device Logs/*"
+
+  - id: ios-simulator
+    name: iOS Simulator
+    group: dev
+    safety: moderate
+    method: permanent
+    note: Simulator caches and logs - not simulator data itself
+    check: "~/Library/Developer/CoreSimulator/"
+    paths:
+      - "~/Library/Developer/CoreSimulator/Caches/*"
+      - "~/Library/Logs/CoreSimulator/*"
+
+  - id: android
+    name: Android SDK Cache
+    group: dev
+    safety: safe
+    method: permanent
+    note: Android build cache - regenerated on next build
+    check: "~/.android/"
+    paths:
+      - "~/.android/cache/*"
+      - "~/.android/build-cache/*"
+
+  - id: cocoapods
+    name: CocoaPods Cache
+    group: dev
+    safety: safe
+    method: permanent
+    note: Cached pod downloads - re-downloaded when needed
+    check: "~/Library/Caches/CocoaPods/"
+    paths:
+      - "~/Library/Caches/CocoaPods/*"
+
+  - id: npm
+    name: npm Cache
+    group: dev
+    safety: safe
+    method: permanent
+    note: Cached npm packages - re-downloaded on npm install
+    check: "~/.npm/"
+    paths:
+      - "~/.npm/_cacache/*"
+      - "~/.npm/_logs/*"
+
+  - id: yarn
+    name: Yarn Cache
+    group: dev
+    safety: safe
+    method: permanent
+    note: Cached yarn packages - re-downloaded when needed
+    check: "~/Library/Caches/Yarn/"
+    paths:
+      - "~/Library/Caches/Yarn/*"
+
+  - id: pnpm
+    name: pnpm Store
+    group: dev
+    safety: safe
+    method: command
+    note: Runs pnpm store prune to clean unused packages
+    command: "pnpm store prune"
+    check_cmd: "pnpm"
+
+  - id: bun
+    name: Bun Cache
+    group: dev
+    safety: safe
+    method: permanent
+    note: Cached bun packages - re-downloaded when needed
+    check: "~/.bun/"
+    paths:
+      - "~/.bun/install/cache/*"
+
+  - id: go
+    name: Go Module Cache
+    group: dev
+    safety: moderate
+    method: permanent
+    note: Cached Go modules - re-downloaded on go mod download
+    check: "~/go/pkg/mod/"
+    paths:
+      - "~/go/pkg/mod/cache/*"
+
+  - id: gradle
+    name: Gradle Cache
+    group: dev
+    safety: moderate
+    method: permanent
+    note: Gradle build cache - increases build time after deletion
+    check: "~/.gradle/"
+    paths:
+      - "~/.gradle/caches/*"
+
+  - id: maven
+    name: Maven Cache
+    group: dev
+    safety: moderate
+    method: permanent
+    note: Maven local repository - re-downloaded on next build
+    check: "~/.m2/"
+    paths:
+      - "~/.m2/repository/*"
+
+  - id: pip
+    name: pip Cache
+    group: dev
+    safety: safe
+    method: permanent
+    note: Cached Python packages - re-downloaded on pip install
+    check: "~/Library/Caches/pip/"
+    paths:
+      - "~/Library/Caches/pip/*"
+
+  - id: poetry
+    name: Poetry Cache
+    group: dev
+    safety: safe
+    method: permanent
+    note: Cached Poetry packages - re-downloaded when needed
+    check: "~/Library/Caches/pypoetry/"
+    paths:
+      - "~/Library/Caches/pypoetry/*"
+
+  - id: composer
+    name: Composer Cache
+    group: dev
+    safety: safe
+    method: permanent
+    note: Cached PHP packages - re-downloaded when needed
+    check: "~/Library/Caches/composer/"
+    paths:
+      - "~/Library/Caches/composer/*"
+
+  - id: cargo
+    name: Cargo Cache
+    group: dev
+    safety: moderate
+    method: permanent
+    note: Rust crate cache - re-downloaded on cargo build
+    check: "~/.cargo/"
+    paths:
+      - "~/.cargo/registry/cache/*"
+
+  - id: gem
+    name: Ruby Gem Cache
+    group: dev
+    safety: safe
+    method: command
+    note: Runs gem cleanup to remove old gem versions
+    command: "gem cleanup"
+    check_cmd: "gem"
+
+  - id: nuget
+    name: NuGet Cache
+    group: dev
+    safety: safe
+    method: permanent
+    note: Cached .NET packages - re-downloaded when needed
+    check: "~/.nuget/"
+    paths:
+      - "~/.nuget/packages/*"
+
+  - id: homebrew
+    name: Homebrew Cache
+    group: dev
+    safety: safe
+    method: special
+    note: Old versions and cached downloads
+    check_cmd: "brew"
+
+  - id: docker
+    name: Docker
+    group: dev
+    safety: moderate
+    method: special
+    note: Unused images, containers, volumes, and build cache
+    check_cmd: "docker"
+
+  # ===== Applications =====
+  - id: steam
+    name: Steam Cache
+    group: app
+    safety: safe
+    method: permanent
+    note: Game download cache and shader cache - not game data
+    check: "~/Library/Application Support/Steam/"
+    paths:
+      - "~/Library/Application Support/Steam/appcache/*"
+      - "~/Library/Application Support/Steam/depotcache/*"
+      - "~/Library/Application Support/Steam/logs/*"
+      - "~/Library/Application Support/Steam/steamapps/shadercache/*"
+      - "~/Library/Application Support/Steam/steamapps/temp/*"
+      - "~/Library/Application Support/Steam/steamapps/downloading/*"
+
+  - id: spotify
+    name: Spotify Cache
+    group: app
+    safety: safe
+    method: permanent
+    note: Cached music for offline playback - re-downloaded when needed
+    check: "~/Library/Caches/com.spotify.client/"
+    paths:
+      - "~/Library/Caches/com.spotify.client/*"
+
+  - id: discord
+    name: Discord Cache
+    group: app
+    safety: safe
+    method: permanent
+    note: Cached images, emojis, and GPU data
+    check: "~/Library/Application Support/discord/"
+    paths:
+      - "~/Library/Application Support/discord/Cache/*"
+      - "~/Library/Application Support/discord/Code Cache/*"
+      - "~/Library/Application Support/discord/GPUCache/*"
+
+  - id: slack
+    name: Slack Cache
+    group: app
+    safety: moderate
+    method: permanent
+    note: Includes Service Worker data - may require re-login
+    check: "~/Library/Application Support/Slack/"
+    paths:
+      - "~/Library/Application Support/Slack/Cache/*"
+      - "~/Library/Application Support/Slack/Code Cache/*"
+      - "~/Library/Application Support/Slack/Service Worker/CacheStorage/*"
+
+  - id: teams
+    name: Teams Cache
+    group: app
+    safety: moderate
+    method: permanent
+    confirm: true
+    note: Includes session data - may require re-login after cleanup
+    check: "~/Library/Application Support/Microsoft/Teams/"
+    paths:
+      - "~/Library/Application Support/Microsoft/Teams/Cache/*"
+      - "~/Library/Application Support/Microsoft/Teams/Code Cache/*"
+      - "~/Library/Application Support/Microsoft/Teams/Application Cache/*"
+      - "~/Library/Application Support/Microsoft/Teams/blob_storage/*"
+      - "~/Library/Application Support/Microsoft/Teams/databases/*"
+      - "~/Library/Application Support/Microsoft/Teams/gpucache/*"
+      - "~/Library/Application Support/Microsoft/Teams/IndexedDB/*"
+      - "~/Library/Application Support/Microsoft/Teams/Local Storage/*"
+      - "~/Library/Application Support/Microsoft/Teams/tmp/*"
+
+  - id: zoom
+    name: Zoom Cache
+    group: app
+    safety: safe
+    method: permanent
+    note: Auto-updater downloads and app cache
+    check: "~/Library/Application Support/zoom.us/"
+    paths:
+      - "~/Library/Caches/us.zoom.xos/*"
+      - "~/Library/Application Support/zoom.us/AutoUpdater/*"
+
+  - id: adobe
+    name: Adobe Cache
+    group: app
+    safety: safe
+    method: permanent
+    note: Media cache for Premiere, After Effects, etc.
+    check: "~/Library/Application Support/Adobe/"
+    paths:
+      - "~/Library/Application Support/Adobe/Common/Media Cache Files/*"
+      - "~/Library/Application Support/Adobe/Common/Media Cache/*"
+      - "/Library/Logs/Adobe/*"
+      - "/Library/Logs/CreativeCloud/*"
+
+  - id: jetbrains
+    name: JetBrains Cache
+    group: app
+    safety: safe
+    method: permanent
+    note: IDE caches and logs - IDEs may need to reindex
+    check: "~/Library/Caches/JetBrains/"
+    paths:
+      - "~/Library/Caches/JetBrains/*"
+      - "~/Library/Logs/JetBrains/*"
+
+  - id: vscode
+    name: VS Code Cache
+    group: app
+    safety: safe
+    method: permanent
+    note: Extension cache, logs, and cached data
+    check: "~/Library/Application Support/Code/"
+    paths:
+      - "~/Library/Application Support/Code/Cache/*"
+      - "~/Library/Application Support/Code/CachedData/*"
+      - "~/Library/Application Support/Code/CachedExtensions/*"
+      - "~/Library/Application Support/Code/CachedExtensionVSIXs/*"
+      - "~/Library/Application Support/Code/Code Cache/*"
+      - "~/Library/Application Support/Code/logs/*"
+
+  - id: cursor
+    name: Cursor Cache
+    group: app
+    safety: safe
+    method: permanent
+    note: AI IDE cache and logs
+    check: "~/Library/Application Support/Cursor/"
+    paths:
+      - "~/Library/Application Support/Cursor/Cache/*"
+      - "~/Library/Application Support/Cursor/CachedData/*"
+      - "~/Library/Application Support/Cursor/Code Cache/*"
+      - "~/Library/Application Support/Cursor/logs/*"
+
+  - id: dropbox
+    name: Dropbox Cache
+    group: app
+    safety: safe
+    method: permanent
+    note: Local file cache - not synced files
+    check: "~/Dropbox/"
+    paths:
+      - "~/Dropbox/.dropbox.cache/*"
+
+  - id: google-drive
+    name: Google Drive Cache
+    group: app
+    safety: moderate
+    method: permanent
+    confirm: true
+    note: Offline cache - large re-download may occur
+    check: "~/Library/Application Support/Google/DriveFS/"
+    paths:
+      - "~/Library/Application Support/Google/DriveFS/*/content_cache/*"
+      - "~/Library/Caches/com.google.drivefs/*"
+
+  - id: telegram
+    name: Telegram Database
+    group: app
+    safety: risky
+    method: manual
+    note: "CAUTION: Contains chat history - use app's built-in cleanup"
+    guide: "Telegram > Settings > Data and Storage > Storage Usage > Clear Cache"
+    paths:
+      - "~/Library/Group Containers/*.ru.keepcoder.Telegram/stable/*/postbox/db/*"
+
+  - id: notion
+    name: Notion Cache
+    group: app
+    safety: safe
+    method: permanent
+    note: App cache and GPU data - not your notes
+    check: "~/Library/Application Support/Notion/"
+    paths:
+      - "~/Library/Application Support/Notion/Cache/*"
+      - "~/Library/Application Support/Notion/Code Cache/*"
+      - "~/Library/Application Support/Notion/GPUCache/*"
+      - "~/Library/Caches/notion.id/*"
+
+  - id: figma
+    name: Figma Cache
+    group: app
+    safety: safe
+    method: permanent
+    note: Design file cache - originals are in cloud
+    check: "~/Library/Caches/com.figma.Desktop/"
+    paths:
+      - "~/Library/Caches/com.figma.Desktop/*"
+
+  - id: obsidian
+    name: Obsidian Cache
+    group: app
+    safety: safe
+    method: permanent
+    note: App cache and GPU data - not your vaults
+    check: "~/Library/Application Support/obsidian/"
+    paths:
+      - "~/Library/Application Support/obsidian/Cache/*"
+      - "~/Library/Application Support/obsidian/Code Cache/*"
+      - "~/Library/Application Support/obsidian/GPUCache/*"
+
+  - id: minecraft
+    name: Minecraft Cache
+    group: app
+    safety: safe
+    method: permanent
+    note: Crash reports and logs - not saves or worlds
+    check: "~/Library/Application Support/minecraft/"
+    paths:
+      - "~/Library/Application Support/minecraft/logs/*"
+      - "~/Library/Application Support/minecraft/crash-reports/*"
+      - "~/Library/Application Support/minecraft/webcache2/*"
+
+  - id: linear
+    name: Linear Cache
+    group: app
+    safety: safe
+    method: permanent
+    note: App cache - issue data is synced
+    check: "~/Library/Application Support/Linear/"
+    paths:
+      - "~/Library/Application Support/Linear/Cache/*"
+      - "~/Library/Application Support/Linear/Code Cache/*"
+      - "~/Library/Caches/com.linear/*"
+
+  # ===== Storage (Risky) =====
+  - id: ios-backups
+    name: iOS Backups
+    group: storage
+    safety: risky
+    method: permanent
+    confirm: true
+    note: "CAUTION: iPhone/iPad backups - may be your only copy!"
+    paths:
+      - "~/Library/Application Support/MobileSync/Backup/*"
+
+  - id: old-downloads
+    name: Old Downloads
+    group: storage
+    safety: risky
+    method: trash
+    confirm: true
+    file_select: true
+    days_old: 30
+    note: "CAUTION: Files older than 30 days - may contain important documents!"
+    paths:
+      - "~/Downloads/*"
+
+  - id: mail-attachments
+    name: Mail Attachments
+    group: storage
+    safety: risky
+    method: trash
+    confirm: true
+    note: "CAUTION: Downloaded email attachments - may be needed!"
+    paths:
+      - "~/Library/Containers/com.apple.mail/Data/Library/Mail Downloads/*"
+
+  - id: itunes-backup
+    name: iTunes Backups
+    group: storage
+    safety: risky
+    method: permanent
+    confirm: true
+    note: "CAUTION: Old iOS app backups - rarely needed but check first!"
+    paths:
+      - "~/Music/iTunes/iTunes Media/Mobile Applications/*"
+
+groups:
+  - id: system
+    name: System
+    order: 1
+  - id: browser
+    name: Browsers
+    order: 2
+  - id: dev
+    name: Development
+    order: 3
+  - id: app
+    name: Applications
+    order: 4
+  - id: storage
+    name: Storage
+    order: 5

@@ -1,0 +1,231 @@
+package tui
+
+import (
+	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
+
+	"mac-cleanup-go/pkg/types"
+)
+
+func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch m.view {
+	case ViewList:
+		return m.handleListKey(msg)
+	case ViewPreview:
+		return m.handlePreviewKey(msg)
+	case ViewConfirm:
+		return m.handleConfirmKey(msg)
+	case ViewCleaning:
+		if msg.String() == "ctrl+c" {
+			return m, tea.Quit
+		}
+	case ViewReport:
+		switch msg.String() {
+		case "ctrl+c", "q":
+			return m, tea.Quit
+		case "enter", " ":
+			// Return to main screen and rescan
+			m.view = ViewList
+			m.selected = make(map[string]bool)
+			m.excluded = make(map[string]map[string]bool)
+			m.results = make([]*types.ScanResult, 0)
+			m.resultMap = make(map[string]*types.ScanResult)
+			m.cursor = 0
+			m.scroll = 0
+			m.scanning = true
+			return m, tea.Batch(m.spinner.Tick, m.startScan())
+		}
+	}
+	return m, nil
+}
+
+func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "q":
+		return m, tea.Quit
+	case "up", "k":
+		if m.cursor > 0 {
+			m.cursor--
+			m.adjustScroll()
+		}
+	case "down", "j":
+		if m.cursor < len(m.results)-1 {
+			m.cursor++
+			m.adjustScroll()
+		}
+	case " ":
+		if len(m.results) > 0 && m.cursor < len(m.results) {
+			r := m.results[m.cursor]
+			id := r.Category.ID
+			wasSelected := m.selected[id]
+			m.selected[id] = !wasSelected
+
+			// Auto-exclude all items for risky categories when newly selected
+			if !wasSelected && r.Category.Safety == types.SafetyLevelRisky {
+				m.autoExcludeCategory(id, r)
+			}
+		}
+	case "a", "A":
+		// Select all
+		for _, r := range m.results {
+			wasSelected := m.selected[r.Category.ID]
+			m.selected[r.Category.ID] = true
+
+			// Auto-exclude all items for risky categories when newly selected
+			if !wasSelected && r.Category.Safety == types.SafetyLevelRisky {
+				m.autoExcludeCategory(r.Category.ID, r)
+			}
+		}
+	case "d", "D":
+		// Deselect all
+		for _, r := range m.results {
+			m.selected[r.Category.ID] = false
+		}
+	case "enter", "p":
+		if m.hasSelection() {
+			m.previewScroll = 0
+			m.previewCatID = ""
+			m.previewItemIndex = 0
+			m.drillDownStack = m.drillDownStack[:0]
+			// Find first selected category
+			for _, r := range m.results {
+				if m.selected[r.Category.ID] {
+					m.previewCatID = r.Category.ID
+					break
+				}
+			}
+			m.view = ViewPreview
+		}
+	}
+	return m, nil
+}
+
+func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if len(m.drillDownStack) > 0 {
+		return m.handleDrillDownKey(msg)
+	}
+
+	switch msg.String() {
+	case "ctrl+c", "q":
+		return m, tea.Quit
+	case "esc", "n":
+		m.view = ViewList
+	case "up", "k":
+		if m.previewItemIndex > 0 {
+			m.previewItemIndex--
+		}
+	case "down", "j":
+		r := m.getPreviewCatResult()
+		if r != nil {
+			maxItem := len(r.Items) - 1
+			if m.previewItemIndex < maxItem {
+				m.previewItemIndex++
+			}
+		}
+	case "left", "h":
+		prevID := m.findPrevSelectedCatID()
+		if prevID != m.previewCatID {
+			m.previewCatID = prevID
+			m.previewItemIndex = 0
+			m.previewScroll = 0
+		}
+	case "right", "l":
+		nextID := m.findNextSelectedCatID()
+		if nextID != m.previewCatID {
+			m.previewCatID = nextID
+			m.previewItemIndex = 0
+			m.previewScroll = 0
+		}
+	case " ":
+		// Toggle exclusion for current item
+		r := m.getPreviewCatResult()
+		if r != nil && m.previewItemIndex >= 0 && m.previewItemIndex < len(r.Items) {
+			m.toggleExclude(r.Category.ID, r.Items[m.previewItemIndex].Path)
+		}
+	case "enter":
+		if m.previewItemIndex >= 0 {
+			m.tryDrillDown()
+		}
+	case "y":
+		m.view = ViewConfirm
+	case "a", "A":
+		// Include all items in current category
+		r := m.getPreviewCatResult()
+		if r != nil {
+			if m.excluded[r.Category.ID] != nil {
+				m.excluded[r.Category.ID] = make(map[string]bool)
+			}
+		}
+	case "d", "D":
+		// Exclude all items in current category
+		r := m.getPreviewCatResult()
+		if r != nil {
+			m.autoExcludeCategory(r.Category.ID, r)
+		}
+	}
+	return m, nil
+}
+
+func (m *Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "q":
+		return m, tea.Quit
+	case "y", "Y", "enter":
+		m.view = ViewCleaning
+		m.startTime = time.Now()
+		return m, m.doClean()
+	case "n", "N", "esc":
+		m.view = ViewPreview
+	}
+	return m, nil
+}
+
+func (m *Model) handleDrillDownKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	state := &m.drillDownStack[len(m.drillDownStack)-1]
+
+	switch msg.String() {
+	case "ctrl+c", "q":
+		return m, tea.Quit
+	case "esc", "backspace", "n":
+		m.drillDownStack = m.drillDownStack[:len(m.drillDownStack)-1]
+	case "up", "k":
+		if state.cursor > 0 {
+			state.cursor--
+			m.adjustDrillScroll(state)
+		}
+	case "down", "j":
+		if state.cursor < len(state.items)-1 {
+			state.cursor++
+			m.adjustDrillScroll(state)
+		}
+	case "enter":
+		if state.cursor < len(state.items) {
+			item := state.items[state.cursor]
+			if item.IsDirectory {
+				items := m.readDirectory(item.Path)
+				if len(items) > 0 {
+					m.drillDownStack = append(m.drillDownStack, drillDownState{
+						path:   item.Path,
+						items:  items,
+						cursor: 0,
+						scroll: 0,
+					})
+				}
+			}
+		}
+	}
+	return m, nil
+}
+
+func (m *Model) adjustDrillScroll(state *drillDownState) {
+	visible := m.height - 10
+	if visible < 5 {
+		visible = 5
+	}
+	if state.cursor < state.scroll {
+		state.scroll = state.cursor
+	} else if state.cursor >= state.scroll+visible {
+		state.scroll = state.cursor - visible + 1
+	}
+}
