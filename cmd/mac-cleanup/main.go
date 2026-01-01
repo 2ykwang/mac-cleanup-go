@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -13,7 +14,13 @@ import (
 var version = "dev"
 
 func main() {
-	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "-v") {
+	// Flags
+	showVersion := flag.Bool("version", false, "Show version")
+	shortVersion := flag.Bool("v", false, "Show version (short)")
+	dangerouslyDelete := flag.Bool("dangerously-delete", false, "Enable permanent deletion (default: move to Trash)")
+	flag.Parse()
+
+	if *showVersion || *shortVersion {
 		fmt.Printf("mac-cleanup %s\n", version)
 		return
 	}
@@ -25,7 +32,7 @@ func main() {
 	}
 
 	p := tea.NewProgram(
-		tui.NewModel(cfg),
+		tui.NewModel(cfg, *dangerouslyDelete),
 		tea.WithAltScreen(),
 	)
 
