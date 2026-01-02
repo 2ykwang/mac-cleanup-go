@@ -83,7 +83,7 @@ func TestIsAvailable_ReturnsTrue_WhenPathsHaveMatchingFiles(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	testFile := filepath.Join(tmpDir, "test.txt")
-	os.WriteFile(testFile, []byte("test"), 0644)
+	os.WriteFile(testFile, []byte("test"), 0o644)
 
 	cat := types.Category{
 		ID:    "test",
@@ -124,8 +124,8 @@ func TestScan_ReturnsItems_ForMatchingPaths(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "path-scanner-test")
 	defer os.RemoveAll(tmpDir)
 
-	os.WriteFile(filepath.Join(tmpDir, "file1.txt"), []byte("hello"), 0644)
-	os.WriteFile(filepath.Join(tmpDir, "file2.txt"), []byte("world!"), 0644)
+	os.WriteFile(filepath.Join(tmpDir, "file1.txt"), []byte("hello"), 0o644)
+	os.WriteFile(filepath.Join(tmpDir, "file2.txt"), []byte("world!"), 0o644)
 
 	cat := types.Category{
 		ID:    "test",
@@ -143,8 +143,8 @@ func TestScan_CalculatesTotalSizeCorrectly(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "path-scanner-test")
 	defer os.RemoveAll(tmpDir)
 
-	os.WriteFile(filepath.Join(tmpDir, "file1.txt"), []byte("12345"), 0644)      // 5 bytes
-	os.WriteFile(filepath.Join(tmpDir, "file2.txt"), []byte("1234567890"), 0644) // 10 bytes
+	os.WriteFile(filepath.Join(tmpDir, "file1.txt"), []byte("12345"), 0o644)      // 5 bytes
+	os.WriteFile(filepath.Join(tmpDir, "file2.txt"), []byte("1234567890"), 0o644) // 10 bytes
 
 	cat := types.Category{
 		ID:    "test",
@@ -163,10 +163,10 @@ func TestScan_FiltersByDaysOld(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	recentFile := filepath.Join(tmpDir, "recent.txt")
-	os.WriteFile(recentFile, []byte("recent"), 0644)
+	os.WriteFile(recentFile, []byte("recent"), 0o644)
 
 	oldFile := filepath.Join(tmpDir, "old.txt")
-	os.WriteFile(oldFile, []byte("old"), 0644)
+	os.WriteFile(oldFile, []byte("old"), 0o644)
 	oldTime := time.Now().AddDate(0, 0, -10)
 	os.Chtimes(oldFile, oldTime, oldTime)
 
@@ -215,8 +215,8 @@ func TestScan_HandlesDirectories(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	subDir := filepath.Join(tmpDir, "subdir")
-	os.MkdirAll(subDir, 0755)
-	os.WriteFile(filepath.Join(subDir, "file.txt"), []byte("content"), 0644)
+	os.MkdirAll(subDir, 0o755)
+	os.WriteFile(filepath.Join(subDir, "file.txt"), []byte("content"), 0o644)
 
 	cat := types.Category{
 		ID:    "test",
@@ -236,8 +236,8 @@ func TestScan_HandlesMultiplePathPatterns(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "path-scanner-test")
 	defer os.RemoveAll(tmpDir)
 
-	os.WriteFile(filepath.Join(tmpDir, "file.txt"), []byte("txt"), 0644)
-	os.WriteFile(filepath.Join(tmpDir, "file.log"), []byte("log"), 0644)
+	os.WriteFile(filepath.Join(tmpDir, "file.txt"), []byte("txt"), 0o644)
+	os.WriteFile(filepath.Join(tmpDir, "file.log"), []byte("log"), 0o644)
 
 	cat := types.Category{
 		ID: "test",

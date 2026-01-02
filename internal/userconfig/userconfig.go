@@ -63,7 +63,7 @@ func (c *UserConfig) Save() error {
 
 	// Create config directory if not exists
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 
@@ -72,7 +72,7 @@ func (c *UserConfig) Save() error {
 		return err
 	}
 
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0o644)
 }
 
 // SetExcludedPaths sets excluded paths for a category

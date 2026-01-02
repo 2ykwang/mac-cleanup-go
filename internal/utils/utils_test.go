@@ -92,10 +92,10 @@ func TestGetDirSize(t *testing.T) {
 	file1 := filepath.Join(tmpDir, "file1.txt")
 	file2 := filepath.Join(tmpDir, "file2.txt")
 
-	if err := os.WriteFile(file1, make([]byte, 100), 0644); err != nil {
+	if err := os.WriteFile(file1, make([]byte, 100), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(file2, make([]byte, 200), 0644); err != nil {
+	if err := os.WriteFile(file2, make([]byte, 200), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

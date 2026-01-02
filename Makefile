@@ -26,8 +26,8 @@ run: ## Run the application
 ##@ Development
 
 .PHONY: fmt
-fmt: ## Format code
-	$(GO) fmt ./...
+fmt: ## Format code with gofumpt
+	gofumpt -w .
 
 .PHONY: vet
 vet: ## Run go vet

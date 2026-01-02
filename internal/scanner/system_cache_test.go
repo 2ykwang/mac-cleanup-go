@@ -149,10 +149,10 @@ func TestScan_ExcludesPathsFromOtherCategories(t *testing.T) {
 	jetbrainsDir := filepath.Join(cachesDir, "JetBrains")
 
 	for _, dir := range []string{arcDir, randomDir, jetbrainsDir} {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(dir, "cache.dat"), []byte("test"), 0644); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, "cache.dat"), []byte("test"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -170,7 +170,6 @@ func TestScan_ExcludesPathsFromOtherCategories(t *testing.T) {
 
 	// Act
 	result, err := s.Scan()
-
 	// Assert
 	if err != nil {
 		t.Fatalf("Scan error: %v", err)
@@ -201,7 +200,6 @@ func TestScan_WhenNoMatchingPaths_ReturnsEmptyResult(t *testing.T) {
 	s := NewSystemCacheScanner(systemCache, []types.Category{systemCache})
 
 	result, err := s.Scan()
-
 	if err != nil {
 		t.Fatalf("Scan error: %v", err)
 	}

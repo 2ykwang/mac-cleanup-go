@@ -1,0 +1,86 @@
+version: "2"
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+
+linters:
+  enable:
+    # Code quality
+    - errcheck
+    - govet
+    - staticcheck
+    - ineffassign
+    - unused
+    - revive
+    - unconvert
+    - unparam
+    - wastedassign
+
+    # Security
+    - gosec
+
+    # Performance
+    - copyloopvar
+    - prealloc
+    - bodyclose
+
+    # Style
+    - misspell
+    - whitespace
+
+    # Error handling
+    - errorlint
+    - nilerr
+
+  settings:
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+        - name: if-return
+        - name: increment-decrement
+        - name: var-naming
+        - name: package-comments
+          disabled: true
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unused-parameter
+        - name: unreachable-code
+
+    gosec:
+      excludes:
+        - G104
+
+    errorlint:
+      errorf: true
+      asserts: true
+      comparison: true
+
+  exclusions:
+    presets:
+      - std-error-handling
+      - common-false-positives
+    paths:
+      - vendor
+    rules:
+      - path: "_test\\.go$"
+        linters:
+          - gosec
+
+output:
+  formats:
+    text:
+      print-linter-name: true

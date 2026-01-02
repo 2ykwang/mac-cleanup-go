@@ -100,14 +100,17 @@ type drillDownState struct {
 }
 
 // Messages
-type scanResultMsg struct{ result *types.ScanResult }
-type cleanDoneMsg struct{ report *types.Report }
-type cleanProgressMsg struct {
-	categoryName string
-	currentItem  string
-	current      int
-	total        int
-}
+type (
+	scanResultMsg    struct{ result *types.ScanResult }
+	cleanDoneMsg     struct{ report *types.Report }
+	cleanProgressMsg struct {
+		categoryName string
+		currentItem  string
+		current      int
+		total        int
+	}
+)
+
 type cleanCategoryDoneMsg struct {
 	categoryName string
 	freedSpace   int64
