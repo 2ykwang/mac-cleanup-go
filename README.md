@@ -28,9 +28,7 @@ cd mac-cleanup-go && make build
 ## Usage
 
 ```bash
-mac-cleanup                    # Interactive TUI
-mac-cleanup --clean            # Quick clean with saved profile
-mac-cleanup --clean --dry-run  # Preview only
+mac-cleanup
 ```
 
 > **Tip**: Grant Full Disk Access to your terminal for complete cleanup access.
