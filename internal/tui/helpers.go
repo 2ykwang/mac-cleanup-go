@@ -124,7 +124,7 @@ func (m *Model) availableLines(header, footer string) int {
 	return available
 }
 
-func (m *Model) adjustScrollFor(cursor, scroll, visible, total int) int {
+func (m *Model) adjustScrollFor(cursor, scroll, visible, _ int) int {
 	if cursor < scroll {
 		return cursor
 	}

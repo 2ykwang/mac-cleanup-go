@@ -6,6 +6,7 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+
 	"mac-cleanup-go/internal/config"
 	"mac-cleanup-go/internal/tui"
 )

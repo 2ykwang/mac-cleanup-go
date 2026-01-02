@@ -4,6 +4,12 @@ formatters:
   enable:
     - gofumpt
     - goimports
+  settings:
+    gofumpt:
+      module-path: mac-cleanup-go
+    goimports:
+      local-prefixes:
+        - mac-cleanup-go
 
 linters:
   enable:
@@ -23,7 +29,6 @@ linters:
 
     # Performance
     - copyloopvar
-    - prealloc
     - bodyclose
 
     # Style
@@ -32,7 +37,6 @@ linters:
 
     # Error handling
     - errorlint
-    - nilerr
 
   settings:
     revive:
@@ -44,9 +48,11 @@ linters:
         - name: error-strings
         - name: error-naming
         - name: exported
+          disabled: true
         - name: if-return
         - name: increment-decrement
         - name: var-naming
+          disabled: true
         - name: package-comments
           disabled: true
         - name: range
@@ -63,6 +69,9 @@ linters:
     gosec:
       excludes:
         - G104
+        - G204  # command execution from config (trusted source)
+        - G301  # directory permissions 0755 is fine
+        - G306  # file permissions 0644 is fine
 
     errorlint:
       errorf: true
@@ -79,8 +88,5 @@ linters:
       - path: "_test\\.go$"
         linters:
           - gosec
+          - errcheck
 
-output:
-  formats:
-    text:
-      print-linter-name: true

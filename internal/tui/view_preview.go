@@ -144,7 +144,7 @@ func (m *Model) viewPreview() string {
 	return b.String()
 }
 
-func (m *Model) renderTabs(selected []*types.ScanResult, currentIdx int) string {
+func (m *Model) renderTabs(selected []*types.ScanResult, _ int) string {
 	var tabs []string
 
 	for _, r := range selected {

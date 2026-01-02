@@ -152,7 +152,7 @@ func parseDockerSize(s string) int64 {
 	}
 
 	var value float64
-	json.Unmarshal([]byte(s), &value)
+	_ = json.Unmarshal([]byte(s), &value) // parse failure returns 0
 	return int64(value * float64(multiplier))
 }
 

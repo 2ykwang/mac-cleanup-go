@@ -24,7 +24,7 @@ func (m *mockScanner) Scan() (*types.ScanResult, error) {
 	return &types.ScanResult{Category: m.cat}, nil
 }
 
-func (m *mockScanner) Clean(items []types.CleanableItem, dryRun bool) (*types.CleanResult, error) {
+func (m *mockScanner) Clean(_ []types.CleanableItem, _ bool) (*types.CleanResult, error) {
 	return &types.CleanResult{Category: m.cat}, nil
 }
 

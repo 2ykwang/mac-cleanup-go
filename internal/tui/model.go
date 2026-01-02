@@ -122,7 +122,6 @@ func (m *Model) startScan() tea.Cmd {
 
 	cmds := make([]tea.Cmd, len(scanners))
 	for i, s := range scanners {
-		s := s
 		cmds[i] = func() tea.Msg {
 			result, _ := s.Scan()
 			return scanResultMsg{result: result}

@@ -302,8 +302,8 @@ func TestAvailableLines(t *testing.T) {
 	m := newTestModel()
 	m.height = 30
 
-	header := "line1\nline2\nline3\n"    // 4 lines
-	footer := "footer1\nfooter2"          // 2 lines
+	header := "line1\nline2\nline3\n" // 4 lines
+	footer := "footer1\nfooter2"      // 2 lines
 
 	available := m.availableLines(header, footer)
 	assert.Equal(t, 30-6, available)
