@@ -12,6 +12,8 @@ func DefaultRegistry(cfg *types.Config) *Registry {
 			s = NewDockerScanner(cat)
 		case cat.Method == types.MethodSpecial && cat.ID == "homebrew":
 			s = NewBrewScanner(cat)
+		case cat.ID == "system-cache":
+			s = NewSystemCacheScanner(cat, cfg.Categories)
 		default:
 			s = NewBaseScanner(cat)
 		}
