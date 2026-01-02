@@ -27,9 +27,8 @@ brew install mac-cleanup-go
 ## Usage
 
 ```bash
-mac-cleanup                       # TUI mode (interactive)
-mac-cleanup --dangerously-delete  # Permanent deletion
-mac-cleanup --version             # Show version
+mac-cleanup            # TUI mode (interactive)
+mac-cleanup --version  # Show version
 ```
 
 ### CLI Mode
@@ -40,9 +39,8 @@ After running TUI mode once, your selection is saved. Use `--clean` for quick cl
 > Moderate/risky categories (Downloads, Docker, etc.) require TUI mode for file-level review.
 
 ```bash
-mac-cleanup --clean               # Clean with saved profile
-mac-cleanup --clean --dry-run     # Preview only (no deletion)
-mac-cleanup --clean --dangerously-delete  # Permanent deletion
+mac-cleanup --clean            # Clean with saved profile
+mac-cleanup --clean --dry-run  # Preview only (no deletion)
 ```
 
 > **Full Disk Access (Optional)**: Some items (Trash, Mail, etc.) require Full Disk Access.
@@ -53,7 +51,7 @@ mac-cleanup --clean --dangerously-delete  # Permanent deletion
 1. **Scan** - Searches for cleanable files in system, browsers, dev tools, and apps
 2. **Select** - Choose items to delete (sorted by size, safety levels displayed)
 3. **Preview** - Review detailed file lists and exclude individual items (exclusions are remembered)
-4. **Clean** - Move to Trash (default) or permanently delete with `--dangerously-delete`
+4. **Clean** - Move selected files to Trash
 
 ### Safety Levels
 

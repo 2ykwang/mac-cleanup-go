@@ -66,20 +66,28 @@ func filterSafeCategories(selectedIDs []string, categoryMap map[string]types.Cat
 	return
 }
 
-// scanCategories scans the given category IDs and returns results with size > 0
-func scanCategories(ids []string, registry *scanner.Registry) []*types.ScanResult {
+// scanCategories scans the given category IDs and returns results with size > 0 and any warnings
+func scanCategories(ids []string, registry *scanner.Registry) ([]*types.ScanResult, []string) {
 	var results []*types.ScanResult
+	var warnings []string
 	for _, id := range ids {
 		if s, ok := registry.Get(id); ok {
 			if s.IsAvailable() {
 				result, _ := s.Scan()
-				if result != nil && result.TotalSize > 0 {
-					results = append(results, result)
+				if result != nil {
+					// Collect scan errors as warnings
+					if result.Error != nil {
+						warnings = append(warnings,
+							fmt.Sprintf("%s: %s", result.Category.Name, result.Error.Error()))
+					}
+					if result.TotalSize > 0 {
+						results = append(results, result)
+					}
 				}
 			}
 		}
 	}
-	return results
+	return results, warnings
 }
 
 // showPreview displays the cleanup preview and returns totals
@@ -112,12 +120,8 @@ func showPreview(results []*types.ScanResult, excluded map[string]map[string]boo
 }
 
 // confirmCleanup asks for user confirmation
-func confirmCleanup(dangerouslyDelete bool) bool {
-	deleteMethod := "Trash"
-	if dangerouslyDelete {
-		deleteMethod = dangerStyle.Render("PERMANENT DELETE")
-	}
-	fmt.Printf("Delete method: %s\n", deleteMethod)
+func confirmCleanup() bool {
+	fmt.Printf("Delete method: %s\n", "Trash")
 	fmt.Printf("Proceed? [y/N]: ")
 
 	reader := bufio.NewReader(os.Stdin)
@@ -132,7 +136,6 @@ func executeCleanup(
 	results []*types.ScanResult,
 	excluded map[string]map[string]bool,
 	registry *scanner.Registry,
-	dangerouslyDelete bool,
 ) types.Report {
 	c := cleaner.New()
 	var report types.Report
@@ -149,9 +152,6 @@ func executeCleanup(
 		}
 
 		cat := result.Category
-		if cat.Method == types.MethodPermanent && !dangerouslyDelete {
-			cat.Method = types.MethodTrash
-		}
 
 		var cleanResult *types.CleanResult
 		if cat.Method == types.MethodSpecial {
@@ -202,7 +202,7 @@ func showReport(report types.Report, duration time.Duration) {
 }
 
 // Run executes the CLI clean mode
-func Run(cfg *types.Config, dangerouslyDelete, dryRun bool) error {
+func Run(cfg *types.Config, dryRun bool) error {
 	// Load user config
 	userCfg, err := userconfig.Load()
 	if err != nil {
@@ -214,10 +214,6 @@ func Run(cfg *types.Config, dangerouslyDelete, dryRun bool) error {
 	}
 
 	fmt.Printf("%s\n\n", titleStyle.Render("mac-cleanup --clean"))
-
-	if dangerouslyDelete {
-		fmt.Printf("%s\n\n", dangerStyle.Render("⚠ WARNING: Permanent deletion mode enabled!"))
-	}
 
 	// Build category map
 	categoryMap := make(map[string]types.Category)
@@ -244,8 +240,17 @@ func Run(cfg *types.Config, dangerouslyDelete, dryRun bool) error {
 	// Scan
 	fmt.Printf("%s", mutedStyle.Render("Scanning..."))
 	registry := scanner.DefaultRegistry(cfg)
-	results := scanCategories(safeIDs, registry)
+	results, warnings := scanCategories(safeIDs, registry)
 	fmt.Printf("\r%s\n\n", strings.Repeat(" ", 20))
+
+	// Show scan warnings
+	if len(warnings) > 0 {
+		fmt.Println(warningStyle.Render("Scan warnings:"))
+		for _, w := range warnings {
+			fmt.Printf("  %s\n", mutedStyle.Render(w))
+		}
+		fmt.Println()
+	}
 
 	if len(results) == 0 {
 		fmt.Println(mutedStyle.Render("Nothing to clean."))
@@ -269,7 +274,7 @@ func Run(cfg *types.Config, dangerouslyDelete, dryRun bool) error {
 	}
 
 	// Confirm
-	if !confirmCleanup(dangerouslyDelete) {
+	if !confirmCleanup() {
 		fmt.Println(mutedStyle.Render("Cancelled."))
 		return nil
 	}
@@ -277,7 +282,7 @@ func Run(cfg *types.Config, dangerouslyDelete, dryRun bool) error {
 	// Execute cleanup
 	fmt.Printf("\n%s\n\n", titleStyle.Render("Cleaning..."))
 	startTime := time.Now()
-	report := executeCleanup(results, excluded, registry, dangerouslyDelete)
+	report := executeCleanup(results, excluded, registry)
 	duration := time.Since(startTime)
 
 	// Show report

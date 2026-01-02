@@ -64,8 +64,7 @@ type Model struct {
 	reportScroll int
 	reportLines  []string // Pre-rendered report lines for scrolling
 
-	hasFullDiskAccess    bool
-	allowPermanentDelete bool // --dangerously-delete flag
+	hasFullDiskAccess bool
 
 	userConfig *userconfig.UserConfig
 
@@ -82,6 +81,15 @@ type Model struct {
 	cleanCategoryDoneCh chan cleanCategoryDoneMsg
 
 	err error
+
+	// Scan errors for display
+	scanErrors []scanErrorInfo
+}
+
+// scanErrorInfo holds scan error information for display
+type scanErrorInfo struct {
+	CategoryName string
+	Error        string
 }
 
 type drillDownState struct {
@@ -116,7 +124,7 @@ type cleanedCategory struct {
 }
 
 // NewModel creates a new model
-func NewModel(cfg *types.Config, allowPermanentDelete bool) *Model {
+func NewModel(cfg *types.Config) *Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(ColorPrimary)
@@ -134,20 +142,20 @@ func NewModel(cfg *types.Config, allowPermanentDelete bool) *Model {
 	}
 
 	return &Model{
-		config:               cfg,
-		registry:             scanner.DefaultRegistry(cfg),
-		cleaner:              cleaner.New(),
-		selected:             make(map[string]bool),
-		excluded:             excluded,
-		resultMap:            make(map[string]*types.ScanResult),
-		results:              make([]*types.ScanResult, 0),
-		drillDownStack:       make([]drillDownState, 0),
-		view:                 ViewList,
-		spinner:              s,
-		scanning:             true,
-		hasFullDiskAccess:    utils.CheckFullDiskAccess(),
-		allowPermanentDelete: allowPermanentDelete,
-		userConfig:           userCfg,
+		config:            cfg,
+		registry:          scanner.DefaultRegistry(cfg),
+		cleaner:           cleaner.New(),
+		selected:          make(map[string]bool),
+		excluded:          excluded,
+		resultMap:         make(map[string]*types.ScanResult),
+		results:           make([]*types.ScanResult, 0),
+		drillDownStack:    make([]drillDownState, 0),
+		view:              ViewList,
+		spinner:           s,
+		scanning:          true,
+		hasFullDiskAccess: utils.CheckFullDiskAccess(),
+		userConfig:        userCfg,
+		scanErrors:        make([]scanErrorInfo, 0),
 	}
 }
 
@@ -221,15 +229,26 @@ func (m *Model) handleScanResult(result *types.ScanResult) {
 	m.scanMutex.Lock()
 	defer m.scanMutex.Unlock()
 
-	if result != nil && result.TotalSize > 0 {
-		sort.Slice(result.Items, func(i, j int) bool {
-			return result.Items[i].Size > result.Items[j].Size
-		})
-		m.results = append(m.results, result)
-		m.resultMap[result.Category.ID] = result
-		sort.Slice(m.results, func(i, j int) bool {
-			return m.results[i].TotalSize > m.results[j].TotalSize
-		})
+	if result != nil {
+		// Collect scan errors for display
+		if result.Error != nil {
+			m.scanErrors = append(m.scanErrors, scanErrorInfo{
+				CategoryName: result.Category.Name,
+				Error:        result.Error.Error(),
+			})
+		}
+
+		// Collect results with items
+		if result.TotalSize > 0 {
+			sort.Slice(result.Items, func(i, j int) bool {
+				return result.Items[i].Size > result.Items[j].Size
+			})
+			m.results = append(m.results, result)
+			m.resultMap[result.Category.ID] = result
+			sort.Slice(m.results, func(i, j int) bool {
+				return m.results[i].TotalSize > m.results[j].TotalSize
+			})
+		}
 	}
 	m.scanCompleted++
 	if m.scanCompleted >= m.scanTotal {
@@ -521,9 +540,6 @@ func (m *Model) doClean() tea.Cmd {
 				currentItem += len(job.items)
 			} else {
 				cat := job.category
-				if cat.Method == types.MethodPermanent && !m.allowPermanentDelete {
-					cat.Method = types.MethodTrash
-				}
 
 				// Clean items one by one for progress tracking
 				itemResult := &types.CleanResult{
