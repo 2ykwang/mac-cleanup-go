@@ -3,10 +3,11 @@ package scanner
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"mac-cleanup-go/pkg/types"
 )
 
-// mockScanner implements Scanner interface for testing
 type mockScanner struct {
 	cat       types.Category
 	available bool
@@ -40,17 +41,13 @@ func (m *mockScanner) IsAvailable() bool {
 func TestNewRegistry_ReturnsNonNil(t *testing.T) {
 	r := NewRegistry()
 
-	if r == nil {
-		t.Fatal("NewRegistry() returned nil")
-	}
+	assert.NotNil(t, r)
 }
 
 func TestNewRegistry_HasEmptyScannersMap(t *testing.T) {
 	r := NewRegistry()
 
-	if len(r.scanners) != 0 {
-		t.Errorf("Expected empty scanners map, got %d items", len(r.scanners))
-	}
+	assert.Empty(t, r.scanners)
 }
 
 // --- Register Tests ---
@@ -61,9 +58,7 @@ func TestRegister_AddsScannerToRegistry(t *testing.T) {
 
 	r.Register(scanner)
 
-	if len(r.scanners) != 1 {
-		t.Errorf("Expected 1 scanner, got %d", len(r.scanners))
-	}
+	assert.Len(t, r.scanners, 1)
 }
 
 func TestRegister_UsesCategoryIDAsKey(t *testing.T) {
@@ -72,9 +67,8 @@ func TestRegister_UsesCategoryIDAsKey(t *testing.T) {
 
 	r.Register(scanner)
 
-	if _, exists := r.scanners["my-scanner"]; !exists {
-		t.Error("Scanner not found with category ID as key")
-	}
+	_, exists := r.scanners["my-scanner"]
+	assert.True(t, exists)
 }
 
 func TestRegister_OverwritesExistingScanner(t *testing.T) {
@@ -85,13 +79,8 @@ func TestRegister_OverwritesExistingScanner(t *testing.T) {
 	r.Register(scanner1)
 	r.Register(scanner2)
 
-	if len(r.scanners) != 1 {
-		t.Errorf("Expected 1 scanner after overwrite, got %d", len(r.scanners))
-	}
-	// Verify it's the second scanner (available=false)
-	if r.scanners["same-id"].IsAvailable() {
-		t.Error("Expected second scanner to overwrite first")
-	}
+	assert.Len(t, r.scanners, 1)
+	assert.False(t, r.scanners["same-id"].IsAvailable())
 }
 
 func TestRegister_MultipleScannersWithDifferentIDs(t *testing.T) {
@@ -101,9 +90,7 @@ func TestRegister_MultipleScannersWithDifferentIDs(t *testing.T) {
 	r.Register(newMockScanner("scanner-2", true))
 	r.Register(newMockScanner("scanner-3", true))
 
-	if len(r.scanners) != 3 {
-		t.Errorf("Expected 3 scanners, got %d", len(r.scanners))
-	}
+	assert.Len(t, r.scanners, 3)
 }
 
 // --- Get Tests ---
@@ -115,15 +102,9 @@ func TestGet_ReturnsScanner_WhenExists(t *testing.T) {
 
 	result, ok := r.Get("existing")
 
-	if !ok {
-		t.Error("Expected ok=true for existing scanner")
-	}
-	if result == nil {
-		t.Error("Expected non-nil scanner")
-	}
-	if result.Category().ID != "existing" {
-		t.Errorf("Expected ID 'existing', got '%s'", result.Category().ID)
-	}
+	assert.True(t, ok)
+	assert.NotNil(t, result)
+	assert.Equal(t, "existing", result.Category().ID)
 }
 
 func TestGet_ReturnsNilAndFalse_WhenNotExists(t *testing.T) {
@@ -131,12 +112,8 @@ func TestGet_ReturnsNilAndFalse_WhenNotExists(t *testing.T) {
 
 	result, ok := r.Get("non-existent")
 
-	if ok {
-		t.Error("Expected ok=false for non-existent scanner")
-	}
-	if result != nil {
-		t.Error("Expected nil scanner for non-existent ID")
-	}
+	assert.False(t, ok)
+	assert.Nil(t, result)
 }
 
 func TestGet_ReturnsCorrectScanner_WhenMultipleRegistered(t *testing.T) {
@@ -147,15 +124,9 @@ func TestGet_ReturnsCorrectScanner_WhenMultipleRegistered(t *testing.T) {
 
 	result, ok := r.Get("second")
 
-	if !ok {
-		t.Fatal("Expected ok=true")
-	}
-	if result.Category().ID != "second" {
-		t.Errorf("Expected 'second', got '%s'", result.Category().ID)
-	}
-	if result.IsAvailable() {
-		t.Error("Expected IsAvailable()=false for 'second'")
-	}
+	assert.True(t, ok)
+	assert.Equal(t, "second", result.Category().ID)
+	assert.False(t, result.IsAvailable())
 }
 
 // --- All Tests ---
@@ -165,12 +136,8 @@ func TestAll_ReturnsEmptySlice_WhenNoScanners(t *testing.T) {
 
 	result := r.All()
 
-	if result == nil {
-		t.Error("Expected non-nil slice")
-	}
-	if len(result) != 0 {
-		t.Errorf("Expected empty slice, got %d items", len(result))
-	}
+	assert.NotNil(t, result)
+	assert.Empty(t, result)
 }
 
 func TestAll_ReturnsAllRegisteredScanners(t *testing.T) {
@@ -181,9 +148,7 @@ func TestAll_ReturnsAllRegisteredScanners(t *testing.T) {
 
 	result := r.All()
 
-	if len(result) != 3 {
-		t.Errorf("Expected 3 scanners, got %d", len(result))
-	}
+	assert.Len(t, result, 3)
 }
 
 func TestAll_IncludesBothAvailableAndUnavailable(t *testing.T) {
@@ -193,9 +158,7 @@ func TestAll_IncludesBothAvailableAndUnavailable(t *testing.T) {
 
 	result := r.All()
 
-	if len(result) != 2 {
-		t.Errorf("Expected 2 scanners (both available and unavailable), got %d", len(result))
-	}
+	assert.Len(t, result, 2)
 }
 
 // --- Available Tests ---
@@ -205,12 +168,8 @@ func TestAvailable_ReturnsEmptySlice_WhenNoScanners(t *testing.T) {
 
 	result := r.Available()
 
-	if result == nil {
-		t.Error("Expected non-nil slice")
-	}
-	if len(result) != 0 {
-		t.Errorf("Expected empty slice, got %d items", len(result))
-	}
+	assert.NotNil(t, result)
+	assert.Empty(t, result)
 }
 
 func TestAvailable_ReturnsOnlyAvailableScanners(t *testing.T) {
@@ -221,13 +180,9 @@ func TestAvailable_ReturnsOnlyAvailableScanners(t *testing.T) {
 
 	result := r.Available()
 
-	if len(result) != 2 {
-		t.Errorf("Expected 2 available scanners, got %d", len(result))
-	}
+	assert.Len(t, result, 2)
 	for _, s := range result {
-		if !s.IsAvailable() {
-			t.Errorf("Scanner '%s' should be available", s.Category().ID)
-		}
+		assert.True(t, s.IsAvailable())
 	}
 }
 
@@ -238,9 +193,7 @@ func TestAvailable_ReturnsEmptySlice_WhenAllUnavailable(t *testing.T) {
 
 	result := r.Available()
 
-	if len(result) != 0 {
-		t.Errorf("Expected 0 available scanners, got %d", len(result))
-	}
+	assert.Empty(t, result)
 }
 
 func TestAvailable_ReturnsAllScanners_WhenAllAvailable(t *testing.T) {
@@ -250,7 +203,5 @@ func TestAvailable_ReturnsAllScanners_WhenAllAvailable(t *testing.T) {
 
 	result := r.Available()
 
-	if len(result) != 2 {
-		t.Errorf("Expected 2 available scanners, got %d", len(result))
-	}
+	assert.Len(t, result, 2)
 }

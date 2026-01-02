@@ -4,16 +4,17 @@ import (
 	"math"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"mac-cleanup-go/pkg/types"
 )
 
 func TestNewDockerScanner_ReturnsNonNil(t *testing.T) {
 	cat := types.Category{ID: "docker", Name: "Docker"}
+
 	s := NewDockerScanner(cat)
 
-	if s == nil {
-		t.Fatal("NewDockerScanner returned nil")
-	}
+	assert.NotNil(t, s)
 }
 
 func TestDockerScanner_Category_ReturnsConfiguredCategory(t *testing.T) {
@@ -22,23 +23,20 @@ func TestDockerScanner_Category_ReturnsConfiguredCategory(t *testing.T) {
 		Name:   "Docker",
 		Safety: types.SafetyLevelModerate,
 	}
-	s := NewDockerScanner(cat)
 
+	s := NewDockerScanner(cat)
 	result := s.Category()
 
-	if result.ID != "docker" {
-		t.Errorf("Expected ID 'docker', got '%s'", result.ID)
-	}
-	if result.Name != "Docker" {
-		t.Errorf("Expected Name 'Docker', got '%s'", result.Name)
-	}
+	assert.Equal(t, "docker", result.ID)
+	assert.Equal(t, "Docker", result.Name)
 }
 
 func TestDockerScanner_IsAvailable_ReturnsBool(t *testing.T) {
 	cat := types.Category{ID: "docker", CheckCmd: "docker"}
-	s := NewDockerScanner(cat)
 
+	s := NewDockerScanner(cat)
 	available := s.IsAvailable()
+
 	t.Logf("Docker available: %v", available)
 }
 
@@ -61,6 +59,7 @@ func TestParseDockerSize_RealDockerFormat(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := parseDockerSize(tt.input)
+
 			assertWithinMargin(t, tt.input, result, int64(tt.expected), 0.01)
 		})
 	}
@@ -79,9 +78,8 @@ func TestParseDockerSize_ZeroAndEmpty(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := parseDockerSize(tt.input)
-			if result != tt.expected {
-				t.Errorf("parseDockerSize(%q) = %d, expected %d", tt.input, result, tt.expected)
-			}
+
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -102,9 +100,8 @@ func TestParseDockerSize_AllUnits(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := parseDockerSize(tt.input)
-			if result != tt.expected {
-				t.Errorf("parseDockerSize(%q) = %d, expected %d", tt.input, result, tt.expected)
-			}
+
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -124,9 +121,8 @@ func TestParseDockerSize_CaseInsensitive(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			result := parseDockerSize(tt.input)
-			if result != tt.expected {
-				t.Errorf("parseDockerSize(%q) = %d, expected %d", tt.input, result, tt.expected)
-			}
+
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -144,9 +140,8 @@ func TestParseDockerSize_WithWhitespace(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			result := parseDockerSize(tt.input)
-			if result != tt.expected {
-				t.Errorf("parseDockerSize(%q) = %d, expected %d", tt.input, result, tt.expected)
-			}
+
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -170,9 +165,8 @@ func TestDockerTypeName_AllTypes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			result := dockerTypeName(tt.input)
-			if result != tt.expected {
-				t.Errorf("dockerTypeName(%q) = %q, expected %q", tt.input, result, tt.expected)
-			}
+
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -180,9 +174,7 @@ func TestDockerTypeName_AllTypes(t *testing.T) {
 func TestDockerTypeName_UnknownType(t *testing.T) {
 	result := dockerTypeName("unknown")
 
-	if result != "Docker unknown" {
-		t.Errorf("Expected 'Docker unknown', got '%s'", result)
-	}
+	assert.Equal(t, "Docker unknown", result)
 }
 
 func TestDockerScanner_Clean_DryRun(t *testing.T) {
@@ -196,15 +188,9 @@ func TestDockerScanner_Clean_DryRun(t *testing.T) {
 
 	result, err := s.Clean(items, true)
 
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if result.CleanedItems != 2 {
-		t.Errorf("Expected CleanedItems 2, got %d", result.CleanedItems)
-	}
-	if result.FreedSpace != 3000 {
-		t.Errorf("Expected FreedSpace 3000, got %d", result.FreedSpace)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, 2, result.CleanedItems)
+	assert.Equal(t, int64(3000), result.FreedSpace)
 }
 
 func TestDockerScanner_Clean_DryRun_EmptyItems(t *testing.T) {
@@ -213,12 +199,8 @@ func TestDockerScanner_Clean_DryRun_EmptyItems(t *testing.T) {
 
 	result, err := s.Clean([]types.CleanableItem{}, true)
 
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if result.CleanedItems != 0 {
-		t.Errorf("Expected CleanedItems 0, got %d", result.CleanedItems)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, 0, result.CleanedItems)
 }
 
 func TestDockerScanner_Clean_IncludesCategoryInResult(t *testing.T) {
@@ -227,12 +209,8 @@ func TestDockerScanner_Clean_IncludesCategoryInResult(t *testing.T) {
 
 	result, err := s.Clean(nil, true)
 
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if result.Category.ID != "docker" {
-		t.Errorf("Expected category ID 'docker', got '%s'", result.Category.ID)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, "docker", result.Category.ID)
 }
 
 func TestDockerScanner_Scan_Integration(t *testing.T) {
@@ -250,12 +228,8 @@ func TestDockerScanner_Scan_Integration(t *testing.T) {
 
 	result, err := s.Scan()
 
-	if err != nil {
-		t.Fatalf("Scan error: %v", err)
-	}
-	if result.Category.ID != "docker" {
-		t.Errorf("Expected category ID 'docker', got '%s'", result.Category.ID)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, "docker", result.Category.ID)
 	t.Logf("Found %d items, total size: %d bytes", len(result.Items), result.TotalSize)
 }
 
@@ -263,15 +237,12 @@ func assertWithinMargin(t *testing.T, input string, result, expected int64, marg
 	t.Helper()
 
 	if expected == 0 {
-		if result != 0 {
-			t.Errorf("parseDockerSize(%q) = %d, expected 0", input, result)
-		}
+		assert.Equal(t, int64(0), result, "parseDockerSize(%q)", input)
 		return
 	}
 
 	diff := math.Abs(float64(result-expected)) / float64(expected)
-	if diff > marginPercent {
-		t.Errorf("parseDockerSize(%q) = %d, expected ~%d (within %.0f%%), diff was %.2f%%",
-			input, result, expected, marginPercent*100, diff*100)
-	}
+	assert.LessOrEqual(t, diff, marginPercent,
+		"parseDockerSize(%q) = %d, expected ~%d (within %.0f%%)",
+		input, result, expected, marginPercent*100)
 }

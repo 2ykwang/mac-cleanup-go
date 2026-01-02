@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"mac-cleanup-go/pkg/types"
 )
 
@@ -17,19 +19,13 @@ func TestCategory_ReturnsConfiguredCategory(t *testing.T) {
 		Name:   "Test Name",
 		Safety: types.SafetyLevelSafe,
 	}
-	s := NewPathScanner(cat)
 
+	s := NewPathScanner(cat)
 	result := s.Category()
 
-	if result.ID != "test-id" {
-		t.Errorf("Expected ID 'test-id', got '%s'", result.ID)
-	}
-	if result.Name != "Test Name" {
-		t.Errorf("Expected Name 'Test Name', got '%s'", result.Name)
-	}
-	if result.Safety != types.SafetyLevelSafe {
-		t.Errorf("Expected Safety 'safe', got '%s'", result.Safety)
-	}
+	assert.Equal(t, "test-id", result.ID)
+	assert.Equal(t, "Test Name", result.Name)
+	assert.Equal(t, types.SafetyLevelSafe, result.Safety)
 }
 
 // --- IsAvailable Tests ---
@@ -37,13 +33,12 @@ func TestCategory_ReturnsConfiguredCategory(t *testing.T) {
 func TestIsAvailable_ReturnsTrue_WhenCheckCmdExists(t *testing.T) {
 	cat := types.Category{
 		ID:       "test",
-		CheckCmd: "ls", // ls command exists on all Unix systems
+		CheckCmd: "ls",
 	}
+
 	s := NewPathScanner(cat)
 
-	if !s.IsAvailable() {
-		t.Error("Expected true when CheckCmd exists")
-	}
+	assert.True(t, s.IsAvailable())
 }
 
 func TestIsAvailable_ReturnsFalse_WhenCheckCmdNotExists(t *testing.T) {
@@ -51,26 +46,24 @@ func TestIsAvailable_ReturnsFalse_WhenCheckCmdNotExists(t *testing.T) {
 		ID:       "test",
 		CheckCmd: "nonexistent-command-xyz-123",
 	}
+
 	s := NewPathScanner(cat)
 
-	if s.IsAvailable() {
-		t.Error("Expected false when CheckCmd doesn't exist")
-	}
+	assert.False(t, s.IsAvailable())
 }
 
 func TestIsAvailable_ReturnsTrue_WhenCheckPathExists(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "base-scanner-test")
+	tmpDir, _ := os.MkdirTemp("", "path-scanner-test")
 	defer os.RemoveAll(tmpDir)
 
 	cat := types.Category{
 		ID:    "test",
 		Check: tmpDir,
 	}
+
 	s := NewPathScanner(cat)
 
-	if !s.IsAvailable() {
-		t.Error("Expected true when Check path exists")
-	}
+	assert.True(t, s.IsAvailable())
 }
 
 func TestIsAvailable_ReturnsFalse_WhenCheckPathNotExists(t *testing.T) {
@@ -79,15 +72,14 @@ func TestIsAvailable_ReturnsFalse_WhenCheckPathNotExists(t *testing.T) {
 		Check: "/nonexistent/path/xyz",
 		Paths: []string{"/also/nonexistent/*"},
 	}
+
 	s := NewPathScanner(cat)
 
-	if s.IsAvailable() {
-		t.Error("Expected false when Check path doesn't exist and no paths match")
-	}
+	assert.False(t, s.IsAvailable())
 }
 
 func TestIsAvailable_ReturnsTrue_WhenPathsHaveMatchingFiles(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "base-scanner-test")
+	tmpDir, _ := os.MkdirTemp("", "path-scanner-test")
 	defer os.RemoveAll(tmpDir)
 
 	testFile := filepath.Join(tmpDir, "test.txt")
@@ -97,23 +89,20 @@ func TestIsAvailable_ReturnsTrue_WhenPathsHaveMatchingFiles(t *testing.T) {
 		ID:    "test",
 		Paths: []string{filepath.Join(tmpDir, "*")},
 	}
+
 	s := NewPathScanner(cat)
 
-	if !s.IsAvailable() {
-		t.Error("Expected true when paths have matching files")
-	}
+	assert.True(t, s.IsAvailable())
 }
 
 func TestIsAvailable_ReturnsTrue_WhenNoCheckAndNoPaths(t *testing.T) {
 	cat := types.Category{
 		ID: "test",
-		// No Check, no CheckCmd, no Paths
 	}
+
 	s := NewPathScanner(cat)
 
-	if !s.IsAvailable() {
-		t.Error("Expected true when no check specified and no paths")
-	}
+	assert.True(t, s.IsAvailable())
 }
 
 // --- Scan Tests ---
@@ -123,23 +112,18 @@ func TestScan_ReturnsEmptyResult_WhenNotAvailable(t *testing.T) {
 		ID:       "test",
 		CheckCmd: "nonexistent-command-xyz",
 	}
-	s := NewPathScanner(cat)
 
+	s := NewPathScanner(cat)
 	result, err := s.Scan()
 
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if len(result.Items) != 0 {
-		t.Errorf("Expected 0 items, got %d", len(result.Items))
-	}
+	assert.NoError(t, err)
+	assert.Empty(t, result.Items)
 }
 
 func TestScan_ReturnsItems_ForMatchingPaths(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "base-scanner-test")
+	tmpDir, _ := os.MkdirTemp("", "path-scanner-test")
 	defer os.RemoveAll(tmpDir)
 
-	// Create test files
 	os.WriteFile(filepath.Join(tmpDir, "file1.txt"), []byte("hello"), 0644)
 	os.WriteFile(filepath.Join(tmpDir, "file2.txt"), []byte("world!"), 0644)
 
@@ -147,20 +131,16 @@ func TestScan_ReturnsItems_ForMatchingPaths(t *testing.T) {
 		ID:    "test",
 		Paths: []string{filepath.Join(tmpDir, "*.txt")},
 	}
-	s := NewPathScanner(cat)
 
+	s := NewPathScanner(cat)
 	result, err := s.Scan()
 
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if len(result.Items) != 2 {
-		t.Errorf("Expected 2 items, got %d", len(result.Items))
-	}
+	assert.NoError(t, err)
+	assert.Len(t, result.Items, 2)
 }
 
 func TestScan_CalculatesTotalSizeCorrectly(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "base-scanner-test")
+	tmpDir, _ := os.MkdirTemp("", "path-scanner-test")
 	defer os.RemoveAll(tmpDir)
 
 	os.WriteFile(filepath.Join(tmpDir, "file1.txt"), []byte("12345"), 0644)      // 5 bytes
@@ -170,67 +150,51 @@ func TestScan_CalculatesTotalSizeCorrectly(t *testing.T) {
 		ID:    "test",
 		Paths: []string{filepath.Join(tmpDir, "*.txt")},
 	}
-	s := NewPathScanner(cat)
 
+	s := NewPathScanner(cat)
 	result, err := s.Scan()
 
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if result.TotalSize != 15 {
-		t.Errorf("Expected TotalSize 15, got %d", result.TotalSize)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, int64(15), result.TotalSize)
 }
 
 func TestScan_FiltersByDaysOld(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "base-scanner-test")
+	tmpDir, _ := os.MkdirTemp("", "path-scanner-test")
 	defer os.RemoveAll(tmpDir)
 
-	// Create a file with recent modification time
 	recentFile := filepath.Join(tmpDir, "recent.txt")
 	os.WriteFile(recentFile, []byte("recent"), 0644)
 
-	// Create a file with old modification time
 	oldFile := filepath.Join(tmpDir, "old.txt")
 	os.WriteFile(oldFile, []byte("old"), 0644)
-	oldTime := time.Now().AddDate(0, 0, -10) // 10 days ago
+	oldTime := time.Now().AddDate(0, 0, -10)
 	os.Chtimes(oldFile, oldTime, oldTime)
 
 	cat := types.Category{
 		ID:      "test",
 		Paths:   []string{filepath.Join(tmpDir, "*.txt")},
-		DaysOld: 7, // Only files older than 7 days
+		DaysOld: 7,
 	}
-	s := NewPathScanner(cat)
 
+	s := NewPathScanner(cat)
 	result, err := s.Scan()
 
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if len(result.Items) != 1 {
-		t.Errorf("Expected 1 item (only old file), got %d", len(result.Items))
-	}
-	if len(result.Items) > 0 && result.Items[0].Name != "old.txt" {
-		t.Errorf("Expected 'old.txt', got '%s'", result.Items[0].Name)
-	}
+	assert.NoError(t, err)
+	assert.Len(t, result.Items, 1)
+	assert.Equal(t, "old.txt", result.Items[0].Name)
 }
 
 func TestScan_HandlesGlobErrors_Gracefully(t *testing.T) {
 	cat := types.Category{
 		ID:    "test",
-		Paths: []string{"[invalid-glob"}, // Invalid glob pattern
+		Paths: []string{"[invalid-glob"},
 	}
-	s := NewPathScanner(cat)
 
+	s := NewPathScanner(cat)
 	result, err := s.Scan()
 
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
-	if len(result.Items) != 0 {
-		t.Errorf("Expected 0 items for invalid glob, got %d", len(result.Items))
-	}
+	assert.NoError(t, err)
+	assert.Empty(t, result.Items)
 }
 
 func TestScan_IncludesCategoryInResult(t *testing.T) {
@@ -238,23 +202,18 @@ func TestScan_IncludesCategoryInResult(t *testing.T) {
 		ID:   "my-category",
 		Name: "My Category",
 	}
-	s := NewPathScanner(cat)
 
+	s := NewPathScanner(cat)
 	result, err := s.Scan()
 
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if result.Category.ID != "my-category" {
-		t.Errorf("Expected category ID 'my-category', got '%s'", result.Category.ID)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, "my-category", result.Category.ID)
 }
 
 func TestScan_HandlesDirectories(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "base-scanner-test")
+	tmpDir, _ := os.MkdirTemp("", "path-scanner-test")
 	defer os.RemoveAll(tmpDir)
 
-	// Create a subdirectory with files
 	subDir := filepath.Join(tmpDir, "subdir")
 	os.MkdirAll(subDir, 0755)
 	os.WriteFile(filepath.Join(subDir, "file.txt"), []byte("content"), 0644)
@@ -263,26 +222,18 @@ func TestScan_HandlesDirectories(t *testing.T) {
 		ID:    "test",
 		Paths: []string{filepath.Join(tmpDir, "*")},
 	}
-	s := NewPathScanner(cat)
 
+	s := NewPathScanner(cat)
 	result, err := s.Scan()
 
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if len(result.Items) != 1 {
-		t.Fatalf("Expected 1 item, got %d", len(result.Items))
-	}
-	if !result.Items[0].IsDirectory {
-		t.Error("Expected item to be a directory")
-	}
-	if result.Items[0].Name != "subdir" {
-		t.Errorf("Expected name 'subdir', got '%s'", result.Items[0].Name)
-	}
+	assert.NoError(t, err)
+	assert.Len(t, result.Items, 1)
+	assert.True(t, result.Items[0].IsDirectory)
+	assert.Equal(t, "subdir", result.Items[0].Name)
 }
 
 func TestScan_HandlesMultiplePathPatterns(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "base-scanner-test")
+	tmpDir, _ := os.MkdirTemp("", "path-scanner-test")
 	defer os.RemoveAll(tmpDir)
 
 	os.WriteFile(filepath.Join(tmpDir, "file.txt"), []byte("txt"), 0644)
@@ -295,16 +246,31 @@ func TestScan_HandlesMultiplePathPatterns(t *testing.T) {
 			filepath.Join(tmpDir, "*.log"),
 		},
 	}
-	s := NewPathScanner(cat)
 
+	s := NewPathScanner(cat)
 	result, err := s.Scan()
 
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
+	assert.NoError(t, err)
+	assert.Len(t, result.Items, 2)
+}
+
+func TestScan_HandlesScanPathError_Gracefully(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "path-scanner-test")
+	defer os.RemoveAll(tmpDir)
+
+	brokenLink := filepath.Join(tmpDir, "broken.txt")
+	os.Symlink("/nonexistent/path", brokenLink)
+
+	cat := types.Category{
+		ID:    "test",
+		Paths: []string{filepath.Join(tmpDir, "*.txt")},
 	}
-	if len(result.Items) != 2 {
-		t.Errorf("Expected 2 items from multiple patterns, got %d", len(result.Items))
-	}
+
+	s := NewPathScanner(cat)
+	result, err := s.Scan()
+
+	assert.NoError(t, err)
+	assert.Empty(t, result.Items)
 }
 
 // --- Clean Tests ---
@@ -321,15 +287,9 @@ func TestClean_DryRun_ReturnsCorrectStats(t *testing.T) {
 
 	result, err := s.Clean(items, true)
 
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if result.CleanedItems != 3 {
-		t.Errorf("Expected CleanedItems 3, got %d", result.CleanedItems)
-	}
-	if result.FreedSpace != 600 {
-		t.Errorf("Expected FreedSpace 600, got %d", result.FreedSpace)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, 3, result.CleanedItems)
+	assert.Equal(t, int64(600), result.FreedSpace)
 }
 
 func TestClean_DryRun_EmptyItems(t *testing.T) {
@@ -338,15 +298,9 @@ func TestClean_DryRun_EmptyItems(t *testing.T) {
 
 	result, err := s.Clean([]types.CleanableItem{}, true)
 
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if result.CleanedItems != 0 {
-		t.Errorf("Expected CleanedItems 0, got %d", result.CleanedItems)
-	}
-	if result.FreedSpace != 0 {
-		t.Errorf("Expected FreedSpace 0, got %d", result.FreedSpace)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, 0, result.CleanedItems)
+	assert.Equal(t, int64(0), result.FreedSpace)
 }
 
 func TestClean_NonDryRun_ReturnsEmptyResult(t *testing.T) {
@@ -359,13 +313,8 @@ func TestClean_NonDryRun_ReturnsEmptyResult(t *testing.T) {
 
 	result, err := s.Clean(items, false)
 
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	// Current implementation doesn't actually delete
-	if result.CleanedItems != 0 {
-		t.Errorf("Expected CleanedItems 0 for non-dry-run, got %d", result.CleanedItems)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, 0, result.CleanedItems)
 }
 
 func TestClean_IncludesCategoryInResult(t *testing.T) {
@@ -374,41 +323,6 @@ func TestClean_IncludesCategoryInResult(t *testing.T) {
 
 	result, err := s.Clean(nil, true)
 
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-	if result.Category.ID != "my-cat" {
-		t.Errorf("Expected category ID 'my-cat', got '%s'", result.Category.ID)
-	}
-}
-
-func TestScan_HandlesScanPathError_Gracefully(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "base-scanner-test")
-	defer os.RemoveAll(tmpDir)
-
-	// Create a file that will be deleted before scanPath
-	testFile := filepath.Join(tmpDir, "disappearing.txt")
-	os.WriteFile(testFile, []byte("test"), 0644)
-
-	cat := types.Category{
-		ID:    "test",
-		Paths: []string{filepath.Join(tmpDir, "*.txt")},
-	}
-	s := NewPathScanner(cat)
-
-	// Delete the file after glob would find it but before stat
-	// We simulate this by creating a symlink to a non-existent file
-	os.Remove(testFile)
-	brokenLink := filepath.Join(tmpDir, "broken.txt")
-	os.Symlink("/nonexistent/path", brokenLink)
-
-	result, err := s.Scan()
-
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
-	// Should handle the error gracefully and return empty result
-	if len(result.Items) != 0 {
-		t.Errorf("Expected 0 items when scanPath fails, got %d", len(result.Items))
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, "my-cat", result.Category.ID)
 }
