@@ -138,7 +138,6 @@ categories:
     group: dev
     safety: moderate
     method: permanent
-    confirm: true
     note: Includes Archives (past builds) - check before deleting if you need old symbols
     check: "~/Library/Developer/Xcode/"
     paths:
@@ -400,7 +399,6 @@ categories:
     group: app
     safety: moderate
     method: permanent
-    confirm: true
     note: Includes session data - may require re-login after cleanup
     check: "~/Library/Application Support/Microsoft/Teams/"
     paths:
@@ -492,7 +490,6 @@ categories:
     group: app
     safety: moderate
     method: permanent
-    confirm: true
     note: Offline cache - large re-download may occur
     check: "~/Library/Application Support/Google/DriveFS/"
     paths:
@@ -614,7 +611,6 @@ categories:
     group: storage
     safety: risky
     method: permanent
-    confirm: true
     note: "CAUTION: iPhone/iPad backups - may be your only copy!"
     paths:
       - "~/Library/Application Support/MobileSync/Backup/*"
@@ -624,8 +620,6 @@ categories:
     group: storage
     safety: risky
     method: trash
-    confirm: true
-    file_select: true
     days_old: 30
     note: "CAUTION: Files older than 30 days - may contain important documents!"
     paths:
@@ -636,7 +630,6 @@ categories:
     group: storage
     safety: risky
     method: trash
-    confirm: true
     note: "CAUTION: Downloaded email attachments - may be needed!"
     paths:
       - "~/Library/Containers/com.apple.mail/Data/Library/Mail Downloads/*"
@@ -646,7 +639,6 @@ categories:
     group: storage
     safety: risky
     method: permanent
-    confirm: true
     note: "CAUTION: Old iOS app backups - rarely needed but check first!"
     paths:
       - "~/Music/iTunes/iTunes Media/Mobile Applications/*"

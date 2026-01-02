@@ -32,9 +32,7 @@ type Category struct {
 	Command    string        `yaml:"command,omitempty"`
 	Check      string        `yaml:"check,omitempty"`
 	CheckCmd   string        `yaml:"check_cmd,omitempty"`
-	Confirm    bool          `yaml:"confirm,omitempty"`
 	Sudo       bool          `yaml:"sudo,omitempty"`
-	FileSelect bool          `yaml:"file_select,omitempty"`
 	DaysOld    int           `yaml:"days_old,omitempty"`
 }
 
