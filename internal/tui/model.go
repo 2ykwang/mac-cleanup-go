@@ -226,8 +226,6 @@ func (m *Model) View() string {
 	}
 }
 
-
-
 func (m *Model) doClean() tea.Cmd {
 	// Collect items to clean
 	type cleanJob struct {
@@ -365,5 +363,3 @@ func (m *Model) waitForCleanProgress() tea.Cmd {
 		}
 	}
 }
-
-
