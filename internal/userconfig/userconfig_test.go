@@ -22,41 +22,6 @@ func TestLoad_NoConfigFile(t *testing.T) {
 	}
 }
 
-func TestUserConfig_LastSelection(t *testing.T) {
-	cfg := &UserConfig{
-		ExcludedPaths: make(map[string][]string),
-	}
-
-	// Initially no selection
-	if cfg.HasLastSelection() {
-		t.Error("Expected no last selection initially")
-	}
-
-	if len(cfg.GetLastSelection()) != 0 {
-		t.Error("Expected empty last selection")
-	}
-
-	// Set selection
-	categories := []string{"chrome-cache", "safari-cache", "npm-cache"}
-	cfg.SetLastSelection(categories)
-
-	if !cfg.HasLastSelection() {
-		t.Error("Expected to have last selection after setting")
-	}
-
-	got := cfg.GetLastSelection()
-	if len(got) != 3 {
-		t.Errorf("Expected 3 categories, got %d", len(got))
-	}
-
-	// Verify contents
-	for i, id := range categories {
-		if got[i] != id {
-			t.Errorf("Expected category %s at index %d, got %s", id, i, got[i])
-		}
-	}
-}
-
 func TestUserConfig_ExcludedPaths(t *testing.T) {
 	cfg := &UserConfig{
 		ExcludedPaths: make(map[string][]string),
@@ -135,7 +100,6 @@ func TestUserConfig_SaveAndLoad(t *testing.T) {
 		ExcludedPaths: map[string][]string{
 			"chrome-cache": {"/path/one", "/path/two"},
 		},
-		LastSelection: []string{"chrome-cache", "npm-cache"},
 	}
 
 	if err := cfg.Save(); err != nil {
@@ -154,36 +118,7 @@ func TestUserConfig_SaveAndLoad(t *testing.T) {
 		t.Fatalf("Load() failed: %v", err)
 	}
 
-	if !loaded.HasLastSelection() {
-		t.Error("Loaded config should have last selection")
-	}
-
-	selection := loaded.GetLastSelection()
-	if len(selection) != 2 {
-		t.Errorf("Expected 2 selected categories, got %d", len(selection))
-	}
-
 	if !loaded.IsExcluded("chrome-cache", "/path/one") {
 		t.Error("Loaded config should have excluded path")
-	}
-}
-
-func TestUserConfig_HasLastSelection_Empty(t *testing.T) {
-	cfg := &UserConfig{
-		LastSelection: []string{},
-	}
-
-	if cfg.HasLastSelection() {
-		t.Error("Empty slice should return false for HasLastSelection")
-	}
-}
-
-func TestUserConfig_HasLastSelection_Nil(t *testing.T) {
-	cfg := &UserConfig{
-		LastSelection: nil,
-	}
-
-	if cfg.HasLastSelection() {
-		t.Error("Nil slice should return false for HasLastSelection")
 	}
 }

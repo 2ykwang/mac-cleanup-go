@@ -9,19 +9,19 @@ import (
 	"mac-cleanup-go/pkg/types"
 )
 
-type BaseScanner struct {
+type PathScanner struct {
 	category types.Category
 }
 
-func NewBaseScanner(cat types.Category) *BaseScanner {
-	return &BaseScanner{category: cat}
+func NewPathScanner(cat types.Category) *PathScanner {
+	return &PathScanner{category: cat}
 }
 
-func (s *BaseScanner) Category() types.Category {
+func (s *PathScanner) Category() types.Category {
 	return s.category
 }
 
-func (s *BaseScanner) IsAvailable() bool {
+func (s *PathScanner) IsAvailable() bool {
 	// For command-based methods, check if command exists
 	if s.category.CheckCmd != "" {
 		return utils.CommandExists(s.category.CheckCmd)
@@ -45,7 +45,7 @@ func (s *BaseScanner) IsAvailable() bool {
 	return s.category.Check == "" && len(s.category.Paths) == 0
 }
 
-func (s *BaseScanner) Scan() (*types.ScanResult, error) {
+func (s *PathScanner) Scan() (*types.ScanResult, error) {
 	result := &types.ScanResult{
 		Category: s.category,
 		Items:    make([]types.CleanableItem, 0),
@@ -82,7 +82,7 @@ func (s *BaseScanner) Scan() (*types.ScanResult, error) {
 	return result, nil
 }
 
-func (s *BaseScanner) scanPath(path string) (types.CleanableItem, error) {
+func (s *PathScanner) scanPath(path string) (types.CleanableItem, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return types.CleanableItem{}, err
@@ -104,7 +104,7 @@ func (s *BaseScanner) scanPath(path string) (types.CleanableItem, error) {
 	}, nil
 }
 
-func (s *BaseScanner) Clean(items []types.CleanableItem, dryRun bool) (*types.CleanResult, error) {
+func (s *PathScanner) Clean(items []types.CleanableItem, dryRun bool) (*types.CleanResult, error) {
 	result := &types.CleanResult{
 		Category: s.category,
 		Errors:   make([]string, 0),

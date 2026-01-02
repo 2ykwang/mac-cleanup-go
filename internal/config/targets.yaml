@@ -133,17 +133,26 @@ categories:
       - "~/Library/Caches/Microsoft Edge/*"
 
   # ===== Development =====
-  - id: xcode
-    name: Xcode Cache
+  - id: xcode-derived
+    name: Xcode DerivedData
     group: dev
-    safety: moderate
+    safety: safe
     method: trash
-    note: Includes Archives (past builds) - check before deleting if you need old symbols
+    note: Build cache - regenerated on next build
     check: "~/Library/Developer/Xcode/"
     paths:
       - "~/Library/Developer/Xcode/DerivedData/*"
-      - "~/Library/Developer/Xcode/Archives/*"
       - "~/Library/Developer/Xcode/iOS Device Logs/*"
+
+  - id: xcode-archives
+    name: Xcode Archives
+    group: dev
+    safety: risky
+    method: trash
+    note: "CAUTION: Past build archives with dSYM files - needed for crash symbolication!"
+    check: "~/Library/Developer/Xcode/Archives/"
+    paths:
+      - "~/Library/Developer/Xcode/Archives/*"
 
   - id: ios-simulator
     name: iOS Simulator
@@ -385,7 +394,7 @@ categories:
   - id: slack
     name: Slack Cache
     group: app
-    safety: moderate
+    safety: risky
     method: trash
     note: Includes Service Worker data - may require re-login
     check: "~/Library/Application Support/Slack/"
@@ -397,7 +406,7 @@ categories:
   - id: teams
     name: Teams Cache
     group: app
-    safety: moderate
+    safety: risky
     method: trash
     note: Includes session data - may require re-login after cleanup
     check: "~/Library/Application Support/Microsoft/Teams/"
@@ -505,6 +514,17 @@ categories:
     guide: "Telegram > Settings > Data and Storage > Storage Usage > Clear Cache"
     paths:
       - "~/Library/Group Containers/*.ru.keepcoder.Telegram/stable/*/postbox/db/*"
+
+  - id: kakaotalk
+    name: KakaoTalk Database
+    group: app
+    safety: risky
+    method: manual
+    note: "CAUTION: Contains chat history and media - use app's built-in cleanup"
+    guide: "KakaoTalk > Settings > Storage Management"
+    check: "~/Library/Containers/com.kakao.KakaoTalkMac/"
+    paths:
+      - "~/Library/Containers/com.kakao.KakaoTalkMac/Data/Library/Application Support/*"
 
   - id: notion
     name: Notion Cache
