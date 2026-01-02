@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"mac-cleanup-go/internal/utils"
 	"mac-cleanup-go/pkg/types"
@@ -105,31 +106,32 @@ func (m *Model) findNextSelectedCatID() string {
 	return m.previewCatID
 }
 
-// Scroll helpers
+// Layout helpers
 
-func (m *Model) visibleLines() int {
-	lines := m.height - 10
-	if lines < 5 {
-		return 5
+func countLines(s string) int {
+	if s == "" {
+		return 0
 	}
-	return lines
+	return strings.Count(s, "\n") + 1
 }
 
-func (m *Model) reportVisibleLines() int {
-	lines := m.height - 12
-	if lines < 5 {
-		return 5
+func (m *Model) availableLines(header, footer string) int {
+	used := countLines(header) + countLines(footer)
+	available := m.height - used
+	if available < 3 {
+		return 3
 	}
-	return lines
+	return available
 }
 
-func (m *Model) adjustScroll() {
-	visible := m.visibleLines()
-	if m.cursor < m.scroll {
-		m.scroll = m.cursor
-	} else if m.cursor >= m.scroll+visible {
-		m.scroll = m.cursor - visible + 1
+func (m *Model) adjustScrollFor(cursor, scroll, visible, total int) int {
+	if cursor < scroll {
+		return cursor
 	}
+	if cursor >= scroll+visible {
+		return cursor - visible + 1
+	}
+	return scroll
 }
 
 // Directory helpers

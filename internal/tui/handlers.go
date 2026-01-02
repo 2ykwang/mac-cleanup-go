@@ -29,7 +29,12 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.reportScroll--
 			}
 		case "down", "j":
-			maxScroll := len(m.reportLines) - m.reportVisibleLines()
+			// Estimate visible lines (header ~8, footer ~2)
+			visible := m.height - 10
+			if visible < 5 {
+				visible = 5
+			}
+			maxScroll := len(m.reportLines) - visible
 			if maxScroll < 0 {
 				maxScroll = 0
 			}
@@ -61,12 +66,10 @@ func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "up", "k":
 		if m.cursor > 0 {
 			m.cursor--
-			m.adjustScroll()
 		}
 	case "down", "j":
 		if m.cursor < len(m.results)-1 {
 			m.cursor++
-			m.adjustScroll()
 		}
 	case " ":
 		if len(m.results) > 0 && m.cursor < len(m.results) {
@@ -204,12 +207,10 @@ func (m *Model) handleDrillDownKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "up", "k":
 		if state.cursor > 0 {
 			state.cursor--
-			m.adjustDrillScroll(state)
 		}
 	case "down", "j":
 		if state.cursor < len(state.items)-1 {
 			state.cursor++
-			m.adjustDrillScroll(state)
 		}
 	case "enter":
 		if state.cursor < len(state.items) {
@@ -228,16 +229,4 @@ func (m *Model) handleDrillDownKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
-}
-
-func (m *Model) adjustDrillScroll(state *drillDownState) {
-	visible := m.height - 10
-	if visible < 5 {
-		visible = 5
-	}
-	if state.cursor < state.scroll {
-		state.scroll = state.cursor
-	} else if state.cursor >= state.scroll+visible {
-		state.scroll = state.cursor - visible + 1
-	}
 }

@@ -8,7 +8,7 @@ import (
 	"mac-cleanup-go/pkg/types"
 )
 
-func (m *Model) viewList() string {
+func (m *Model) listHeader() string {
 	var b strings.Builder
 
 	b.WriteString(HeaderStyle.Render("Mac Cleanup"))
@@ -46,30 +46,13 @@ func (m *Model) viewList() string {
 			SizeStyle.Render(formatSize(m.getSelectedSize())), m.getSelectedCount())
 	}
 	b.WriteString(summary + "\n")
-	b.WriteString(Divider(60) + "\n\n")
+	b.WriteString(Divider(60) + "\n")
 
-	// Items
-	if len(m.results) == 0 {
-		if m.scanning {
-			b.WriteString(MutedStyle.Render("Scanning..."))
-		} else {
-			b.WriteString(MutedStyle.Render("No items to clean."))
-		}
-		b.WriteString("\n")
-	} else {
-		visible := m.visibleLines()
-		for i, r := range m.results {
-			if i < m.scroll || i >= m.scroll+visible {
-				continue
-			}
-			b.WriteString(m.renderListItem(i, r))
-		}
-		if len(m.results) > visible {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("\n  [%d/%d]", m.cursor+1, len(m.results))))
-		}
-	}
+	return b.String()
+}
 
-	b.WriteString("\n")
+func (m *Model) listFooter() string {
+	var b strings.Builder
 
 	// Show scan warnings after scan completes
 	if !m.scanning && len(m.scanErrors) > 0 {
@@ -87,6 +70,43 @@ func (m *Model) viewList() string {
 
 	b.WriteString("\n")
 	b.WriteString(HelpStyle.Render("↑↓ Navigate  space Select  a Select All  d Deselect All  enter Preview  q Quit"))
+
+	return b.String()
+}
+
+func (m *Model) viewList() string {
+	header := m.listHeader()
+	footer := m.listFooter()
+	visible := m.availableLines(header, footer)
+
+	var b strings.Builder
+	b.WriteString(header)
+
+	// Items
+	if len(m.results) == 0 {
+		if m.scanning {
+			b.WriteString(MutedStyle.Render("Scanning..."))
+		} else {
+			b.WriteString(MutedStyle.Render("No items to clean."))
+		}
+		b.WriteString("\n")
+	} else {
+		// Adjust scroll
+		m.scroll = m.adjustScrollFor(m.cursor, m.scroll, visible, len(m.results))
+
+		for i, r := range m.results {
+			if i < m.scroll || i >= m.scroll+visible {
+				continue
+			}
+			b.WriteString(m.renderListItem(i, r))
+		}
+		if len(m.results) > visible {
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("\n  [%d/%d]", m.cursor+1, len(m.results))))
+		}
+	}
+
+	b.WriteString("\n")
+	b.WriteString(footer)
 	return b.String()
 }
 

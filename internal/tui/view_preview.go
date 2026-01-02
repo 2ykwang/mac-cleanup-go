@@ -10,16 +10,7 @@ import (
 	"mac-cleanup-go/pkg/types"
 )
 
-func (m *Model) viewPreview() string {
-	if len(m.drillDownStack) > 0 {
-		return m.viewDrillDown()
-	}
-
-	selected := m.getSelectedResults()
-	if len(selected) == 0 {
-		return "No items selected."
-	}
-
+func (m *Model) previewHeader(selected []*types.ScanResult, cat *types.ScanResult) string {
 	var b strings.Builder
 
 	b.WriteString(HeaderStyle.Render("Cleanup Preview"))
@@ -29,15 +20,13 @@ func (m *Model) viewPreview() string {
 		m.getSelectedCount(), SizeStyle.Render(formatSize(m.getSelectedSize()))))
 	b.WriteString(Divider(60) + "\n\n")
 
-	// Tabs (no truncation, wrap if needed)
+	// Tabs
 	catIdx := m.findSelectedCatIndex()
 	b.WriteString(m.renderTabs(selected, catIdx))
 	b.WriteString("\n\n")
 
-	// Current category content
-	cat := m.getPreviewCatResult()
+	// Current category info
 	if cat != nil {
-
 		badge := safetyBadge(cat.Category.Safety)
 		mBadge := m.methodBadge(cat.Category.Method)
 		effectiveSize := m.getEffectiveSize(cat)
@@ -51,35 +40,53 @@ func (m *Model) viewPreview() string {
 		if cat.Category.Note != "" {
 			b.WriteString(MutedStyle.Render(cat.Category.Note) + "\n")
 		}
-		// Show guide for manual method
 		if cat.Category.Method == types.MethodManual && cat.Category.Guide != "" {
 			b.WriteString(WarningStyle.Render("[Manual] "+cat.Category.Guide) + "\n")
 		}
 		b.WriteString(Divider(60) + "\n")
+	}
 
-		visible := m.height - 16
-		if visible < 3 {
-			visible = 3
+	return b.String()
+}
+
+func (m *Model) previewFooter(selected []*types.ScanResult) string {
+	var b strings.Builder
+
+	// Warning for risky items
+	for _, r := range selected {
+		if r.Category.Safety == types.SafetyLevelRisky {
+			b.WriteString("\n" + DangerStyle.Render("Warning: Risky items included"))
+			break
 		}
+	}
 
+	b.WriteString("\n\n")
+	b.WriteString(HelpStyle.Render("←→ Tab  ↑↓ Move  space Toggle  a Include All  d Exclude All  y Delete  esc Back"))
+
+	return b.String()
+}
+
+func (m *Model) viewPreview() string {
+	if len(m.drillDownStack) > 0 {
+		return m.viewDrillDown()
+	}
+
+	selected := m.getSelectedResults()
+	if len(selected) == 0 {
+		return "No items selected."
+	}
+
+	cat := m.getPreviewCatResult()
+	header := m.previewHeader(selected, cat)
+	footer := m.previewFooter(selected)
+	visible := m.availableLines(header, footer)
+
+	var b strings.Builder
+	b.WriteString(header)
+
+	if cat != nil {
 		// Adjust scroll
-		maxScroll := len(cat.Items) - visible
-		if maxScroll < 0 {
-			maxScroll = 0
-		}
-		if m.previewScroll > maxScroll {
-			m.previewScroll = maxScroll
-		}
-		if m.previewScroll < 0 {
-			m.previewScroll = 0
-		}
-		if m.previewItemIndex >= 0 {
-			if m.previewItemIndex < m.previewScroll {
-				m.previewScroll = m.previewItemIndex
-			} else if m.previewItemIndex >= m.previewScroll+visible {
-				m.previewScroll = m.previewItemIndex - visible + 1
-			}
-		}
+		m.previewScroll = m.adjustScrollFor(m.previewItemIndex, m.previewScroll, visible, len(cat.Items))
 
 		endIdx := m.previewScroll + visible
 		if endIdx > len(cat.Items) {
@@ -133,16 +140,7 @@ func (m *Model) viewPreview() string {
 		}
 	}
 
-	// Warning
-	for _, r := range selected {
-		if r.Category.Safety == types.SafetyLevelRisky {
-			b.WriteString("\n" + DangerStyle.Render("Warning: Risky items included"))
-			break
-		}
-	}
-
-	b.WriteString("\n\n")
-	b.WriteString(HelpStyle.Render("←→ Tab  ↑↓ Move  space Toggle  a Include All  d Exclude All  y Delete  esc Back"))
+	b.WriteString(footer)
 	return b.String()
 }
 
@@ -169,8 +167,24 @@ func (m *Model) renderTabs(selected []*types.ScanResult, currentIdx int) string 
 		}
 	}
 
-	// Join with space, will naturally wrap if too long
 	return strings.Join(tabs, " ")
+}
+
+func (m *Model) drillDownHeader(path string) string {
+	var b strings.Builder
+
+	b.WriteString(HeaderStyle.Render("Directory Browser"))
+	b.WriteString("\n\n")
+
+	b.WriteString(MutedStyle.Render("Path: ") + shortenPath(path, m.width-10))
+	b.WriteString("\n")
+	b.WriteString(Divider(60) + "\n")
+
+	return b.String()
+}
+
+func (m *Model) drillDownFooter() string {
+	return "\n\n" + HelpStyle.Render("↑↓ Navigate  enter Enter folder  esc/backspace Back  q Quit")
 }
 
 func (m *Model) viewDrillDown() string {
@@ -179,22 +193,18 @@ func (m *Model) viewDrillDown() string {
 	}
 
 	state := &m.drillDownStack[len(m.drillDownStack)-1]
+	header := m.drillDownHeader(state.path)
+	footer := m.drillDownFooter()
+	visible := m.availableLines(header, footer)
+
 	var b strings.Builder
-
-	b.WriteString(HeaderStyle.Render("Directory Browser"))
-	b.WriteString("\n\n")
-
-	b.WriteString(MutedStyle.Render("Path: ") + shortenPath(state.path, m.width-10))
-	b.WriteString("\n")
-	b.WriteString(Divider(60) + "\n\n")
+	b.WriteString(header)
 
 	if len(state.items) == 0 {
 		b.WriteString(MutedStyle.Render("(empty)") + "\n")
 	} else {
-		visible := m.height - 12
-		if visible < 5 {
-			visible = 5
-		}
+		// Adjust scroll
+		state.scroll = m.adjustScrollFor(state.cursor, state.scroll, visible, len(state.items))
 
 		endIdx := state.scroll + visible
 		if endIdx > len(state.items) {
@@ -237,7 +247,6 @@ func (m *Model) viewDrillDown() string {
 		}
 	}
 
-	b.WriteString("\n\n")
-	b.WriteString(HelpStyle.Render("↑↓ Navigate  enter Enter folder  esc/backspace Back  q Quit"))
+	b.WriteString(footer)
 	return b.String()
 }

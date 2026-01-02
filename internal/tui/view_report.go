@@ -8,12 +8,7 @@ import (
 	"mac-cleanup-go/internal/utils"
 )
 
-func (m *Model) viewReport() string {
-	// Build report lines if not already built
-	if m.reportLines == nil {
-		m.reportLines = m.buildReportLines()
-	}
-
+func (m *Model) reportHeader() string {
 	var b strings.Builder
 
 	b.WriteString(HeaderStyle.Render("Cleanup Complete"))
@@ -29,9 +24,30 @@ func (m *Model) viewReport() string {
 
 	b.WriteString(Divider(50) + "\n")
 
-	// Calculate visible range
-	visible := m.reportVisibleLines()
+	return b.String()
+}
+
+func (m *Model) reportFooter() string {
+	return "\n" + HelpStyle.Render("↑↓ Scroll  enter Rescan  q Quit")
+}
+
+func (m *Model) viewReport() string {
+	// Build report lines if not already built
+	if m.reportLines == nil {
+		m.reportLines = m.buildReportLines()
+	}
+
+	header := m.reportHeader()
+	footer := m.reportFooter()
+	visible := m.availableLines(header, footer)
+
+	var b strings.Builder
+	b.WriteString(header)
+
+	// Adjust scroll
 	totalLines := len(m.reportLines)
+	m.reportScroll = m.adjustScrollFor(m.reportScroll, m.reportScroll, visible, totalLines)
+
 	start := m.reportScroll
 	end := start + visible
 	if end > totalLines {
@@ -59,8 +75,7 @@ func (m *Model) viewReport() string {
 		b.WriteString("\n")
 	}
 
-	b.WriteString("\n")
-	b.WriteString(HelpStyle.Render("↑↓ Scroll  enter Rescan  q Quit"))
+	b.WriteString(footer)
 	return b.String()
 }
 
