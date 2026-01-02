@@ -1,0 +1,54 @@
+package tui
+
+import "mac-cleanup-go/pkg/types"
+
+// View state
+type View int
+
+const (
+	ViewList View = iota
+	ViewPreview
+	ViewConfirm
+	ViewCleaning
+	ViewReport
+)
+
+// Messages
+type (
+	scanResultMsg    struct{ result *types.ScanResult }
+	cleanDoneMsg     struct{ report *types.Report }
+	cleanProgressMsg struct {
+		categoryName string
+		currentItem  string
+		current      int
+		total        int
+	}
+	cleanCategoryDoneMsg struct {
+		categoryName string
+		freedSpace   int64
+		cleanedItems int
+		errorCount   int
+	}
+)
+
+// scanErrorInfo holds scan error information for display
+type scanErrorInfo struct {
+	CategoryName string
+	Error        string
+}
+
+// drillDownState holds state for directory drill-down navigation
+type drillDownState struct {
+	path   string
+	items  []types.CleanableItem
+	cursor int
+	scroll int
+}
+
+// cleanedCategory tracks a completed category during cleaning
+type cleanedCategory struct {
+	name       string
+	freedSpace int64
+	cleaned    int
+	errors     int
+}
