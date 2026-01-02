@@ -9,7 +9,7 @@ import (
 
 // SystemCacheScanner scans system cache excluding paths defined in other categories
 type SystemCacheScanner struct {
-	*BaseScanner
+	*PathScanner
 	excludePaths []string
 }
 
@@ -34,7 +34,7 @@ func NewSystemCacheScanner(cat types.Category, allCategories []types.Category) *
 	}
 
 	return &SystemCacheScanner{
-		BaseScanner:  NewBaseScanner(cat),
+		PathScanner:  NewPathScanner(cat),
 		excludePaths: excludes,
 	}
 }

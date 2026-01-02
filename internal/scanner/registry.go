@@ -15,7 +15,7 @@ func DefaultRegistry(cfg *types.Config) *Registry {
 		case cat.ID == "system-cache":
 			s = NewSystemCacheScanner(cat, cfg.Categories)
 		default:
-			s = NewBaseScanner(cat)
+			s = NewPathScanner(cat)
 		}
 		r.Register(s)
 	}
