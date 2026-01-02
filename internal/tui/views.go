@@ -85,7 +85,23 @@ func (m *Model) viewList() string {
 		}
 	}
 
-	b.WriteString("\n\n")
+	b.WriteString("\n")
+
+	// Show scan warnings after scan completes
+	if !m.scanning && len(m.scanErrors) > 0 {
+		b.WriteString(WarningStyle.Render("[!] Scan warnings:"))
+		b.WriteString("\n")
+		for _, err := range m.scanErrors {
+			errMsg := err.Error
+			if len(errMsg) > 50 {
+				errMsg = errMsg[:47] + "..."
+			}
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("    %s: %s", err.CategoryName, errMsg)))
+			b.WriteString("\n")
+		}
+	}
+
+	b.WriteString("\n")
 	b.WriteString(HelpStyle.Render("↑↓ Navigate  space Select  a Select All  d Deselect All  enter Preview  q Quit"))
 	return b.String()
 }

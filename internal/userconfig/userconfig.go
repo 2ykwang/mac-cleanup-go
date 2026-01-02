@@ -12,12 +12,36 @@ const (
 	configFile = "config.yaml"
 )
 
+// CustomTarget defines a user-defined cleanup target
+type CustomTarget struct {
+	ID       string   `yaml:"id"`
+	Name     string   `yaml:"name"`
+	Group    string   `yaml:"group"`
+	Safety   string   `yaml:"safety"` // safe, moderate, risky
+	Method   string   `yaml:"method"` // trash, permanent, command, special, manual
+	Note     string   `yaml:"note,omitempty"`
+	Paths    []string `yaml:"paths,omitempty"`
+	Command  string   `yaml:"command,omitempty"`
+	CheckCmd string   `yaml:"check_cmd,omitempty"`
+}
+
+// CategoryOverride allows partial override of category properties
+type CategoryOverride struct {
+	Disabled *bool    `yaml:"disabled,omitempty"`
+	Paths    []string `yaml:"paths,omitempty"`
+	Note     *string  `yaml:"note,omitempty"`
+}
+
 // UserConfig stores user preferences
 type UserConfig struct {
 	// ExcludedPaths maps category ID to list of excluded paths
 	ExcludedPaths map[string][]string `yaml:"excluded_paths,omitempty"`
 	// LastSelection stores the last selected category IDs for --clean mode
 	LastSelection []string `yaml:"last_selection,omitempty"`
+	// CustomTargets defines user-defined cleanup targets
+	CustomTargets []CustomTarget `yaml:"custom_targets,omitempty"`
+	// TargetOverrides overrides specific fields of existing targets (by ID)
+	TargetOverrides map[string]CategoryOverride `yaml:"target_overrides,omitempty"`
 }
 
 // SetLastSelection saves the selected category IDs
@@ -66,6 +90,12 @@ func Load() (*UserConfig, error) {
 
 	if cfg.ExcludedPaths == nil {
 		cfg.ExcludedPaths = make(map[string][]string)
+	}
+	if cfg.CustomTargets == nil {
+		cfg.CustomTargets = make([]CustomTarget, 0)
+	}
+	if cfg.TargetOverrides == nil {
+		cfg.TargetOverrides = make(map[string]CategoryOverride)
 	}
 
 	return &cfg, nil

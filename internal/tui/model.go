@@ -82,6 +82,15 @@ type Model struct {
 	cleanCategoryDoneCh chan cleanCategoryDoneMsg
 
 	err error
+
+	// Scan errors for display
+	scanErrors []scanErrorInfo
+}
+
+// scanErrorInfo holds scan error information for display
+type scanErrorInfo struct {
+	CategoryName string
+	Error        string
 }
 
 type drillDownState struct {
@@ -148,6 +157,7 @@ func NewModel(cfg *types.Config, allowPermanentDelete bool) *Model {
 		hasFullDiskAccess:    utils.CheckFullDiskAccess(),
 		allowPermanentDelete: allowPermanentDelete,
 		userConfig:           userCfg,
+		scanErrors:           make([]scanErrorInfo, 0),
 	}
 }
 
@@ -221,15 +231,26 @@ func (m *Model) handleScanResult(result *types.ScanResult) {
 	m.scanMutex.Lock()
 	defer m.scanMutex.Unlock()
 
-	if result != nil && result.TotalSize > 0 {
-		sort.Slice(result.Items, func(i, j int) bool {
-			return result.Items[i].Size > result.Items[j].Size
-		})
-		m.results = append(m.results, result)
-		m.resultMap[result.Category.ID] = result
-		sort.Slice(m.results, func(i, j int) bool {
-			return m.results[i].TotalSize > m.results[j].TotalSize
-		})
+	if result != nil {
+		// Collect scan errors for display
+		if result.Error != nil {
+			m.scanErrors = append(m.scanErrors, scanErrorInfo{
+				CategoryName: result.Category.Name,
+				Error:        result.Error.Error(),
+			})
+		}
+
+		// Collect results with items
+		if result.TotalSize > 0 {
+			sort.Slice(result.Items, func(i, j int) bool {
+				return result.Items[i].Size > result.Items[j].Size
+			})
+			m.results = append(m.results, result)
+			m.resultMap[result.Category.ID] = result
+			sort.Slice(m.results, func(i, j int) bool {
+				return m.results[i].TotalSize > m.results[j].TotalSize
+			})
+		}
 	}
 	m.scanCompleted++
 	if m.scanCompleted >= m.scanTotal {
