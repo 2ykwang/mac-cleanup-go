@@ -6,7 +6,6 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"mac-cleanup-go/internal/cli"
 	"mac-cleanup-go/internal/config"
 	"mac-cleanup-go/internal/tui"
 	"mac-cleanup-go/internal/userconfig"
@@ -20,8 +19,6 @@ func main() {
 	// Flags
 	showVersion := flag.Bool("version", false, "Show version")
 	shortVersion := flag.Bool("v", false, "Show version (short)")
-	cleanMode := flag.Bool("clean", false, "Run cleanup with saved profile (no TUI)")
-	dryRun := flag.Bool("dry-run", false, "Show what would be cleaned without actually cleaning")
 	flag.Parse()
 
 	if *showVersion || *shortVersion {
@@ -42,15 +39,6 @@ func main() {
 	}
 	if userCfg != nil {
 		cfg = mergeConfig(cfg, userCfg)
-	}
-
-	// CLI clean mode
-	if *cleanMode {
-		if err := cli.Run(cfg, *dryRun); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
-		return
 	}
 
 	// TUI mode
