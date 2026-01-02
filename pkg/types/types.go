@@ -20,19 +20,19 @@ const (
 )
 
 type Category struct {
-	ID         string        `yaml:"id"`
-	Name       string        `yaml:"name"`
-	Group      string        `yaml:"group"`
-	Safety     SafetyLevel   `yaml:"safety"`
-	Method     CleanupMethod `yaml:"method"`
-	Note       string        `yaml:"note,omitempty"`
-	Guide      string        `yaml:"guide,omitempty"`
-	Paths      []string      `yaml:"paths,omitempty"`
-	Command    string        `yaml:"command,omitempty"`
-	Check      string        `yaml:"check,omitempty"`
-	CheckCmd   string        `yaml:"check_cmd,omitempty"`
-	Sudo       bool          `yaml:"sudo,omitempty"`
-	DaysOld    int           `yaml:"days_old,omitempty"`
+	ID       string        `yaml:"id"`
+	Name     string        `yaml:"name"`
+	Group    string        `yaml:"group"`
+	Safety   SafetyLevel   `yaml:"safety"`
+	Method   CleanupMethod `yaml:"method"`
+	Note     string        `yaml:"note,omitempty"`
+	Guide    string        `yaml:"guide,omitempty"`
+	Paths    []string      `yaml:"paths,omitempty"`
+	Command  string        `yaml:"command,omitempty"`
+	Check    string        `yaml:"check,omitempty"`
+	CheckCmd string        `yaml:"check_cmd,omitempty"`
+	Sudo     bool          `yaml:"sudo,omitempty"`
+	DaysOld  int           `yaml:"days_old,omitempty"`
 }
 
 type Group struct {

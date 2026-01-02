@@ -142,20 +142,20 @@ func NewModel(cfg *types.Config) *Model {
 	}
 
 	return &Model{
-		config:               cfg,
-		registry:             scanner.DefaultRegistry(cfg),
-		cleaner:              cleaner.New(),
-		selected:             make(map[string]bool),
-		excluded:             excluded,
-		resultMap:            make(map[string]*types.ScanResult),
-		results:              make([]*types.ScanResult, 0),
-		drillDownStack:       make([]drillDownState, 0),
-		view:                 ViewList,
-		spinner:              s,
-		scanning:             true,
+		config:            cfg,
+		registry:          scanner.DefaultRegistry(cfg),
+		cleaner:           cleaner.New(),
+		selected:          make(map[string]bool),
+		excluded:          excluded,
+		resultMap:         make(map[string]*types.ScanResult),
+		results:           make([]*types.ScanResult, 0),
+		drillDownStack:    make([]drillDownState, 0),
+		view:              ViewList,
+		spinner:           s,
+		scanning:          true,
 		hasFullDiskAccess: utils.CheckFullDiskAccess(),
 		userConfig:        userCfg,
-		scanErrors:           make([]scanErrorInfo, 0),
+		scanErrors:        make([]scanErrorInfo, 0),
 	}
 }
 
