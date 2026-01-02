@@ -1,79 +1,43 @@
 # mac-cleanup-go
 
-A terminal utility to clean up macOS caches, logs, and temporary files.
-
-Inspired by [mac-cleanup-py](https://github.com/mac-cleanup/mac-cleanup-py).
+Interactive TUI for cleaning macOS caches, logs, and temporary files.
 
 ![demo](assets/demo.gif)
 
+## Features
+
+- **50+ cleanup targets** - System caches, browsers, dev tools, apps
+- **Safety levels** - Each item labeled as Safe / Moderate / Risky
+- **File-level control** - Preview and exclude individual files before deletion
+
 ## Installation
-
-### Build from Source
-
-```bash
-git clone https://github.com/2ykwang/mac-cleanup-go.git
-cd mac-cleanup-go
-go build -o bin/mac-cleanup ./cmd/mac-cleanup
-./bin/mac-cleanup
-```
-
-### Homebrew
 
 ```bash
 brew tap 2ykwang/mac-cleanup-go
 brew install mac-cleanup-go
 ```
 
+Or build from source:
+
+```bash
+git clone https://github.com/2ykwang/mac-cleanup-go.git
+cd mac-cleanup-go && make build
+./bin/mac-cleanup
+```
+
 ## Usage
 
 ```bash
-mac-cleanup            # TUI mode (interactive)
-mac-cleanup --version  # Show version
+mac-cleanup                    # Interactive TUI
+mac-cleanup --clean            # Quick clean with saved profile
+mac-cleanup --clean --dry-run  # Preview only
 ```
 
-### CLI Mode
+> **Tip**: Grant Full Disk Access to your terminal for complete cleanup access.
 
-After running TUI mode once, your selection is saved. Use `--clean` for quick cleanup:
+## Inspired by
 
-> CLI mode only cleans **safe** categories (caches, trash, etc.).
-> Moderate/risky categories (Downloads, Docker, etc.) require TUI mode for file-level review.
-
-```bash
-mac-cleanup --clean            # Clean with saved profile
-mac-cleanup --clean --dry-run  # Preview only (no deletion)
-```
-
-> **Full Disk Access (Optional)**: Some items (Trash, Mail, etc.) require Full Disk Access.
-> System Settings → Privacy & Security → Full Disk Access → Add your terminal app
-
-## How It Works
-
-1. **Scan** - Searches for cleanable files in system, browsers, dev tools, and apps
-2. **Select** - Choose items to delete (sorted by size, safety levels displayed)
-3. **Preview** - Review detailed file lists and exclude individual items (exclusions are remembered)
-4. **Clean** - Move selected files to Trash
-
-### Safety Levels
-
-| Level    | Description                              |
-|----------|------------------------------------------|
-| Safe     | Auto-regenerated caches                  |
-| Moderate | May require re-download or re-login      |
-| Risky    | May contain important data - review first |
-
-## Keyboard Shortcuts
-
-| Screen  | Keys |
-|---------|------|
-| Main    | `↑↓` Navigate / `Space` Select / `a` Select All / `d` Deselect All / `Enter` Preview |
-| Preview | `←→` Switch tabs / `Space` Exclude item / `a` Include All / `d` Exclude All / `y` Delete |
-
-## Cleanup Targets
-
-- **System**: Trash, App Caches, Logs, QuickLook
-- **Browsers**: Chrome, Safari, Firefox, Arc, Edge, Brave
-- **Dev Tools**: Xcode, npm, Yarn, pip, Docker, Homebrew, Go, Gradle, etc.
-- **Apps**: Discord, Slack, Spotify, VS Code, JetBrains, etc.
+[mac-cleanup-py](https://github.com/mac-cleanup/mac-cleanup-py)
 
 ## License
 
