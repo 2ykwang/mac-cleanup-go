@@ -3,7 +3,6 @@ package cleaner
 import (
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
 	"time"
 
@@ -35,8 +34,6 @@ func (c *Cleaner) Clean(cat types.Category, items []types.CleanableItem, dryRun 
 	switch cat.Method {
 	case types.MethodTrash:
 		c.moveToTrash(items, result)
-	case types.MethodPermanent:
-		c.deletePermanent(items, result)
 	case types.MethodCommand:
 		c.runCommand(cat, result)
 	}
@@ -58,24 +55,6 @@ func (c *Cleaner) moveToTrash(items []types.CleanableItem, result *types.CleanRe
 			} else {
 				result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Name, err))
 			}
-		} else {
-			result.FreedSpace += item.Size
-			result.CleanedItems++
-		}
-	}
-}
-
-func (c *Cleaner) deletePermanent(items []types.CleanableItem, result *types.CleanResult) {
-	for _, item := range items {
-		var err error
-		if item.IsDirectory {
-			err = os.RemoveAll(item.Path)
-		} else {
-			err = os.Remove(item.Path)
-		}
-
-		if err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Name, err))
 		} else {
 			result.FreedSpace += item.Size
 			result.CleanedItems++

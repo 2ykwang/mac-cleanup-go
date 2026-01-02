@@ -162,7 +162,7 @@ func TestConvertCustomTarget_Valid(t *testing.T) {
 		Name:   "Test",
 		Group:  "dev",
 		Safety: "moderate",
-		Method: "permanent",
+		Method: "command",
 		Paths:  []string{"~/test/*"},
 	}
 
@@ -177,8 +177,8 @@ func TestConvertCustomTarget_Valid(t *testing.T) {
 	if cat.Safety != types.SafetyLevelModerate {
 		t.Errorf("Expected safety 'moderate', got '%s'", cat.Safety)
 	}
-	if cat.Method != types.MethodPermanent {
-		t.Errorf("Expected method 'permanent', got '%s'", cat.Method)
+	if cat.Method != types.MethodCommand {
+		t.Errorf("Expected method 'command', got '%s'", cat.Method)
 	}
 }
 

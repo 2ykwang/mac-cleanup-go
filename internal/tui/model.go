@@ -64,8 +64,7 @@ type Model struct {
 	reportScroll int
 	reportLines  []string // Pre-rendered report lines for scrolling
 
-	hasFullDiskAccess    bool
-	allowPermanentDelete bool // --dangerously-delete flag
+	hasFullDiskAccess bool
 
 	userConfig *userconfig.UserConfig
 
@@ -125,7 +124,7 @@ type cleanedCategory struct {
 }
 
 // NewModel creates a new model
-func NewModel(cfg *types.Config, allowPermanentDelete bool) *Model {
+func NewModel(cfg *types.Config) *Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(ColorPrimary)
@@ -154,9 +153,8 @@ func NewModel(cfg *types.Config, allowPermanentDelete bool) *Model {
 		view:                 ViewList,
 		spinner:              s,
 		scanning:             true,
-		hasFullDiskAccess:    utils.CheckFullDiskAccess(),
-		allowPermanentDelete: allowPermanentDelete,
-		userConfig:           userCfg,
+		hasFullDiskAccess: utils.CheckFullDiskAccess(),
+		userConfig:        userCfg,
 		scanErrors:           make([]scanErrorInfo, 0),
 	}
 }
@@ -542,9 +540,6 @@ func (m *Model) doClean() tea.Cmd {
 				currentItem += len(job.items)
 			} else {
 				cat := job.category
-				if cat.Method == types.MethodPermanent && !m.allowPermanentDelete {
-					cat.Method = types.MethodTrash
-				}
 
 				// Clean items one by one for progress tracking
 				itemResult := &types.CleanResult{

@@ -120,12 +120,8 @@ func showPreview(results []*types.ScanResult, excluded map[string]map[string]boo
 }
 
 // confirmCleanup asks for user confirmation
-func confirmCleanup(dangerouslyDelete bool) bool {
-	deleteMethod := "Trash"
-	if dangerouslyDelete {
-		deleteMethod = dangerStyle.Render("PERMANENT DELETE")
-	}
-	fmt.Printf("Delete method: %s\n", deleteMethod)
+func confirmCleanup() bool {
+	fmt.Printf("Delete method: %s\n", "Trash")
 	fmt.Printf("Proceed? [y/N]: ")
 
 	reader := bufio.NewReader(os.Stdin)
@@ -140,7 +136,6 @@ func executeCleanup(
 	results []*types.ScanResult,
 	excluded map[string]map[string]bool,
 	registry *scanner.Registry,
-	dangerouslyDelete bool,
 ) types.Report {
 	c := cleaner.New()
 	var report types.Report
@@ -157,9 +152,6 @@ func executeCleanup(
 		}
 
 		cat := result.Category
-		if cat.Method == types.MethodPermanent && !dangerouslyDelete {
-			cat.Method = types.MethodTrash
-		}
 
 		var cleanResult *types.CleanResult
 		if cat.Method == types.MethodSpecial {
@@ -210,7 +202,7 @@ func showReport(report types.Report, duration time.Duration) {
 }
 
 // Run executes the CLI clean mode
-func Run(cfg *types.Config, dangerouslyDelete, dryRun bool) error {
+func Run(cfg *types.Config, dryRun bool) error {
 	// Load user config
 	userCfg, err := userconfig.Load()
 	if err != nil {
@@ -222,10 +214,6 @@ func Run(cfg *types.Config, dangerouslyDelete, dryRun bool) error {
 	}
 
 	fmt.Printf("%s\n\n", titleStyle.Render("mac-cleanup --clean"))
-
-	if dangerouslyDelete {
-		fmt.Printf("%s\n\n", dangerStyle.Render("⚠ WARNING: Permanent deletion mode enabled!"))
-	}
 
 	// Build category map
 	categoryMap := make(map[string]types.Category)
@@ -286,7 +274,7 @@ func Run(cfg *types.Config, dangerouslyDelete, dryRun bool) error {
 	}
 
 	// Confirm
-	if !confirmCleanup(dangerouslyDelete) {
+	if !confirmCleanup() {
 		fmt.Println(mutedStyle.Render("Cancelled."))
 		return nil
 	}
@@ -294,7 +282,7 @@ func Run(cfg *types.Config, dangerouslyDelete, dryRun bool) error {
 	// Execute cleanup
 	fmt.Printf("\n%s\n\n", titleStyle.Render("Cleaning..."))
 	startTime := time.Now()
-	report := executeCleanup(results, excluded, registry, dangerouslyDelete)
+	report := executeCleanup(results, excluded, registry)
 	duration := time.Since(startTime)
 
 	// Show report

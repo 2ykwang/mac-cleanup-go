@@ -20,7 +20,6 @@ func main() {
 	// Flags
 	showVersion := flag.Bool("version", false, "Show version")
 	shortVersion := flag.Bool("v", false, "Show version (short)")
-	dangerouslyDelete := flag.Bool("dangerously-delete", false, "Enable permanent deletion (default: move to Trash)")
 	cleanMode := flag.Bool("clean", false, "Run cleanup with saved profile (no TUI)")
 	dryRun := flag.Bool("dry-run", false, "Show what would be cleaned without actually cleaning")
 	flag.Parse()
@@ -47,7 +46,7 @@ func main() {
 
 	// CLI clean mode
 	if *cleanMode {
-		if err := cli.Run(cfg, *dangerouslyDelete, *dryRun); err != nil {
+		if err := cli.Run(cfg, *dryRun); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -56,7 +55,7 @@ func main() {
 
 	// TUI mode
 	p := tea.NewProgram(
-		tui.NewModel(cfg, *dangerouslyDelete),
+		tui.NewModel(cfg),
 		tea.WithAltScreen(),
 	)
 
@@ -161,8 +160,6 @@ func convertCustomTarget(ct userconfig.CustomTarget) (types.Category, error) {
 	switch ct.Method {
 	case "trash":
 		method = types.MethodTrash
-	case "permanent":
-		method = types.MethodPermanent
 	case "command":
 		method = types.MethodCommand
 	case "special":
@@ -172,7 +169,7 @@ func convertCustomTarget(ct userconfig.CustomTarget) (types.Category, error) {
 	case "":
 		method = types.MethodTrash // default
 	default:
-		return types.Category{}, fmt.Errorf("invalid method '%s' (use: trash, permanent, command, special, manual)", ct.Method)
+		return types.Category{}, fmt.Errorf("invalid method '%s' (use: trash, command, special, manual)", ct.Method)
 	}
 
 	// Default group

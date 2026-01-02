@@ -28,12 +28,6 @@ func (m *Model) viewList() string {
 	}
 	b.WriteString("\n")
 
-	// Deletion mode indicator
-	if m.allowPermanentDelete {
-		b.WriteString(DangerStyle.Render("[!] PERMANENT DELETE MODE (--dangerously-delete)"))
-		b.WriteString("\n")
-	}
-
 	// Permission warning
 	if !m.hasFullDiskAccess {
 		b.WriteString(WarningStyle.Render("[!] Limited access: Grant Full Disk Access in System Settings for complete scan"))
@@ -130,10 +124,6 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult) string {
 		name += " [Command]"
 	case types.MethodSpecial:
 		name += " [Special]"
-	}
-	// Show [Permanent] only in --dangerously-delete mode
-	if m.allowPermanentDelete && r.Category.Method == types.MethodPermanent {
-		name += " [Permanent]"
 	}
 	name = fmt.Sprintf("%-*s", colName, name)
 	if isCurrent {
@@ -386,16 +376,8 @@ func (m *Model) viewConfirm() string {
 	b.WriteString(HeaderStyle.Render("Confirm Deletion"))
 	b.WriteString("\n\n")
 
-	// Show deletion mode
-	if m.allowPermanentDelete {
-		b.WriteString(DangerStyle.Render("  ⚠ PERMANENT DELETE MODE"))
-		b.WriteString("\n")
-		b.WriteString(DangerStyle.Render("  Files will be permanently deleted!"))
-		b.WriteString("\n\n")
-	} else {
-		b.WriteString(SuccessStyle.Render("  → Files will be moved to Trash"))
-		b.WriteString("\n\n")
-	}
+	b.WriteString(SuccessStyle.Render("  → Files will be moved to Trash"))
+	b.WriteString("\n\n")
 
 	b.WriteString(Divider(50) + "\n\n")
 
@@ -411,11 +393,7 @@ func (m *Model) viewConfirm() string {
 	}
 
 	b.WriteString("\n" + Divider(50) + "\n\n")
-	if m.allowPermanentDelete {
-		b.WriteString(DangerStyle.Render("  ⚠ This action cannot be undone!"))
-	} else {
-		b.WriteString(MutedStyle.Render("  Items can be recovered from Trash"))
-	}
+	b.WriteString(MutedStyle.Render("  Items can be recovered from Trash"))
 	b.WriteString("\n\n")
 	b.WriteString(fmt.Sprintf("  %s Press y or Enter to delete\n", SuccessStyle.Render("▸")))
 	b.WriteString(fmt.Sprintf("  %s Press n or Esc to cancel\n", DangerStyle.Render("▸")))
@@ -648,11 +626,6 @@ func (m *Model) methodBadge(method types.CleanupMethod) string {
 		return MutedStyle.Render("[Command]")
 	case types.MethodSpecial:
 		return MutedStyle.Render("[Special]")
-	case types.MethodPermanent:
-		if m.allowPermanentDelete {
-			return DangerStyle.Render("[Permanent]")
-		}
-		return "" // Will use Trash, no badge needed
 	default:
 		return "" // Trash is default, no badge needed
 	}
