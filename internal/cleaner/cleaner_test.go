@@ -4,18 +4,58 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"mac-cleanup-go/internal/scanner"
 	"mac-cleanup-go/pkg/types"
 )
 
+// mockScanner implements scanner.Scanner for testing
+type mockScanner struct {
+	category    types.Category
+	cleanCalled bool
+	cleanItems  []types.CleanableItem
+	cleanResult *types.CleanResult
+	cleanErr    error
+}
+
+func (m *mockScanner) Scan() (*types.ScanResult, error) {
+	return nil, nil
+}
+
+func (m *mockScanner) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
+	m.cleanCalled = true
+	m.cleanItems = items
+	if m.cleanResult != nil {
+		return m.cleanResult, m.cleanErr
+	}
+	return &types.CleanResult{
+		Category:     m.category,
+		CleanedItems: len(items),
+		FreedSpace:   100,
+		Errors:       []string{},
+	}, m.cleanErr
+}
+
+func (m *mockScanner) Category() types.Category {
+	return m.category
+}
+
+func (m *mockScanner) IsAvailable() bool {
+	return true
+}
+
 func TestNew(t *testing.T) {
-	c := New()
+	registry := scanner.NewRegistry()
+	c := New(registry)
 	if c == nil {
 		t.Fatal("New() returned nil")
 	}
 }
 
 func TestClean_Command_Success(t *testing.T) {
-	c := New()
+	c := New(nil)
 
 	cat := types.Category{
 		ID:      "test",
@@ -36,7 +76,7 @@ func TestClean_Command_Success(t *testing.T) {
 }
 
 func TestClean_Command_Failure(t *testing.T) {
-	c := New()
+	c := New(nil)
 
 	cat := types.Category{
 		ID:      "test",
@@ -57,7 +97,7 @@ func TestClean_Command_Failure(t *testing.T) {
 }
 
 func TestClean_Command_Empty(t *testing.T) {
-	c := New()
+	c := New(nil)
 
 	cat := types.Category{
 		ID:      "test",
@@ -78,7 +118,7 @@ func TestClean_Command_Empty(t *testing.T) {
 }
 
 func TestClean_CategoryInResult(t *testing.T) {
-	c := New()
+	c := New(nil)
 
 	cat := types.Category{
 		ID:     "test-id",
@@ -99,7 +139,7 @@ func TestClean_CategoryInResult(t *testing.T) {
 }
 
 func TestClean_SkipsSIPProtectedPaths(t *testing.T) {
-	c := New()
+	c := New(nil)
 
 	items := []types.CleanableItem{
 		{Path: "/System/Library/Caches/test", Name: "sip-protected", Size: 1000},
@@ -125,7 +165,7 @@ func TestClean_SkipsSIPProtectedPaths(t *testing.T) {
 }
 
 func TestClean_Permanent_RemovesFiles(t *testing.T) {
-	c := New()
+	c := New(nil)
 
 	// Create a temp file to test permanent deletion
 	tmpFile, err := os.CreateTemp("", "cleanup-test-*")
@@ -164,7 +204,7 @@ func TestClean_Permanent_RemovesFiles(t *testing.T) {
 }
 
 func TestClean_Permanent_RemovesDirectories(t *testing.T) {
-	c := New()
+	c := New(nil)
 
 	// Create a temp directory with files
 	tmpDir, err := os.MkdirTemp("", "cleanup-test-dir-*")
@@ -203,7 +243,7 @@ func TestClean_Permanent_RemovesDirectories(t *testing.T) {
 }
 
 func TestClean_Permanent_SkipsSIPProtectedPaths(t *testing.T) {
-	c := New()
+	c := New(nil)
 
 	items := []types.CleanableItem{
 		{Path: "/System/Library/Caches/test", Name: "sip-protected", Size: 1000},
@@ -222,28 +262,95 @@ func TestClean_Permanent_SkipsSIPProtectedPaths(t *testing.T) {
 	}
 }
 
-func TestClean_Builtin_ReturnsNoActionResult(t *testing.T) {
-	c := New()
+func TestClean_MethodBuiltin_DelegatesToScanner(t *testing.T) {
+	registry := scanner.NewRegistry()
+	mock := &mockScanner{
+		category: types.Category{
+			ID:     "docker",
+			Name:   "Docker",
+			Method: types.MethodBuiltin,
+		},
+	}
+	registry.Register(mock)
+
+	c := New(registry)
 
 	cat := types.Category{
 		ID:     "docker",
 		Name:   "Docker",
 		Method: types.MethodBuiltin,
 	}
-
-	result := c.Clean(cat, nil)
-
-	if result.CleanedItems != 0 {
-		t.Errorf("Expected 0 cleaned items for builtin, got %d", result.CleanedItems)
+	items := []types.CleanableItem{
+		{Path: "/tmp/test1", Name: "test1", Size: 100},
+		{Path: "/tmp/test2", Name: "test2", Size: 200},
 	}
 
-	if len(result.Errors) != 0 {
-		t.Errorf("Expected no errors, got %v", result.Errors)
+	result := c.Clean(cat, items)
+
+	assert.True(t, mock.cleanCalled, "Scanner.Clean should be called for MethodBuiltin")
+	assert.Equal(t, items, mock.cleanItems, "Items should be passed to Scanner.Clean")
+	assert.Equal(t, 2, result.CleanedItems)
+	assert.Equal(t, int64(100), result.FreedSpace)
+}
+
+func TestClean_MethodBuiltin_ScannerNotFound(t *testing.T) {
+	registry := scanner.NewRegistry()
+	c := New(registry)
+
+	cat := types.Category{
+		ID:     "nonexistent",
+		Name:   "Nonexistent",
+		Method: types.MethodBuiltin,
 	}
+	items := []types.CleanableItem{
+		{Path: "/tmp/test", Name: "test", Size: 100},
+	}
+
+	result := c.Clean(cat, items)
+
+	require.Len(t, result.Errors, 1)
+	assert.Contains(t, result.Errors[0], "scanner not found")
+	assert.Equal(t, 0, result.CleanedItems)
+}
+
+func TestClean_MethodBuiltin_ScannerReturnsError(t *testing.T) {
+	registry := scanner.NewRegistry()
+	mock := &mockScanner{
+		category: types.Category{
+			ID:     "docker",
+			Name:   "Docker",
+			Method: types.MethodBuiltin,
+		},
+		cleanResult: &types.CleanResult{
+			Category:     types.Category{ID: "docker"},
+			CleanedItems: 1,
+			FreedSpace:   50,
+			Errors:       []string{"partial failure"},
+		},
+	}
+	registry.Register(mock)
+
+	c := New(registry)
+
+	cat := types.Category{
+		ID:     "docker",
+		Name:   "Docker",
+		Method: types.MethodBuiltin,
+	}
+	items := []types.CleanableItem{
+		{Path: "/tmp/test", Name: "test", Size: 100},
+	}
+
+	result := c.Clean(cat, items)
+
+	assert.True(t, mock.cleanCalled)
+	assert.Equal(t, 1, result.CleanedItems)
+	assert.Equal(t, int64(50), result.FreedSpace)
+	assert.Contains(t, result.Errors, "partial failure")
 }
 
 func TestClean_Manual_SkipsWithGuide(t *testing.T) {
-	c := New()
+	c := New(nil)
 
 	cat := types.Category{
 		ID:     "test-manual",

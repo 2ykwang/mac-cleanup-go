@@ -13,10 +13,12 @@ import (
 
 const commandTimeout = 10 * time.Second
 
-type Cleaner struct{}
+type Cleaner struct {
+	registry *scanner.Registry
+}
 
-func New() *Cleaner {
-	return &Cleaner{}
+func New(registry *scanner.Registry) *Cleaner {
+	return &Cleaner{registry: registry}
 }
 
 func (c *Cleaner) Clean(cat types.Category, items []types.CleanableItem) *types.CleanResult {
@@ -33,7 +35,14 @@ func (c *Cleaner) Clean(cat types.Category, items []types.CleanableItem) *types.
 	case types.MethodCommand:
 		c.runCommand(cat, result)
 	case types.MethodBuiltin:
-		// Handled by scanner's Clean method, not Cleaner
+		if s, ok := c.registry.Get(cat.ID); ok {
+			builtinResult, _ := s.Clean(items)
+			if builtinResult != nil {
+				return builtinResult
+			}
+		} else {
+			result.Errors = append(result.Errors, "scanner not found: "+cat.ID)
+		}
 	case types.MethodManual:
 		// Manual methods require user action - skip all items
 		result.SkippedItems = len(items)
