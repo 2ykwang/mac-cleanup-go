@@ -64,6 +64,7 @@ type ScanResult struct {
 type CleanResult struct {
 	Category     Category
 	CleanedItems int
+	SkippedItems int // SIP protected paths skipped during cleanup
 	FreedSpace   int64
 	Errors       []string
 }

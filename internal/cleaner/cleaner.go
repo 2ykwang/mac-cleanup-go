@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"time"
 
+	"mac-cleanup-go/internal/scanner"
 	"mac-cleanup-go/pkg/types"
 )
 
@@ -25,6 +26,11 @@ func (c *Cleaner) Clean(cat types.Category, items []types.CleanableItem, dryRun 
 
 	if dryRun {
 		for _, item := range items {
+			// Skip SIP protected paths
+			if scanner.IsSIPProtected(item.Path) {
+				result.SkippedItems++
+				continue
+			}
 			result.FreedSpace += item.Size
 			result.CleanedItems++
 		}
@@ -43,6 +49,12 @@ func (c *Cleaner) Clean(cat types.Category, items []types.CleanableItem, dryRun 
 
 func (c *Cleaner) moveToTrash(items []types.CleanableItem, result *types.CleanResult) {
 	for _, item := range items {
+		// Skip SIP protected paths
+		if scanner.IsSIPProtected(item.Path) {
+			result.SkippedItems++
+			continue
+		}
+
 		script := fmt.Sprintf(`tell application "Finder" to delete POSIX file "%s"`, item.Path)
 		ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
 		cmd := exec.CommandContext(ctx, "osascript", "-e", script)

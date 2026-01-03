@@ -62,6 +62,11 @@ func (s *PathScanner) Scan() (*types.ScanResult, error) {
 		}
 
 		for _, path := range paths {
+			// Skip SIP protected paths
+			if IsSIPProtected(path) {
+				continue
+			}
+
 			item, err := s.scanPath(path)
 			if err != nil {
 				continue

@@ -146,3 +146,60 @@ func TestClean_CategoryInResult(t *testing.T) {
 		t.Errorf("Expected category name 'Test Category', got '%s'", result.Category.Name)
 	}
 }
+
+func TestClean_DryRun_SkipsSIPProtectedPaths(t *testing.T) {
+	c := New()
+
+	items := []types.CleanableItem{
+		{Path: "/System/Library/Caches/test", Name: "sip-protected", Size: 1000},
+		{Path: "/usr/bin/test", Name: "usr-protected", Size: 2000},
+		{Path: "/Users/test/Library/Caches", Name: "normal", Size: 3000},
+	}
+
+	cat := types.Category{
+		ID:     "test",
+		Name:   "Test Category",
+		Method: types.MethodTrash,
+	}
+
+	result := c.Clean(cat, items, true) // dry-run
+
+	// Only the non-SIP path should be counted
+	if result.CleanedItems != 1 {
+		t.Errorf("Expected 1 cleaned item, got %d", result.CleanedItems)
+	}
+
+	if result.SkippedItems != 2 {
+		t.Errorf("Expected 2 skipped items, got %d", result.SkippedItems)
+	}
+
+	if result.FreedSpace != 3000 {
+		t.Errorf("Expected 3000 bytes freed, got %d", result.FreedSpace)
+	}
+}
+
+func TestClean_RealRun_SkipsSIPProtectedPaths(t *testing.T) {
+	c := New()
+
+	items := []types.CleanableItem{
+		{Path: "/System/Library/Caches/test", Name: "sip-protected", Size: 1000},
+		{Path: "/bin/test", Name: "bin-protected", Size: 2000},
+	}
+
+	cat := types.Category{
+		ID:     "test",
+		Name:   "Test Category",
+		Method: types.MethodTrash,
+	}
+
+	result := c.Clean(cat, items, false) // real run
+
+	// Both should be skipped (SIP protected)
+	if result.CleanedItems != 0 {
+		t.Errorf("Expected 0 cleaned items, got %d", result.CleanedItems)
+	}
+
+	if result.SkippedItems != 2 {
+		t.Errorf("Expected 2 skipped items, got %d", result.SkippedItems)
+	}
+}

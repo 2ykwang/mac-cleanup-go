@@ -326,3 +326,23 @@ func TestClean_IncludesCategoryInResult(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "my-cat", result.Category.ID)
 }
+
+// --- SIP Filtering Tests ---
+func TestScan_ExcludesSIPProtectedPaths(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "path-scanner-test")
+	defer os.RemoveAll(tmpDir)
+
+	os.WriteFile(filepath.Join(tmpDir, "regular.txt"), []byte("test"), 0o644)
+
+	cat := types.Category{
+		ID:    "test",
+		Paths: []string{filepath.Join(tmpDir, "*")},
+	}
+
+	s := NewPathScanner(cat)
+	result, err := s.Scan()
+
+	assert.NoError(t, err)
+	assert.Len(t, result.Items, 1)
+	assert.Equal(t, "regular.txt", result.Items[0].Name)
+}
