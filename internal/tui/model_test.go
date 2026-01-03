@@ -6,8 +6,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/stretchr/testify/assert"
 
-	"mac-cleanup-go/internal/userconfig"
-	"mac-cleanup-go/pkg/types"
+	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
+	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
 // Test fixtures

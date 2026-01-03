@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"mac-cleanup-go/internal/utils"
+	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
 func (m *Model) viewCleaning() string {

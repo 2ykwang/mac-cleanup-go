@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"mac-cleanup-go/internal/utils"
+	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
 func (m *Model) reportHeader() string {

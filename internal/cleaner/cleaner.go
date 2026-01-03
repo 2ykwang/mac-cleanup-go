@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"time"
 
-	"mac-cleanup-go/internal/scanner"
-	"mac-cleanup-go/pkg/types"
+	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
+	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
 const commandTimeout = 10 * time.Second

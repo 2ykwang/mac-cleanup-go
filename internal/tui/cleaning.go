@@ -3,7 +3,7 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
-	"mac-cleanup-go/pkg/types"
+	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
 func (m *Model) doClean() tea.Cmd {

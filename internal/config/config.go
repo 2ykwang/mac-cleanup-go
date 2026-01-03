@@ -6,7 +6,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"mac-cleanup-go/pkg/types"
+	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
 //go:embed targets.yaml

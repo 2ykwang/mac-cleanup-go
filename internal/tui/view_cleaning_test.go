@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"mac-cleanup-go/internal/userconfig"
+	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
 )
 
 func newTestModelForViewCleaning() *Model {

@@ -7,8 +7,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"mac-cleanup-go/internal/config"
-	"mac-cleanup-go/internal/tui"
+	"github.com/2ykwang/mac-cleanup-go/internal/config"
+	"github.com/2ykwang/mac-cleanup-go/internal/tui"
 )
 
 // version is set via ldflags: go build -ldflags "-X main.version=1.0.0"

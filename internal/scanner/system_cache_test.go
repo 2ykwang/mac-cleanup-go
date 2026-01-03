@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"mac-cleanup-go/pkg/types"
+	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
 func TestIsExcluded_WhenPathMatchesOtherCategory_ReturnsTrue(t *testing.T) {

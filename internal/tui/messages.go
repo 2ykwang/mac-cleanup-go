@@ -1,6 +1,6 @@
 package tui
 
-import "mac-cleanup-go/pkg/types"
+import "github.com/2ykwang/mac-cleanup-go/pkg/types"
 
 // View state
 type View int

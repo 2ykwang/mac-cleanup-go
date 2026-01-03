@@ -1,6 +1,6 @@
 package scanner
 
-import "mac-cleanup-go/pkg/types"
+import "github.com/2ykwang/mac-cleanup-go/pkg/types"
 
 type Scanner interface {
 	Scan() (*types.ScanResult, error)

@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"mac-cleanup-go/pkg/types"
+	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
 // --- Category Tests ---

@@ -6,8 +6,8 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"mac-cleanup-go/internal/utils"
-	"mac-cleanup-go/pkg/types"
+	"github.com/2ykwang/mac-cleanup-go/internal/utils"
+	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
 func (m *Model) previewHeader(selected []*types.ScanResult, cat *types.ScanResult) string {
