@@ -112,6 +112,7 @@ func (m *Model) viewList() string {
 
 func (m *Model) renderListItem(idx int, r *types.ScanResult) string {
 	isCurrent := idx == m.cursor
+	isManual := r.Category.Method == types.MethodManual
 
 	cursor := "  "
 	if isCurrent {
@@ -119,7 +120,10 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult) string {
 	}
 
 	checkbox := "[ ]"
-	if m.selected[r.Category.ID] {
+	if isManual {
+		// Manual items cannot be selected - always show muted unchecked box
+		checkbox = MutedStyle.Render(" - ")
+	} else if m.selected[r.Category.ID] {
 		checkbox = SuccessStyle.Render("[✓]")
 	}
 
@@ -136,13 +140,23 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult) string {
 		name += " [Special]"
 	}
 	name = fmt.Sprintf("%-*s", colName, name)
-	if isCurrent {
+	if isManual {
+		name = MutedStyle.Render(name)
+	} else if isCurrent {
 		name = SelectedStyle.Render(name)
 	}
 
 	size := fmt.Sprintf("%*s", colSize, utils.FormatSize(r.TotalSize))
 	count := fmt.Sprintf("%*s", colNum, fmt.Sprintf("(%d)", len(r.Items)))
 
+	if isManual {
+		size = MutedStyle.Render(size)
+		count = MutedStyle.Render(count)
+	} else {
+		size = SizeStyle.Render(size)
+		count = MutedStyle.Render(count)
+	}
+
 	return fmt.Sprintf("%s%s %s %s %s %s\n",
-		cursor, checkbox, dot, name, SizeStyle.Render(size), MutedStyle.Render(count))
+		cursor, checkbox, dot, name, size, count)
 }

@@ -52,6 +52,36 @@ func newTestModelWithResults() *Model {
 	return m
 }
 
+func newTestModelWithManualCategory() *Model {
+	m := newTestModel()
+	m.results = []*types.ScanResult{
+		{
+			Category:  types.Category{ID: "cat1", Name: "Chrome Cache", Safety: types.SafetyLevelSafe},
+			TotalSize: 1000,
+			Items:     []types.CleanableItem{{Path: "/path/1", Size: 500}, {Path: "/path/2", Size: 500}},
+		},
+		{
+			Category:  types.Category{ID: "cat2", Name: "npm Cache", Safety: types.SafetyLevelSafe},
+			TotalSize: 2000,
+			Items:     []types.CleanableItem{{Path: "/path/3", Size: 2000}},
+		},
+		{
+			Category:  types.Category{ID: "manual-cat", Name: "Telegram DB", Safety: types.SafetyLevelRisky, Method: types.MethodManual},
+			TotalSize: 5000,
+			Items:     []types.CleanableItem{{Path: "/path/5", Size: 5000}},
+		},
+		{
+			Category:  types.Category{ID: "cat3", Name: "Xcode Archives", Safety: types.SafetyLevelRisky},
+			TotalSize: 3000,
+			Items:     []types.CleanableItem{{Path: "/path/4", Size: 3000}},
+		},
+	}
+	for _, r := range m.results {
+		m.resultMap[r.Category.ID] = r
+	}
+	return m
+}
+
 // Navigation tests
 
 func TestHandleListKey_CursorDown(t *testing.T) {
@@ -583,4 +613,47 @@ func TestUpdate_CleanDoneMsg_ClearsRecentDeleted(t *testing.T) {
 	// recentDeleted should be cleared
 	assert.Equal(t, 0, m.recentDeleted.Len(), "recentDeleted should be cleared after cleanDoneMsg")
 	assert.Equal(t, ViewReport, m.view, "view should change to ViewReport")
+}
+
+// Manual item tests
+func TestRenderListItem_ManualItemMuted(t *testing.T) {
+	m := newTestModelWithManualCategory()
+
+	manualResult := m.results[2]
+	assert.Equal(t, types.MethodManual, manualResult.Category.Method)
+
+	output := m.renderListItem(2, manualResult)
+
+	assert.Contains(t, output, "[Manual]")
+	assert.Contains(t, output, "Telegram DB")
+
+	mutedCheckbox := MutedStyle.Render(" - ")
+	assert.Contains(t, output, mutedCheckbox, "manual item checkbox should be rendered with MutedStyle")
+
+	m.selected[manualResult.Category.ID] = true
+	outputSelected := m.renderListItem(2, manualResult)
+	assert.NotContains(t, outputSelected, "[✓]", "manual item should never show checked indicator")
+}
+
+func TestHandleListKey_ManualNotSelectable(t *testing.T) {
+	m := newTestModelWithManualCategory()
+	m.cursor = 2 // Manual category (Telegram DB)
+
+	assert.Equal(t, types.MethodManual, m.results[m.cursor].Category.Method)
+
+	m.handleListKey(tea.KeyMsg{Type: tea.KeySpace})
+
+	assert.False(t, m.selected["manual-cat"], "manual category should not be selectable via Space key")
+}
+
+func TestHandleListKey_SelectAll_ExcludesManual(t *testing.T) {
+	m := newTestModelWithManualCategory()
+
+	m.handleListKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+
+	assert.True(t, m.selected["cat1"], "non-manual category should be selected")
+	assert.True(t, m.selected["cat2"], "non-manual category should be selected")
+	assert.True(t, m.selected["cat3"], "non-manual category should be selected")
+
+	assert.False(t, m.selected["manual-cat"], "manual category should be excluded from select all")
 }

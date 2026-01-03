@@ -74,6 +74,10 @@ func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case " ":
 		if len(m.results) > 0 && m.cursor < len(m.results) {
 			r := m.results[m.cursor]
+			// Skip manual categories - they cannot be selected
+			if r.Category.Method == types.MethodManual {
+				break
+			}
 			id := r.Category.ID
 			wasSelected := m.selected[id]
 			m.selected[id] = !wasSelected
@@ -84,8 +88,12 @@ func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case "a", "A":
-		// Select all
+		// Select all (excluding manual categories)
 		for _, r := range m.results {
+			// Skip manual categories - they cannot be selected
+			if r.Category.Method == types.MethodManual {
+				continue
+			}
 			wasSelected := m.selected[r.Category.ID]
 			m.selected[r.Category.ID] = true
 
