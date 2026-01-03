@@ -36,8 +36,12 @@ Moved to Trash by default. Some use native commands (Docker, Homebrew), others g
 ## Installation
 
 ```bash
+# Homebrew
 brew tap 2ykwang/mac-cleanup-go
 brew install mac-cleanup-go
+
+# Go install
+go install github.com/2ykwang/mac-cleanup-go@latest
 ```
 
 Or build from source:
