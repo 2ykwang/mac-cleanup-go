@@ -52,3 +52,21 @@ type cleanedCategory struct {
 	cleaned    int
 	errors     int
 }
+
+// DeletedItemEntry represents a single deleted item in the progress list
+type DeletedItemEntry struct {
+	Path    string // Full path of the deleted item
+	Name    string // Display name (filename or directory name)
+	Size    int64  // Size in bytes
+	Success bool   // true if deletion succeeded
+	ErrMsg  string // Error message if failed (empty if success)
+}
+
+// cleanItemDoneMsg signals that a single item deletion is complete
+type cleanItemDoneMsg struct {
+	path    string
+	name    string
+	size    int64
+	success bool
+	errMsg  string
+}
