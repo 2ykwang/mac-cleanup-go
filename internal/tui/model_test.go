@@ -705,3 +705,136 @@ func TestHandleListKey_SelectAll_ExcludesManual(t *testing.T) {
 
 	assert.False(t, m.selected["manual-cat"], "manual category should be excluded from select all")
 }
+
+// Guide popup tests (Manual item)
+func TestHandleListKey_ManualSpaceOpensGuide(t *testing.T) {
+	m := newTestModelWithManualCategory()
+	m.cursor = 2 // Manual category (Telegram DB)
+
+	assert.Equal(t, types.MethodManual, m.results[m.cursor].Category.Method)
+
+	m.handleListKey(tea.KeyMsg{Type: tea.KeySpace})
+
+	assert.Equal(t, ViewGuide, m.view, "Space on Manual item should open guide popup")
+	assert.NotNil(t, m.guideCategory, "guideCategory should be set")
+	assert.Equal(t, "manual-cat", m.guideCategory.ID, "guideCategory should reference the Manual category")
+}
+
+func TestHandleGuideKey_EscReturnsToList(t *testing.T) {
+	m := newTestModelWithManualCategory()
+	m.view = ViewGuide
+	m.guideCategory = &m.results[2].Category
+	m.guidePathIndex = 1
+
+	m.handleGuideKey(tea.KeyMsg{Type: tea.KeyEsc})
+
+	assert.Equal(t, ViewList, m.view, "Esc should return to list view")
+	assert.Nil(t, m.guideCategory, "guideCategory should be cleared")
+	assert.Equal(t, 0, m.guidePathIndex, "guidePathIndex should be reset")
+}
+
+func TestHandleGuideKey_EnterReturnsToList(t *testing.T) {
+	m := newTestModelWithManualCategory()
+	m.view = ViewGuide
+	m.guideCategory = &m.results[2].Category
+
+	m.handleGuideKey(tea.KeyMsg{Type: tea.KeyEnter})
+
+	assert.Equal(t, ViewList, m.view, "Enter should return to list view")
+	assert.Nil(t, m.guideCategory, "guideCategory should be cleared")
+}
+
+func TestHandleGuideKey_SpaceReturnsToList(t *testing.T) {
+	m := newTestModelWithManualCategory()
+	m.view = ViewGuide
+	m.guideCategory = &m.results[2].Category
+
+	m.handleGuideKey(tea.KeyMsg{Type: tea.KeySpace})
+
+	assert.Equal(t, ViewList, m.view, "Space should return to list view")
+}
+
+func TestViewGuide_EmptyGuideShowsDefaultMessage(t *testing.T) {
+	m := newTestModel()
+	m.width = 80
+	m.height = 24
+	m.view = ViewGuide
+	m.guideCategory = &types.Category{
+		ID:     "test-manual",
+		Name:   "Test Manual Item",
+		Method: types.MethodManual,
+		Guide:  "", // Empty guide
+		Paths:  []string{"~/Library/Test"},
+	}
+
+	output := m.viewGuide()
+
+	assert.Contains(t, output, "Test Manual Item", "should show category name")
+	assert.Contains(t, output, "must be deleted manually", "should show default message when guide is empty")
+	assert.Contains(t, output, "~/Library/Test", "should show paths")
+}
+
+func TestViewGuide_EmptyNoteHidesSection(t *testing.T) {
+	m := newTestModel()
+	m.width = 80
+	m.height = 24
+	m.view = ViewGuide
+	m.guideCategory = &types.Category{
+		ID:     "test-manual",
+		Name:   "Test Manual Item",
+		Method: types.MethodManual,
+		Note:   "", // Empty note
+		Guide:  "Open app and clear data",
+	}
+
+	output := m.viewGuide()
+
+	assert.NotContains(t, output, "⚠", "should not show warning icon when note is empty")
+	assert.Contains(t, output, "Open app and clear data", "should show guide")
+}
+
+func TestViewGuide_EmptyPathsHidesSection(t *testing.T) {
+	m := newTestModel()
+	m.width = 80
+	m.height = 24
+	m.view = ViewGuide
+	m.guideCategory = &types.Category{
+		ID:     "test-manual",
+		Name:   "Test Manual Item",
+		Method: types.MethodManual,
+		Guide:  "Open app settings",
+		Paths:  []string{}, // Empty paths
+	}
+
+	output := m.viewGuide()
+
+	assert.NotContains(t, output, "Paths:", "should not show Paths section when empty")
+	assert.Contains(t, output, "Open app settings", "should show guide")
+}
+
+func TestHandleGuideKey_PathNavigation(t *testing.T) {
+	m := newTestModel()
+	m.view = ViewGuide
+	m.guideCategory = &types.Category{
+		ID:    "test-manual",
+		Name:  "Test Item",
+		Paths: []string{"~/path1", "~/path2", "~/path3"},
+	}
+	m.guidePathIndex = 0
+
+	m.handleGuideKey(tea.KeyMsg{Type: tea.KeyDown})
+	assert.Equal(t, 1, m.guidePathIndex, "down should increase path index")
+
+	m.handleGuideKey(tea.KeyMsg{Type: tea.KeyDown})
+	assert.Equal(t, 2, m.guidePathIndex, "down should increase path index")
+
+	m.handleGuideKey(tea.KeyMsg{Type: tea.KeyDown})
+	assert.Equal(t, 2, m.guidePathIndex, "should not exceed paths length")
+
+	m.handleGuideKey(tea.KeyMsg{Type: tea.KeyUp})
+	assert.Equal(t, 1, m.guidePathIndex, "up should decrease path index")
+
+	m.guidePathIndex = 0
+	m.handleGuideKey(tea.KeyMsg{Type: tea.KeyUp})
+	assert.Equal(t, 0, m.guidePathIndex, "should not go below 0")
+}

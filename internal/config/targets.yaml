@@ -744,7 +744,9 @@ categories:
     safety: risky
     method: manual
     note: "CAUTION: Deletes chat history, images, videos - may require re-login"
-    guide: "Quit KakaoTalk, then run: rm -rf ~/Library/Containers/com.kakao.KakaoTalkMac/Data/Library/Application\\ Support/*"
+    guide: |
+      Quit KakaoTalk, then run:
+      rm -rf ~/Library/Containers/com.kakao.KakaoTalkMac/Data/Library/Application\ Support/*
     check: "~/Library/Containers/com.kakao.KakaoTalkMac/"
     paths:
       - "~/Library/Containers/com.kakao.KakaoTalkMac/Data/Library/Application Support/*"
