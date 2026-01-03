@@ -298,6 +298,28 @@ categories:
     paths:
       - "~/go/pkg/mod/cache/*"
 
+  - id: go-build
+    name: Go Build Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Go compiler build cache - regenerated on next build (go clean -cache)
+    check: "~/Library/Caches/go-build/"
+    paths:
+      - "~/Library/Caches/go-build/*"
+
+  - id: go-tools
+    name: Go Dev Tools Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Caches for gopls, golangci-lint, goimports - regenerated on use
+    check: "~/Library/Caches/gopls/"
+    paths:
+      - "~/Library/Caches/gopls/*"
+      - "~/Library/Caches/golangci-lint/*"
+      - "~/Library/Caches/goimports/*"
+
   - id: gradle
     name: Gradle Cache
     group: dev
