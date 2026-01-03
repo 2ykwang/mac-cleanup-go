@@ -2,11 +2,71 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"mac-cleanup-go/internal/utils"
 	"mac-cleanup-go/pkg/types"
 )
+
+// GroupStat represents aggregated size statistics for a group
+type GroupStat struct {
+	Name string
+	Size int64
+}
+
+// getGroupStats aggregates scan results by group, sorted by size descending
+func (m *Model) getGroupStats() []GroupStat {
+	if len(m.results) == 0 {
+		return nil
+	}
+
+	// Build group ID -> name map
+	groupNames := make(map[string]string)
+	if m.config != nil {
+		for _, g := range m.config.Groups {
+			groupNames[g.ID] = g.Name
+		}
+	}
+
+	// Aggregate sizes by group
+	groupSizes := make(map[string]int64)
+	for _, r := range m.results {
+		groupSizes[r.Category.Group] += r.TotalSize
+	}
+
+	// Filter zero-byte groups and convert to slice
+	var stats []GroupStat
+	for groupID, size := range groupSizes {
+		if size > 0 {
+			name := groupNames[groupID]
+			if name == "" {
+				name = groupID // fallback to ID if name not found
+			}
+			stats = append(stats, GroupStat{Name: name, Size: size})
+		}
+	}
+
+	// Sort by size descending
+	sort.Slice(stats, func(i, j int) bool {
+		return stats[i].Size > stats[j].Size
+	})
+
+	return stats
+}
+
+// formatGroupStats formats group statistics as a single line string
+func formatGroupStats(stats []GroupStat) string {
+	if len(stats) == 0 {
+		return ""
+	}
+
+	var parts []string
+	for _, s := range stats {
+		parts = append(parts, fmt.Sprintf("%s: %s", s.Name, formatSize(s.Size)))
+	}
+	return MutedStyle.Render(strings.Join(parts, "  "))
+}
 
 func (m *Model) listHeader() string {
 	var b strings.Builder
@@ -46,6 +106,12 @@ func (m *Model) listHeader() string {
 			SizeStyle.Render(formatSize(m.getSelectedSize())), m.getSelectedCount())
 	}
 	b.WriteString(summary + "\n")
+
+	// Group statistics
+	if stats := m.getGroupStats(); len(stats) > 0 {
+		b.WriteString(formatGroupStats(stats) + "\n")
+	}
+
 	b.WriteString(Divider(60) + "\n")
 
 	return b.String()
