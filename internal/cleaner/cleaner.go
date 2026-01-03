@@ -3,6 +3,7 @@ package cleaner
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"time"
 
@@ -27,8 +28,15 @@ func (c *Cleaner) Clean(cat types.Category, items []types.CleanableItem) *types.
 	switch cat.Method {
 	case types.MethodTrash:
 		c.moveToTrash(items, result)
+	case types.MethodPermanent:
+		c.removePermanent(items, result)
 	case types.MethodCommand:
 		c.runCommand(cat, result)
+	case types.MethodBuiltin:
+		// Handled by scanner's Clean method, not Cleaner
+	case types.MethodManual:
+		// Manual methods require user action - skip all items
+		result.SkippedItems = len(items)
 	}
 
 	return result
@@ -54,6 +62,30 @@ func (c *Cleaner) moveToTrash(items []types.CleanableItem, result *types.CleanRe
 			} else {
 				result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Name, err))
 			}
+		} else {
+			result.FreedSpace += item.Size
+			result.CleanedItems++
+		}
+	}
+}
+
+func (c *Cleaner) removePermanent(items []types.CleanableItem, result *types.CleanResult) {
+	for _, item := range items {
+		// Skip SIP protected paths
+		if scanner.IsSIPProtected(item.Path) {
+			result.SkippedItems++
+			continue
+		}
+
+		var err error
+		if item.IsDirectory {
+			err = os.RemoveAll(item.Path)
+		} else {
+			err = os.Remove(item.Path)
+		}
+
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Name, err))
 		} else {
 			result.FreedSpace += item.Size
 			result.CleanedItems++
