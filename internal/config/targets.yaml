@@ -18,7 +18,7 @@ categories:
     name: Trash
     group: system
     safety: safe
-    method: trash
+    method: permanent
     note: Files already deleted by user, waiting in Trash
     paths:
       - "~/.Trash/*"
