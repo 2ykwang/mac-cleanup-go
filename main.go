@@ -31,7 +31,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// TUI mode
 	p := tea.NewProgram(
 		tui.NewModel(cfg),
 		tea.WithAltScreen(),

@@ -1,7 +1,6 @@
 # Variables
 BINARY_NAME := mac-cleanup
 BINARY_DIR := bin
-CMD_DIR := ./cmd/mac-cleanup
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 GO ?= go
 GOFLAGS := -ldflags "-X main.version=$(VERSION)"
@@ -13,15 +12,15 @@ GOFLAGS := -ldflags "-X main.version=$(VERSION)"
 
 .PHONY: build
 build: ## Build the binary
-	$(GO) build $(GOFLAGS) -o $(BINARY_DIR)/$(BINARY_NAME) $(CMD_DIR)
+	$(GO) build $(GOFLAGS) -o $(BINARY_DIR)/$(BINARY_NAME) .
 
 .PHONY: build-dev
 build-dev: ## Build without version info (faster)
-	$(GO) build -o $(BINARY_DIR)/$(BINARY_NAME) $(CMD_DIR)
+	$(GO) build -o $(BINARY_DIR)/$(BINARY_NAME) .
 
 .PHONY: run
 run: ## Run the application
-	$(GO) run $(CMD_DIR)
+	$(GO) run .
 
 ##@ Development
 
