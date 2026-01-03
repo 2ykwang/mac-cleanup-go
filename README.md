@@ -7,7 +7,7 @@
 
 Interactive TUI for cleaning macOS caches, logs, and temporary files.
 
-![demo](assets/demo.gif)
+![demo](assets/demo2.gif)
 
 ## Features
 
