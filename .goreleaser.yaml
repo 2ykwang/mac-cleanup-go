@@ -7,7 +7,7 @@ before:
     - go mod tidy
 
 builds:
-  - main: ./cmd/mac-cleanup
+  - main: .
     binary: mac-cleanup
     env:
       - CGO_ENABLED=0
