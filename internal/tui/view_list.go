@@ -130,14 +130,14 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult) string {
 	dot := safetyDot(r.Category.Safety)
 
 	name := r.Category.Name
-	// Add method badge only for special methods
+
 	switch r.Category.Method {
 	case types.MethodManual:
 		name += " [Manual]"
 	case types.MethodCommand:
 		name += " [Command]"
-	case types.MethodSpecial:
-		name += " [Special]"
+	case types.MethodBuiltin:
+		name += " [Builtin]"
 	}
 	name = fmt.Sprintf("%-*s", colName, name)
 	if isManual {

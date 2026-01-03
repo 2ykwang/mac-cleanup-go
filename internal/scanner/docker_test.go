@@ -191,7 +191,7 @@ func TestDockerScanner_Scan_Integration(t *testing.T) {
 	cat := types.Category{
 		ID:       "docker",
 		Name:     "Docker",
-		Method:   types.MethodSpecial,
+		Method:   types.MethodBuiltin,
 		CheckCmd: "docker",
 	}
 

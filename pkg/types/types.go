@@ -13,10 +13,11 @@ const (
 type CleanupMethod string
 
 const (
-	MethodTrash   CleanupMethod = "trash"
-	MethodCommand CleanupMethod = "command"
-	MethodSpecial CleanupMethod = "special"
-	MethodManual  CleanupMethod = "manual"
+	MethodTrash     CleanupMethod = "trash"
+	MethodPermanent CleanupMethod = "permanent"
+	MethodCommand   CleanupMethod = "command"
+	MethodBuiltin   CleanupMethod = "builtin"
+	MethodManual    CleanupMethod = "manual"
 )
 
 type Category struct {

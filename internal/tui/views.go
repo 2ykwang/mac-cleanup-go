@@ -51,8 +51,8 @@ func (m *Model) methodBadge(method types.CleanupMethod) string {
 		return WarningStyle.Render("[Manual]")
 	case types.MethodCommand:
 		return MutedStyle.Render("[Command]")
-	case types.MethodSpecial:
-		return MutedStyle.Render("[Special]")
+	case types.MethodBuiltin:
+		return MutedStyle.Render("[Builtin]")
 	default:
 		return "" // Trash is default, no badge needed
 	}

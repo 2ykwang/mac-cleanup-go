@@ -10,7 +10,7 @@ func (m *Model) doClean() tea.Cmd {
 	type cleanJob struct {
 		category  types.Category
 		items     []types.CleanableItem
-		isSpecial bool
+		isBuiltin bool
 	}
 	var jobs []cleanJob
 
@@ -40,7 +40,7 @@ func (m *Model) doClean() tea.Cmd {
 		jobs = append(jobs, cleanJob{
 			category:  r.Category,
 			items:     items,
-			isSpecial: r.Category.Method == types.MethodSpecial,
+			isBuiltin: r.Category.Method == types.MethodBuiltin,
 		})
 	}
 
@@ -67,8 +67,7 @@ func (m *Model) doClean() tea.Cmd {
 		for _, job := range jobs {
 			var result *types.CleanResult
 
-			if job.isSpecial {
-				// Send progress for special jobs
+			if job.isBuiltin {
 				m.cleanProgressChan <- cleanProgressMsg{
 					categoryName: job.category.Name,
 					currentItem:  "",

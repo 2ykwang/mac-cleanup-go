@@ -1,6 +1,16 @@
 # Cleanup Targets
-# safety: safe | moderate | risky
-# method: trash | permanent | command | special
+#
+# safety:
+#   safe     - auto-regenerated (caches, logs)
+#   moderate - may need re-download or re-login
+#   risky    - may contain important data, default unselected
+#
+# method:
+#   trash     - move to Trash (recoverable)
+#   permanent - delete immediately (rm -rf)
+#   command   - run shell command (requires 'command' field)
+#   builtin   - use built-in scanner (docker, homebrew only)
+#   manual    - user must delete manually (shows 'guide' in UI)
 
 categories:
   # ===== System =====
@@ -319,7 +329,7 @@ categories:
     name: Homebrew Cache
     group: dev
     safety: safe
-    method: special
+    method: builtin
     note: Old versions and cached downloads
     check_cmd: "brew"
 
@@ -327,7 +337,7 @@ categories:
     name: Docker
     group: dev
     safety: moderate
-    method: special
+    method: builtin
     note: Unused images, containers, volumes, and build cache
     check_cmd: "docker"
 
