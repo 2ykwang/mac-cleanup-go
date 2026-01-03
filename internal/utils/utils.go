@@ -90,6 +90,35 @@ func CheckFullDiskAccess() bool {
 	return err == nil
 }
 
+// StripGlobPattern removes glob patterns from a path to find an existing parent directory
+func StripGlobPattern(path string) string {
+	expanded := ExpandPath(path)
+
+	// Try the path as-is first
+	if _, err := os.Stat(expanded); err == nil {
+		return expanded
+	}
+
+	// Strip trailing glob patterns and find existing parent
+	for strings.ContainsAny(expanded, "*?[") {
+		// Check for glob characters
+
+		// Get parent directory
+		parent := filepath.Dir(expanded)
+		if parent == expanded {
+			break
+		}
+		expanded = parent
+
+		// Check if parent exists
+		if _, err := os.Stat(expanded); err == nil {
+			return expanded
+		}
+	}
+
+	return expanded
+}
+
 // OpenInFinder opens the specified path in macOS Finder.
 // For files, it opens the parent directory with the file selected (-R flag).
 // For directories, it opens the directory directly.

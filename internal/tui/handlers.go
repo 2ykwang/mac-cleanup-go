@@ -17,6 +17,8 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handlePreviewKey(msg)
 	case ViewConfirm:
 		return m.handleConfirmKey(msg)
+	case ViewGuide:
+		return m.handleGuideKey(msg)
 	case ViewCleaning:
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
@@ -75,8 +77,11 @@ func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case " ":
 		if len(m.results) > 0 && m.cursor < len(m.results) {
 			r := m.results[m.cursor]
-			// Skip manual categories - they cannot be selected
+			// Open guide popup for manual categories
 			if r.Category.Method == types.MethodManual {
+				m.guideCategory = &r.Category
+				m.guidePathIndex = 0
+				m.view = ViewGuide
 				break
 			}
 			id := r.Category.ID
@@ -251,6 +256,39 @@ func (m *Model) handleDrillDownKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Open in Finder
 		if state.cursor < len(state.items) {
 			path := state.items[state.cursor].Path
+			if err := utils.OpenInFinder(path); err != nil {
+				m.statusMessage = "Path not found"
+			} else {
+				m.statusMessage = ""
+			}
+		}
+	}
+	return m, nil
+}
+
+// handleGuideKey handles key events in the guide popup view
+func (m *Model) handleGuideKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "q":
+		return m, tea.Quit
+	case "esc", "enter", " ":
+		m.guideCategory = nil
+		m.guidePathIndex = 0
+		m.view = ViewList
+	case "up", "k":
+		if m.guidePathIndex > 0 {
+			m.guidePathIndex--
+		}
+	case "down", "j":
+		if m.guideCategory != nil && m.guidePathIndex < len(m.guideCategory.Paths)-1 {
+			m.guidePathIndex++
+		}
+	case "o":
+		// Open selected path in Finder
+		if m.guideCategory != nil && len(m.guideCategory.Paths) > 0 {
+			path := m.guideCategory.Paths[m.guidePathIndex]
+			// Strip glob patterns to find openable parent directory
+			path = utils.StripGlobPattern(path)
 			if err := utils.OpenInFinder(path); err != nil {
 				m.statusMessage = "Path not found"
 			} else {

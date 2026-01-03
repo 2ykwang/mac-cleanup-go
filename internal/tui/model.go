@@ -80,6 +80,10 @@ type Model struct {
 
 	// Status message for user feedback (e.g., error messages)
 	statusMessage string
+
+	// Guide popup state (for Manual items)
+	guideCategory  *types.Category // Category being shown in guide popup
+	guidePathIndex int             // Selected path index in guide popup
 }
 
 // NewModel creates a new model
@@ -143,6 +147,8 @@ func (m *Model) View() string {
 		return m.viewCleaning()
 	case ViewReport:
 		return m.viewReport()
+	case ViewGuide:
+		return m.viewGuide()
 	default:
 		return m.viewList()
 	}

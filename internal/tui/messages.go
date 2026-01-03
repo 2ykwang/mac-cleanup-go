@@ -11,6 +11,7 @@ const (
 	ViewConfirm
 	ViewCleaning
 	ViewReport
+	ViewGuide // Manual item guide popup
 )
 
 // Messages
