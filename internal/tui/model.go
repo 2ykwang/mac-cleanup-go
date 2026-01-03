@@ -77,6 +77,9 @@ type Model struct {
 
 	// Recent deleted items for progress display
 	recentDeleted *RingBuffer[DeletedItemEntry]
+
+	// Status message for user feedback (e.g., error messages)
+	statusMessage string
 }
 
 // NewModel creates a new model

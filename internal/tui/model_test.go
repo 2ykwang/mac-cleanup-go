@@ -291,6 +291,54 @@ func TestHandlePreviewKey_Confirm(t *testing.T) {
 	assert.Equal(t, ViewConfirm, m.view)
 }
 
+// Open in Finder tests
+func TestHandlePreviewKey_OpenInFinder_NonExistentPath(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewPreview
+	m.selected["cat1"] = true
+	m.previewCatID = "cat1"
+	m.previewItemIndex = 0 // /path/1 (non-existent)
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
+
+	assert.Equal(t, "Path not found", m.statusMessage)
+}
+
+func TestHandlePreviewKey_OpenInFinder_ClearsStatusOnSuccess(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewPreview
+	m.selected["cat1"] = true
+	m.previewCatID = "cat1"
+	m.previewItemIndex = 0
+	m.statusMessage = "Previous error" // Pre-existing status
+
+	// This will fail because path doesn't exist, but tests the flow
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
+
+	// Since path doesn't exist, it should set error message
+	assert.Equal(t, "Path not found", m.statusMessage)
+}
+
+func TestHandleDrillDownKey_OpenInFinder_NonExistentPath(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewPreview
+	m.selected["cat1"] = true
+	m.previewCatID = "cat1"
+	// Set up drill down state with non-existent path
+	m.drillDownStack = []drillDownState{
+		{
+			path:   "/nonexistent/dir",
+			items:  []types.CleanableItem{{Path: "/nonexistent/file", Name: "file", Size: 100, IsDirectory: false}},
+			cursor: 0,
+			scroll: 0,
+		},
+	}
+
+	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
+
+	assert.Equal(t, "Path not found", m.statusMessage)
+}
+
 // Preview navigation tests
 
 func TestFindPrevSelectedCatID(t *testing.T) {

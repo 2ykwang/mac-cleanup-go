@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestExpandPath(t *testing.T) {
@@ -157,4 +159,20 @@ func TestGlobPaths(t *testing.T) {
 	if len(paths) != 2 {
 		t.Errorf("GlobPaths found %d files, expected 2", len(paths))
 	}
+}
+
+// Note: Testing with existing paths would actually open Finder windows,
+// which is not suitable for automated tests. Manual verification required.
+
+func TestOpenInFinder_NonExistentPath(t *testing.T) {
+	err := OpenInFinder("/nonexistent/path/12345")
+
+	assert.Error(t, err, "non-existent path should return error")
+}
+
+func TestOpenInFinder_TildeExpansion(t *testing.T) {
+	// Test that tilde path that doesn't exist returns error
+	err := OpenInFinder("~/nonexistent/path/12345")
+
+	assert.Error(t, err, "non-existent home path should return error")
 }

@@ -5,6 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"mac-cleanup-go/internal/utils"
 	"mac-cleanup-go/pkg/types"
 )
 
@@ -186,6 +187,17 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if r != nil {
 			m.autoExcludeCategory(r.Category.ID, r)
 		}
+	case "o":
+		// Open in Finder
+		r := m.getPreviewCatResult()
+		if r != nil && m.previewItemIndex >= 0 && m.previewItemIndex < len(r.Items) {
+			path := r.Items[m.previewItemIndex].Path
+			if err := utils.OpenInFinder(path); err != nil {
+				m.statusMessage = "Path not found"
+			} else {
+				m.statusMessage = ""
+			}
+		}
 	}
 	return m, nil
 }
@@ -233,6 +245,16 @@ func (m *Model) handleDrillDownKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 						scroll: 0,
 					})
 				}
+			}
+		}
+	case "o":
+		// Open in Finder
+		if state.cursor < len(state.items) {
+			path := state.items[state.cursor].Path
+			if err := utils.OpenInFinder(path); err != nil {
+				m.statusMessage = "Path not found"
+			} else {
+				m.statusMessage = ""
 			}
 		}
 	}

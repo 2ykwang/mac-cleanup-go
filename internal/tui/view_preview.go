@@ -60,8 +60,13 @@ func (m *Model) previewFooter(selected []*types.ScanResult) string {
 		}
 	}
 
+	// Status message (e.g., error messages)
+	if m.statusMessage != "" {
+		b.WriteString("\n" + WarningStyle.Render(m.statusMessage))
+	}
+
 	b.WriteString("\n\n")
-	b.WriteString(HelpStyle.Render("←→ Tab  ↑↓ Move  space Toggle  a Include All  d Exclude All  y Delete  esc Back"))
+	b.WriteString(HelpStyle.Render("←→ Tab  ↑↓ Move  space Toggle  a Include All  d Exclude All  o Open  y Delete  esc Back"))
 
 	return b.String()
 }
@@ -184,7 +189,17 @@ func (m *Model) drillDownHeader(path string) string {
 }
 
 func (m *Model) drillDownFooter() string {
-	return "\n\n" + HelpStyle.Render("↑↓ Navigate  enter Enter folder  esc/backspace Back  q Quit")
+	var b strings.Builder
+
+	// Status message (e.g., error messages)
+	if m.statusMessage != "" {
+		b.WriteString("\n" + WarningStyle.Render(m.statusMessage))
+	}
+
+	b.WriteString("\n\n")
+	b.WriteString(HelpStyle.Render("↑↓ Navigate  enter Enter folder  o Open  esc/backspace Back  q Quit"))
+
+	return b.String()
 }
 
 func (m *Model) viewDrillDown() string {

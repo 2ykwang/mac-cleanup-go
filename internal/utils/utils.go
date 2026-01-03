@@ -89,3 +89,20 @@ func CheckFullDiskAccess() bool {
 	_, err := os.ReadDir(trashPath)
 	return err == nil
 }
+
+// OpenInFinder opens the specified path in macOS Finder.
+// For files, it opens the parent directory with the file selected (-R flag).
+// For directories, it opens the directory directly.
+func OpenInFinder(path string) error {
+	expanded := ExpandPath(path)
+
+	info, err := os.Stat(expanded)
+	if err != nil {
+		return err
+	}
+
+	if info.IsDir() {
+		return exec.Command("open", expanded).Run()
+	}
+	return exec.Command("open", "-R", expanded).Run()
+}
