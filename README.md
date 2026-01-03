@@ -15,6 +15,24 @@ Interactive TUI for cleaning macOS caches, logs, and temporary files.
 - **Safety levels** - Each item labeled as Safe / Moderate / Risky
 - **File-level control** - Preview and exclude individual files before deletion
 
+## How It Works
+
+```
+┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
+│  Scan   │───▶│  List   │───▶│ Preview │───▶│  Clean  │
+└─────────┘    └─────────┘    └─────────┘    └─────────┘
+ Detect all     Sort by size   File-level     Move to
+ targets        + select       exclusion      Trash
+```
+
+Each item is labeled by deletion risk
+
+- Safe: Auto-regenerated (browser cache, build artifacts)
+- Moderate: Regenerable but costly (re-index, rebuild, re-login)
+- Risky: May contain important data (backups, downloads)
+
+Moved to Trash by default. Some use native commands (Docker, Homebrew), others guide manual deletion.
+
 ## Installation
 
 ```bash
