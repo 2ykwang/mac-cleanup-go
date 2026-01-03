@@ -1,12 +1,17 @@
 # mac-cleanup-go
 
+[![GitHub Release](https://img.shields.io/github/v/release/2ykwang/mac-cleanup-go)](https://github.com/2ykwang/mac-cleanup-go/releases)
+[![Go Report Card](https://goreportcard.com/badge/github.com/2ykwang/mac-cleanup-go)](https://goreportcard.com/report/github.com/2ykwang/mac-cleanup-go)
+[![CI](https://github.com/2ykwang/mac-cleanup-go/actions/workflows/test.yml/badge.svg)](https://github.com/2ykwang/mac-cleanup-go/actions/workflows/test.yml)
+[![golangci-lint](https://img.shields.io/badge/linted%20by-golangci--lint-brightgreen)](https://golangci-lint.run/)
+
 Interactive TUI for cleaning macOS caches, logs, and temporary files.
 
 ![demo](assets/demo.gif)
 
 ## Features
 
-- **50+ cleanup targets** - System caches, browsers, dev tools, apps
+- **65+ cleanup targets** - System caches, browsers, dev tools, apps
 - **Safety levels** - Each item labeled as Safe / Moderate / Risky
 - **File-level control** - Preview and exclude individual files before deletion
 
@@ -28,7 +33,8 @@ cd mac-cleanup-go && make build
 ## Usage
 
 ```bash
-mac-cleanup
+mac-cleanup          # Run the TUI
+mac-cleanup -v       # Show version
 ```
 
 > **Tip**: Grant Full Disk Access to your terminal for complete cleanup access.
