@@ -12,6 +12,11 @@ const (
 	colName = 28
 	colSize = 12
 	colNum  = 8
+
+	// listPrefixWidth: cursor(2) + checkbox(3) + space(1) + dot(1) + space(1)
+	listPrefixWidth = 8
+	// previewPrefixWidth: cursor(2) + checkbox(3) + space(1) + icon(1) + space(1)
+	previewPrefixWidth = 8
 )
 
 // Helper functions

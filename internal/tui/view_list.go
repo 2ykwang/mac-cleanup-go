@@ -157,8 +157,8 @@ func (m *Model) viewList() string {
 		}
 		b.WriteString("\n")
 	} else {
-		// Column header (align with: cursor(2) + checkbox(3) + space(1) + dot(1) + space(1) = 8 chars)
-		colHeader := fmt.Sprintf("        %-*s %*s %*s",
+		colHeader := fmt.Sprintf("%*s%-*s %*s %*s",
+			listPrefixWidth, "",
 			colName, "Name", colSize, "Size", colNum, "Count")
 		b.WriteString(MutedStyle.Render(colHeader) + "\n")
 

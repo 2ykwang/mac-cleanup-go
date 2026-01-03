@@ -90,13 +90,12 @@ func (m *Model) viewPreview() string {
 	b.WriteString(header)
 
 	if cat != nil {
-		// Column header (align with: cursor(2) + checkbox(3) + space(1) + icon(1) + space(1) = 8 chars)
 		pathWidth := m.width - 28
 		if pathWidth < 30 {
 			pathWidth = 30
 		}
-		colHeader := fmt.Sprintf("        %-*s %*s %*s",
-			pathWidth-4, "Path", colSize, "Size", colNum, "Count")
+		colHeader := fmt.Sprintf("%*s%-*s %*s %*s",
+			previewPrefixWidth, "", pathWidth-4, "Path", colSize, "Size", colNum, "Count")
 		b.WriteString(MutedStyle.Render(colHeader) + "\n")
 
 		// Adjust scroll
