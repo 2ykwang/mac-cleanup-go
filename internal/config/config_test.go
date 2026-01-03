@@ -64,13 +64,115 @@ func TestLoadEmbedded_MethodsAreValid(t *testing.T) {
 	cfg, _ := LoadEmbedded()
 
 	validMethods := map[types.CleanupMethod]bool{
-		types.MethodTrash:   true,
-		types.MethodCommand: true,
-		types.MethodSpecial: true,
-		types.MethodManual:  true,
+		types.MethodTrash:     true,
+		types.MethodPermanent: true,
+		types.MethodCommand:   true,
+		types.MethodBuiltin:   true,
+		types.MethodManual:    true,
 	}
 
 	for _, cat := range cfg.Categories {
 		assert.True(t, validMethods[cat.Method], "Category '%s' has invalid method: %s", cat.ID, cat.Method)
 	}
+}
+
+func TestValidateConfig_InvalidMethod_ReturnsError(t *testing.T) {
+	cfg := &types.Config{
+		Categories: []types.Category{
+			{ID: "test", Name: "Test", Method: "invalid", Safety: types.SafetyLevelSafe},
+		},
+	}
+
+	err := validateConfig(cfg)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid method")
+}
+
+func TestValidateConfig_InvalidSafety_ReturnsError(t *testing.T) {
+	cfg := &types.Config{
+		Categories: []types.Category{
+			{ID: "test", Name: "Test", Method: types.MethodTrash, Safety: "invalid"},
+		},
+	}
+
+	err := validateConfig(cfg)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid safety")
+}
+
+func TestValidateConfig_MethodCommand_RequiresCommandField(t *testing.T) {
+	cfg := &types.Config{
+		Categories: []types.Category{
+			{ID: "test", Name: "Test", Method: types.MethodCommand, Safety: types.SafetyLevelSafe},
+		},
+	}
+
+	err := validateConfig(cfg)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "command field required")
+}
+
+func TestValidateConfig_MethodCommand_WithCommandField_NoError(t *testing.T) {
+	cfg := &types.Config{
+		Categories: []types.Category{
+			{ID: "test", Name: "Test", Method: types.MethodCommand, Safety: types.SafetyLevelSafe, Command: "echo hello"},
+		},
+	}
+
+	err := validateConfig(cfg)
+
+	assert.NoError(t, err)
+}
+
+func TestValidateConfig_MethodBuiltin_RequiresKnownID(t *testing.T) {
+	cfg := &types.Config{
+		Categories: []types.Category{
+			{ID: "unknown", Name: "Unknown", Method: types.MethodBuiltin, Safety: types.SafetyLevelSafe},
+		},
+	}
+
+	err := validateConfig(cfg)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown builtin")
+}
+
+func TestValidateConfig_MethodBuiltin_DockerID_NoError(t *testing.T) {
+	cfg := &types.Config{
+		Categories: []types.Category{
+			{ID: "docker", Name: "Docker", Method: types.MethodBuiltin, Safety: types.SafetyLevelModerate},
+		},
+	}
+
+	err := validateConfig(cfg)
+
+	assert.NoError(t, err)
+}
+
+func TestValidateConfig_MethodBuiltin_HomebrewID_NoError(t *testing.T) {
+	cfg := &types.Config{
+		Categories: []types.Category{
+			{ID: "homebrew", Name: "Homebrew", Method: types.MethodBuiltin, Safety: types.SafetyLevelSafe},
+		},
+	}
+
+	err := validateConfig(cfg)
+
+	assert.NoError(t, err)
+}
+
+func TestValidateConfig_ValidConfig_NoError(t *testing.T) {
+	cfg := &types.Config{
+		Categories: []types.Category{
+			{ID: "cache", Name: "Cache", Method: types.MethodTrash, Safety: types.SafetyLevelSafe, Paths: []string{"~/Cache"}},
+			{ID: "docker", Name: "Docker", Method: types.MethodBuiltin, Safety: types.SafetyLevelModerate},
+		},
+	}
+
+	err := validateConfig(cfg)
+
+	assert.NoError(t, err)
 }
