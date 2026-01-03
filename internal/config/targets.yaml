@@ -406,19 +406,19 @@ categories:
     group: app
     safety: risky
     method: trash
-    note: Includes Service Worker data - may require re-login
+    note: Includes Service Worker data - slower startup until cache rebuilds
     check: "~/Library/Application Support/Slack/"
     paths:
       - "~/Library/Application Support/Slack/Cache/*"
       - "~/Library/Application Support/Slack/Code Cache/*"
       - "~/Library/Application Support/Slack/Service Worker/CacheStorage/*"
 
-  - id: teams
-    name: Teams Cache
+  - id: teams-classic
+    name: Teams Classic Cache
     group: app
     safety: risky
     method: trash
-    note: Includes session data - may require re-login after cleanup
+    note: Classic Teams - includes session data, may require re-login
     check: "~/Library/Application Support/Microsoft/Teams/"
     paths:
       - "~/Library/Application Support/Microsoft/Teams/Cache/*"
@@ -430,6 +430,20 @@ categories:
       - "~/Library/Application Support/Microsoft/Teams/IndexedDB/*"
       - "~/Library/Application Support/Microsoft/Teams/Local Storage/*"
       - "~/Library/Application Support/Microsoft/Teams/tmp/*"
+
+  - id: teams-new
+    name: Teams (New) Cache
+    group: app
+    safety: risky
+    method: trash
+    note: New Teams - includes session data, may require re-login
+    check: "~/Library/Containers/com.microsoft.teams2/"
+    paths:
+      - "~/Library/Group Containers/UBF8T346G9.com.microsoft.teams/*"
+      - "~/Library/Containers/com.microsoft.teams2/Data/Library/Application Support/Microsoft/MSTeams/Cache/*"
+      - "~/Library/Containers/com.microsoft.teams2/Data/Library/Application Support/Microsoft/MSTeams/GPUCache/*"
+      - "~/Library/Containers/com.microsoft.teams2/Data/Library/Application Support/Microsoft/MSTeams/IndexedDB/*"
+      - "~/Library/Containers/com.microsoft.teams2/Data/Library/Application Support/Microsoft/MSTeams/Local Storage/*"
 
   - id: zoom
     name: Zoom Cache
@@ -521,7 +535,7 @@ categories:
     safety: risky
     method: manual
     note: "CAUTION: Contains chat history - use app's built-in cleanup"
-    guide: "Telegram > Settings > Data and Storage > Storage Usage > Clear Cache"
+    guide: "Telegram > Settings > Data and Storage > Storage Usage > Clear All"
     paths:
       - "~/Library/Group Containers/*.ru.keepcoder.Telegram/stable/*/postbox/db/*"
 
@@ -530,8 +544,8 @@ categories:
     group: app
     safety: risky
     method: manual
-    note: "CAUTION: Contains chat history and media - use app's built-in cleanup"
-    guide: "KakaoTalk > Settings > Storage Management"
+    note: "CAUTION: Deletes chat history, images, videos - may require re-login"
+    guide: "Quit KakaoTalk, then run: rm -rf ~/Library/Containers/com.kakao.KakaoTalkMac/Data/Library/Application\\ Support/*"
     check: "~/Library/Containers/com.kakao.KakaoTalkMac/"
     paths:
       - "~/Library/Containers/com.kakao.KakaoTalkMac/Data/Library/Application Support/*"
@@ -663,15 +677,6 @@ categories:
     note: "CAUTION: Downloaded email attachments - may be needed!"
     paths:
       - "~/Library/Containers/com.apple.mail/Data/Library/Mail Downloads/*"
-
-  - id: itunes-backup
-    name: iTunes Backups
-    group: storage
-    safety: risky
-    method: trash
-    note: "CAUTION: Old iOS app backups - rarely needed but check first!"
-    paths:
-      - "~/Music/iTunes/iTunes Media/Mobile Applications/*"
 
 groups:
   - id: system
