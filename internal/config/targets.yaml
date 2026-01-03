@@ -62,6 +62,28 @@ categories:
     paths:
       - "~/Library/Saved Application State/*"
 
+  - id: incomplete-downloads
+    name: Incomplete Downloads
+    group: system
+    safety: moderate
+    method: trash
+    note: Browser incomplete download files - can be re-downloaded
+    check: "~/Downloads/"
+    paths:
+      - "~/Downloads/*.download"
+      - "~/Downloads/*.crdownload"
+      - "~/Downloads/*.part"
+
+  - id: user-diagnostic
+    name: User Diagnostic Reports
+    group: system
+    safety: safe
+    method: trash
+    note: User-level crash reports and diagnostics - regenerated as needed
+    check: "~/Library/DiagnosticReports/"
+    paths:
+      - "~/Library/DiagnosticReports/*"
+
   # ===== Browsers =====
   - id: browser-chrome
     name: Chrome Cache
@@ -141,6 +163,36 @@ categories:
       - "~/Library/Application Support/Microsoft Edge/Default/Application Cache/*"
       - "~/Library/Application Support/Microsoft Edge/Default/GPUCache/*"
       - "~/Library/Caches/Microsoft Edge/*"
+
+  - id: browser-opera
+    name: Opera Cache
+    group: browser
+    safety: safe
+    method: trash
+    note: Opera browser cache - regenerated automatically
+    check: "~/Library/Application Support/com.operasoftware.Opera/"
+    paths:
+      - "~/Library/Caches/com.operasoftware.Opera/*"
+
+  - id: browser-vivaldi
+    name: Vivaldi Cache
+    group: browser
+    safety: safe
+    method: trash
+    note: Vivaldi browser cache - regenerated automatically
+    check: "~/Library/Application Support/Vivaldi/"
+    paths:
+      - "~/Library/Caches/com.vivaldi.Vivaldi/*"
+
+  - id: browser-zen
+    name: Zen Cache
+    group: browser
+    safety: safe
+    method: trash
+    note: Zen browser cache - regenerated automatically
+    check: "~/Library/Caches/zen/"
+    paths:
+      - "~/Library/Caches/zen/*"
 
   # ===== Development =====
   - id: xcode-derived
@@ -362,6 +414,131 @@ categories:
     check: "~/Library/Caches/com.mongodb.compass/"
     paths:
       - "~/Library/Caches/com.mongodb.compass/*"
+
+  - id: python-extended
+    name: Python Extended Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Python tool caches (uv, ruff, mypy, pytest, jupyter) - regenerated on use
+    check: "~/.cache/uv/"
+    paths:
+      - "~/.cache/uv/*"
+      - "~/.cache/ruff/*"
+      - "~/.cache/mypy/*"
+      - "~/.pytest_cache/*"
+      - "~/.jupyter/runtime/*"
+
+  - id: rustup
+    name: Rustup Downloads
+    group: dev
+    safety: safe
+    method: trash
+    note: Rust toolchain download cache - re-downloaded when needed
+    check: "~/.rustup/"
+    paths:
+      - "~/.rustup/downloads/*"
+      - "~/.rustup/tmp/*"
+
+  - id: frontend-tools
+    name: Frontend Build Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Frontend build tool caches - regenerated on build
+    check: "~/.cache/typescript/"
+    paths:
+      - "~/.cache/typescript/*"
+      - "~/.turbo/*"
+      - "~/.vite/*"
+      - "~/.parcel-cache/*"
+      - "~/.cache/eslint/*"
+      - "~/.cache/prettier/*"
+
+  - id: cloud-cli
+    name: Cloud CLI Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Cloud CLI caches and logs - regenerated on use
+    check: "~/.kube/"
+    paths:
+      - "~/.kube/cache/*"
+      - "~/.aws/cli/cache/*"
+      - "~/.config/gcloud/logs/*"
+      - "~/.azure/logs/*"
+
+  - id: sbt
+    name: SBT Cache
+    group: dev
+    safety: moderate
+    method: trash
+    note: Scala build tool cache - re-downloaded on build
+    check: "~/.sbt/"
+    paths:
+      - "~/.sbt/boot/*"
+      - "~/.sbt/preloaded/*"
+
+  - id: ivy
+    name: Ivy Cache
+    group: dev
+    safety: moderate
+    method: trash
+    note: Ivy dependency cache - re-downloaded on build
+    check: "~/.ivy2/"
+    paths:
+      - "~/.ivy2/cache/*"
+
+  - id: bazel
+    name: Bazel Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Bazel build cache - regenerated on build
+    check: "~/.cache/bazel/"
+    paths:
+      - "~/.cache/bazel/*"
+
+  - id: deno
+    name: Deno Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Deno runtime cache - regenerated on use
+    check: "~/Library/Caches/deno/"
+    paths:
+      - "~/Library/Caches/deno/*"
+
+  - id: swift-pm
+    name: Swift PM Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Swift Package Manager cache - re-downloaded when needed
+    check: "~/.cache/org.swift.swiftpm/"
+    paths:
+      - "~/.cache/org.swift.swiftpm/*"
+
+  - id: android-studio
+    name: Android Studio Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Android Studio IDE cache - regenerated on use
+    check: "~/Library/Caches/Google/"
+    paths:
+      - "~/Library/Caches/Google/AndroidStudio*/*"
+
+  - id: xcode-device-logs
+    name: Xcode Device Logs
+    group: dev
+    safety: safe
+    method: trash
+    note: iOS/watchOS device logs - not needed for development
+    check: "~/Library/Developer/Xcode/"
+    paths:
+      - "~/Library/Developer/Xcode/iOS Device Logs/*"
+      - "~/Library/Developer/Xcode/watchOS Device Logs/*"
 
   # ===== Applications =====
   - id: steam
@@ -648,6 +825,287 @@ categories:
     check: "~/Library/Caches/com.colliderli.iina/"
     paths:
       - "~/Library/Caches/com.colliderli.iina/*"
+
+  - id: wechat
+    name: WeChat Cache
+    group: app
+    safety: safe
+    method: trash
+    note: WeChat app cache - regenerated on use
+    check: "~/Library/Caches/com.tencent.xinWeChat/"
+    paths:
+      - "~/Library/Caches/com.tencent.xinWeChat/*"
+
+  - id: whatsapp
+    name: WhatsApp Cache
+    group: app
+    safety: safe
+    method: trash
+    note: WhatsApp app cache - regenerated on use
+    check: "~/Library/Caches/net.whatsapp.WhatsApp/"
+    paths:
+      - "~/Library/Caches/net.whatsapp.WhatsApp/*"
+
+  - id: skype
+    name: Skype Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Skype app cache - regenerated on use
+    check: "~/Library/Caches/com.skype.skype/"
+    paths:
+      - "~/Library/Caches/com.skype.skype/*"
+
+  - id: tencent-meeting
+    name: Tencent Meeting Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Tencent Meeting app cache - regenerated on use
+    check: "~/Library/Caches/com.tencent.meeting/"
+    paths:
+      - "~/Library/Caches/com.tencent.meeting/*"
+
+  - id: sketch
+    name: Sketch Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Sketch design app cache - regenerated on use
+    check: "~/Library/Caches/com.bohemiancoding.sketch3/"
+    paths:
+      - "~/Library/Caches/com.bohemiancoding.sketch3/*"
+
+  - id: final-cut
+    name: Final Cut Pro Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Final Cut Pro video editing cache - regenerated on use
+    check: "~/Library/Caches/com.apple.FinalCut/"
+    paths:
+      - "~/Library/Caches/com.apple.FinalCut/*"
+
+  - id: davinci
+    name: DaVinci Resolve Cache
+    group: app
+    safety: safe
+    method: trash
+    note: DaVinci Resolve video editing cache - regenerated on use
+    check: "~/Library/Caches/com.blackmagic-design.DaVinciResolve/"
+    paths:
+      - "~/Library/Caches/com.blackmagic-design.DaVinciResolve/*"
+
+  - id: premiere
+    name: Premiere Pro Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Adobe Premiere Pro cache - regenerated on use
+    check: "~/Library/Application Support/Adobe/Premiere Pro/"
+    paths:
+      - "~/Library/Caches/com.adobe.PremierePro.*/*"
+
+  - id: blender
+    name: Blender Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Blender 3D modeling cache - regenerated on use
+    check: "~/Library/Caches/org.blenderfoundation.blender/"
+    paths:
+      - "~/Library/Caches/org.blenderfoundation.blender/*"
+
+  - id: screenflow
+    name: ScreenFlow Cache
+    group: app
+    safety: safe
+    method: trash
+    note: ScreenFlow screen recording cache - regenerated on use
+    check: "~/Library/Caches/net.telestream.screenflow10/"
+    paths:
+      - "~/Library/Caches/net.telestream.screenflow10/*"
+
+  - id: vlc
+    name: VLC Cache
+    group: app
+    safety: safe
+    method: trash
+    note: VLC media player cache - regenerated on use
+    check: "~/Library/Caches/org.videolan.vlc/"
+    paths:
+      - "~/Library/Caches/org.videolan.vlc/*"
+
+  - id: mpv
+    name: MPV Cache
+    group: app
+    safety: safe
+    method: trash
+    note: MPV media player cache - regenerated on use
+    check: "~/Library/Caches/io.mpv/"
+    paths:
+      - "~/Library/Caches/io.mpv/*"
+
+  - id: apple-music
+    name: Apple Music Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Apple Music app cache - regenerated on use
+    check: "~/Library/Caches/com.apple.Music/"
+    paths:
+      - "~/Library/Caches/com.apple.Music/*"
+
+  - id: bilibili
+    name: Bilibili Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Bilibili app cache - regenerated on use
+    check: "~/Library/Caches/tv.danmaku.bili/"
+    paths:
+      - "~/Library/Caches/tv.danmaku.bili/*"
+
+  - id: epic-games
+    name: Epic Games Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Epic Games launcher cache - regenerated on use
+    check: "~/Library/Caches/com.epicgames.EpicGamesLauncher/"
+    paths:
+      - "~/Library/Caches/com.epicgames.EpicGamesLauncher/*"
+
+  - id: battle-net
+    name: Battle.net Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Battle.net launcher cache - regenerated on use
+    check: "~/Library/Caches/com.blizzard.Battle.net/"
+    paths:
+      - "~/Library/Caches/com.blizzard.Battle.net/*"
+      - "~/Library/Application Support/Battle.net/Cache/*"
+
+  - id: gog-galaxy
+    name: GOG Galaxy Cache
+    group: app
+    safety: safe
+    method: trash
+    note: GOG Galaxy launcher cache - regenerated on use
+    check: "~/Library/Caches/com.gog.galaxy/"
+    paths:
+      - "~/Library/Caches/com.gog.galaxy/*"
+
+  - id: logseq
+    name: Logseq Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Logseq note-taking app cache - regenerated on use
+    check: "~/Library/Application Support/Logseq/"
+    paths:
+      - "~/Library/Caches/com.logseq.*/*"
+
+  - id: bear
+    name: Bear Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Bear note-taking app cache - regenerated on use
+    check: "~/Library/Containers/com.bear-writer/"
+    paths:
+      - "~/Library/Caches/com.bear-writer.*/*"
+
+  - id: evernote
+    name: Evernote Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Evernote app cache - regenerated on use
+    check: "~/Library/Application Support/Evernote/"
+    paths:
+      - "~/Library/Caches/com.evernote.*/*"
+
+  - id: postman
+    name: Postman Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Postman API tool cache - regenerated on use
+    check: "~/Library/Caches/com.postmanlabs.mac/"
+    paths:
+      - "~/Library/Caches/com.postmanlabs.mac/*"
+
+  - id: tableplus
+    name: TablePlus Cache
+    group: app
+    safety: safe
+    method: trash
+    note: TablePlus database tool cache - regenerated on use
+    check: "~/Library/Caches/com.tinyapp.TablePlus/"
+    paths:
+      - "~/Library/Caches/com.tinyapp.TablePlus/*"
+
+  - id: charles
+    name: Charles Proxy Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Charles Proxy debugging tool cache - regenerated on use
+    check: "~/Library/Caches/com.charlesproxy.charles/"
+    paths:
+      - "~/Library/Caches/com.charlesproxy.charles/*"
+
+  - id: sequel-ace
+    name: Sequel Ace Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Sequel Ace database tool cache - regenerated on use
+    check: "~/Library/Caches/com.sequel-ace.sequel-ace/"
+    paths:
+      - "~/Library/Caches/com.sequel-ace.sequel-ace/*"
+
+  - id: vmware
+    name: VMware Fusion Cache
+    group: app
+    safety: safe
+    method: trash
+    note: VMware Fusion virtualization cache - regenerated on use
+    check: "~/Library/Caches/com.vmware.fusion/"
+    paths:
+      - "~/Library/Caches/com.vmware.fusion/*"
+
+  - id: parallels
+    name: Parallels Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Parallels virtualization cache - regenerated on use
+    check: "~/Library/Preferences/Parallels/"
+    paths:
+      - "~/Library/Caches/com.parallels.*/*"
+
+  - id: alfred
+    name: Alfred Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Alfred launcher cache - regenerated on use
+    check: "~/Library/Caches/com.runningwithcrayons.Alfred/"
+    paths:
+      - "~/Library/Caches/com.runningwithcrayons.Alfred/*"
+
+  - id: teamviewer
+    name: TeamViewer Cache
+    group: app
+    safety: safe
+    method: trash
+    note: TeamViewer remote desktop cache - regenerated on use
+    check: "~/Library/Application Support/TeamViewer/"
+    paths:
+      - "~/Library/Caches/com.teamviewer.*/*"
 
   # ===== Storage (Risky) =====
   - id: ios-backups
