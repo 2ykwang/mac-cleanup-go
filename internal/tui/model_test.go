@@ -23,6 +23,7 @@ func newTestModel() *Model {
 		width:          80,
 		height:         24,
 		userConfig:     &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)},
+		recentDeleted:  NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity),
 	}
 }
 
@@ -463,4 +464,123 @@ func TestViewReport_ContainsSummary(t *testing.T) {
 	assert.Contains(t, output, "Freed:")
 	assert.Contains(t, output, "Succeeded:")
 	assert.Contains(t, output, "10")
+}
+
+// cleanItemDoneMsg handling tests
+func TestUpdate_CleanItemDoneMsg_AddsToRecentDeleted(t *testing.T) {
+	m := newTestModel()
+	m.view = ViewCleaning
+	m.cleanProgressChan = make(chan cleanProgressMsg, 1)
+	m.cleanItemDoneChan = make(chan cleanItemDoneMsg, 1)
+	m.cleanCategoryDoneCh = make(chan cleanCategoryDoneMsg, 1)
+	m.cleanDoneChan = make(chan cleanDoneMsg, 1)
+
+	msg := cleanItemDoneMsg{
+		path:    "/path/to/file.txt",
+		name:    "file.txt",
+		size:    1024,
+		success: true,
+		errMsg:  "",
+	}
+
+	m.Update(msg)
+
+	assert.Equal(t, 1, m.recentDeleted.Len())
+	items := m.recentDeleted.Items()
+	assert.Equal(t, "file.txt", items[0].Name)
+	assert.Equal(t, int64(1024), items[0].Size)
+	assert.True(t, items[0].Success)
+}
+
+func TestUpdate_CleanItemDoneMsg_FailedItem(t *testing.T) {
+	m := newTestModel()
+	m.view = ViewCleaning
+	m.cleanProgressChan = make(chan cleanProgressMsg, 1)
+	m.cleanItemDoneChan = make(chan cleanItemDoneMsg, 1)
+	m.cleanCategoryDoneCh = make(chan cleanCategoryDoneMsg, 1)
+	m.cleanDoneChan = make(chan cleanDoneMsg, 1)
+
+	msg := cleanItemDoneMsg{
+		path:    "/path/to/locked.txt",
+		name:    "locked.txt",
+		size:    512,
+		success: false,
+		errMsg:  "permission denied",
+	}
+
+	m.Update(msg)
+
+	items := m.recentDeleted.Items()
+	assert.Equal(t, 1, len(items))
+	assert.False(t, items[0].Success)
+	assert.Equal(t, "permission denied", items[0].ErrMsg)
+}
+
+func TestUpdate_CleanCategoryDoneMsg_RecentDeletedPersists(t *testing.T) {
+	m := newTestModel()
+	m.view = ViewCleaning
+	m.cleanProgressChan = make(chan cleanProgressMsg, 1)
+	m.cleanItemDoneChan = make(chan cleanItemDoneMsg, 1)
+	m.cleanCategoryDoneCh = make(chan cleanCategoryDoneMsg, 1)
+	m.cleanDoneChan = make(chan cleanDoneMsg, 1)
+
+	// Add items to recentDeleted first
+	m.recentDeleted.Push(DeletedItemEntry{
+		Path:    "/path/to/file1.txt",
+		Name:    "file1.txt",
+		Size:    1024,
+		Success: true,
+	})
+	m.recentDeleted.Push(DeletedItemEntry{
+		Path:    "/path/to/file2.txt",
+		Name:    "file2.txt",
+		Size:    2048,
+		Success: true,
+	})
+
+	// Send category done message
+	msg := cleanCategoryDoneMsg{
+		categoryName: "Test Category",
+		freedSpace:   3072,
+		cleanedItems: 2,
+		errorCount:   0,
+	}
+
+	m.Update(msg)
+
+	// recentDeleted should still have the items
+	assert.Equal(t, 2, m.recentDeleted.Len(), "recentDeleted should persist after cleanCategoryDoneMsg")
+	items := m.recentDeleted.Items()
+	assert.Equal(t, "file1.txt", items[0].Name)
+	assert.Equal(t, "file2.txt", items[1].Name)
+}
+
+func TestUpdate_CleanDoneMsg_ClearsRecentDeleted(t *testing.T) {
+	m := newTestModel()
+	m.view = ViewCleaning
+
+	// Add items to recentDeleted
+	m.recentDeleted.Push(DeletedItemEntry{
+		Path:    "/path/to/file.txt",
+		Name:    "file.txt",
+		Size:    1024,
+		Success: true,
+	})
+
+	assert.Equal(t, 1, m.recentDeleted.Len(), "should have 1 item before cleanDoneMsg")
+
+	// Send done message
+	msg := cleanDoneMsg{
+		report: &types.Report{
+			FreedSpace:   1024,
+			CleanedItems: 1,
+			FailedItems:  0,
+		},
+	}
+
+	m.Update(msg)
+
+	// recentDeleted should be cleared
+	assert.Equal(t, 0, m.recentDeleted.Len(), "recentDeleted should be cleared after cleanDoneMsg")
+	assert.Equal(t, ViewReport, m.view, "view should change to ViewReport")
 }

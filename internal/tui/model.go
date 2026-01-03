@@ -16,6 +16,9 @@ import (
 	"mac-cleanup-go/pkg/types"
 )
 
+// defaultRecentItemsCapacity is the maximum number of recent deleted items to display
+const defaultRecentItemsCapacity = 10
+
 // Model is the main TUI model
 type Model struct {
 	config   *types.Config
@@ -66,11 +69,15 @@ type Model struct {
 	cleanProgressChan   chan cleanProgressMsg
 	cleanDoneChan       chan cleanDoneMsg
 	cleanCategoryDoneCh chan cleanCategoryDoneMsg
+	cleanItemDoneChan   chan cleanItemDoneMsg
 
 	err error
 
 	// Scan errors for display
 	scanErrors []scanErrorInfo
+
+	// Recent deleted items for progress display
+	recentDeleted *RingBuffer[DeletedItemEntry]
 }
 
 // NewModel creates a new model
@@ -106,6 +113,7 @@ func NewModel(cfg *types.Config) *Model {
 		hasFullDiskAccess: utils.CheckFullDiskAccess(),
 		userConfig:        userCfg,
 		scanErrors:        make([]scanErrorInfo, 0),
+		recentDeleted:     NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity),
 	}
 }
 
@@ -153,6 +161,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cleaningTotal = msg.total
 		// Continue waiting for next progress or done message
 		return m, m.waitForCleanProgress()
+	case cleanItemDoneMsg:
+		// Add deleted item to recent deletions list
+		m.recentDeleted.Push(DeletedItemEntry{
+			Path:    msg.path,
+			Name:    msg.name,
+			Size:    msg.size,
+			Success: msg.success,
+			ErrMsg:  msg.errMsg,
+		})
+		return m, m.waitForCleanProgress()
 	case cleanCategoryDoneMsg:
 		// Add completed category to list
 		m.cleaningCompleted = append(m.cleaningCompleted, cleanedCategory{
@@ -167,6 +185,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case cleanDoneMsg:
 		m.report = msg.report
 		m.report.Duration = time.Since(m.startTime)
+		m.recentDeleted.Clear()
 		m.view = ViewReport
 	}
 	return m, nil
@@ -277,6 +296,7 @@ func (m *Model) doClean() tea.Cmd {
 	m.cleanProgressChan = make(chan cleanProgressMsg, 1)
 	m.cleanDoneChan = make(chan cleanDoneMsg, 1)
 	m.cleanCategoryDoneCh = make(chan cleanCategoryDoneMsg, 1)
+	m.cleanItemDoneChan = make(chan cleanItemDoneMsg, 1)
 
 	// Start cleaning in background goroutine
 	go func() {
@@ -322,6 +342,20 @@ func (m *Model) doClean() tea.Cmd {
 					itemResult.FreedSpace += singleResult.FreedSpace
 					itemResult.CleanedItems += singleResult.CleanedItems
 					itemResult.Errors = append(itemResult.Errors, singleResult.Errors...)
+
+					// Send item done message for recent deletions list
+					success := len(singleResult.Errors) == 0
+					errMsg := ""
+					if !success && len(singleResult.Errors) > 0 {
+						errMsg = singleResult.Errors[0]
+					}
+					m.cleanItemDoneChan <- cleanItemDoneMsg{
+						path:    item.Path,
+						name:    item.Name,
+						size:    item.Size,
+						success: success,
+						errMsg:  errMsg,
+					}
 				}
 				result = itemResult
 			}
@@ -355,6 +389,8 @@ func (m *Model) waitForCleanProgress() tea.Cmd {
 		select {
 		case progress := <-m.cleanProgressChan:
 			return progress
+		case itemDone := <-m.cleanItemDoneChan:
+			return itemDone
 		case catDone := <-m.cleanCategoryDoneCh:
 			return catDone
 		case done := <-m.cleanDoneChan:
