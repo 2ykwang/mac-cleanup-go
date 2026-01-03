@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExpandPath(t *testing.T) {
@@ -22,10 +23,10 @@ func TestExpandPath(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result := ExpandPath(tt.input)
-		if result != tt.expected {
-			t.Errorf("ExpandPath(%q) = %q, expected %q", tt.input, result, tt.expected)
-		}
+		t.Run(tt.input, func(t *testing.T) {
+			result := ExpandPath(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
 	}
 }
 
@@ -46,119 +47,69 @@ func TestFormatSize(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result := FormatSize(tt.bytes)
-		if result != tt.expected {
-			t.Errorf("FormatSize(%d) = %q, expected %q", tt.bytes, result, tt.expected)
-		}
+		t.Run(tt.expected, func(t *testing.T) {
+			result := FormatSize(tt.bytes)
+			assert.Equal(t, tt.expected, result)
+		})
 	}
 }
 
 func TestPathExists(t *testing.T) {
-	// Test existing path
-	if !PathExists("/tmp") {
-		t.Error("PathExists(/tmp) should be true")
-	}
-
-	// Test non-existing path
-	if PathExists("/nonexistent/path/12345") {
-		t.Error("PathExists(/nonexistent/path/12345) should be false")
-	}
-
-	// Test home directory expansion
-	if !PathExists("~/") {
-		t.Error("PathExists(~/) should be true")
-	}
+	assert.True(t, PathExists("/tmp"), "existing path should return true")
+	assert.False(t, PathExists("/nonexistent/path/12345"), "non-existing path should return false")
+	assert.True(t, PathExists("~/"), "home directory should exist")
 }
 
 func TestCommandExists(t *testing.T) {
-	// Test common command
-	if !CommandExists("ls") {
-		t.Error("CommandExists(ls) should be true")
-	}
-
-	// Test non-existing command
-	if CommandExists("nonexistentcommand12345") {
-		t.Error("CommandExists(nonexistentcommand12345) should be false")
-	}
+	assert.True(t, CommandExists("ls"), "common command should exist")
+	assert.False(t, CommandExists("nonexistentcommand12345"), "non-existing command should return false")
 }
 
 func TestGetDirSize(t *testing.T) {
-	// Create temp directory with files
 	tmpDir, err := os.MkdirTemp("", "test-dir-size")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	// Create files with known sizes
 	file1 := filepath.Join(tmpDir, "file1.txt")
 	file2 := filepath.Join(tmpDir, "file2.txt")
 
-	if err := os.WriteFile(file1, make([]byte, 100), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(file2, make([]byte, 200), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(file1, make([]byte, 100), 0o644))
+	require.NoError(t, os.WriteFile(file2, make([]byte, 200), 0o644))
 
 	size, err := GetDirSize(tmpDir)
-	if err != nil {
-		t.Errorf("GetDirSize error: %v", err)
-	}
-
-	if size != 300 {
-		t.Errorf("GetDirSize = %d, expected 300", size)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, int64(300), size)
 }
 
 func TestGetFileSize(t *testing.T) {
-	// Create temp file
 	tmpFile, err := os.CreateTemp("", "test-file-size")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
 
 	content := make([]byte, 1024)
-	if _, err := tmpFile.Write(content); err != nil {
-		t.Fatal(err)
-	}
+	_, err = tmpFile.Write(content)
+	require.NoError(t, err)
 	tmpFile.Close()
 
 	size, err := GetFileSize(tmpFile.Name())
-	if err != nil {
-		t.Errorf("GetFileSize error: %v", err)
-	}
-
-	if size != 1024 {
-		t.Errorf("GetFileSize = %d, expected 1024", size)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1024), size)
 }
 
 func TestGlobPaths(t *testing.T) {
-	// Create temp directory with files
 	tmpDir, err := os.MkdirTemp("", "test-glob")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	// Create test files
 	for _, name := range []string{"a.txt", "b.txt", "c.log"} {
 		f, _ := os.Create(filepath.Join(tmpDir, name))
 		f.Close()
 	}
 
-	// Test glob
 	pattern := filepath.Join(tmpDir, "*.txt")
 	paths, err := GlobPaths(pattern)
-	if err != nil {
-		t.Errorf("GlobPaths error: %v", err)
-	}
-
-	if len(paths) != 2 {
-		t.Errorf("GlobPaths found %d files, expected 2", len(paths))
-	}
+	assert.NoError(t, err)
+	assert.Len(t, paths, 2)
 }
 
 // Note: Testing with existing paths would actually open Finder windows,

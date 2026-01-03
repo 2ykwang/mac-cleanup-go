@@ -4,22 +4,16 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoad_NoConfigFile(t *testing.T) {
-	// Load should return empty config when file doesn't exist
 	cfg, err := Load()
-	if err != nil {
-		t.Fatalf("Load() returned error: %v", err)
-	}
-
-	if cfg == nil {
-		t.Fatal("Load() returned nil config")
-	}
-
-	if cfg.ExcludedPaths == nil {
-		t.Error("ExcludedPaths should be initialized")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+	assert.NotNil(t, cfg.ExcludedPaths, "ExcludedPaths should be initialized")
 }
 
 func TestUserConfig_ExcludedPaths(t *testing.T) {
@@ -27,40 +21,18 @@ func TestUserConfig_ExcludedPaths(t *testing.T) {
 		ExcludedPaths: make(map[string][]string),
 	}
 
-	// Initially no excluded paths
 	paths := cfg.GetExcludedPaths("chrome-cache")
-	if len(paths) != 0 {
-		t.Error("Expected no excluded paths initially")
-	}
+	assert.Empty(t, paths, "expected no excluded paths initially")
+	assert.False(t, cfg.IsExcluded("chrome-cache", "/some/path"), "path should not be excluded initially")
 
-	if cfg.IsExcluded("chrome-cache", "/some/path") {
-		t.Error("Path should not be excluded initially")
-	}
-
-	// Set excluded paths
 	cfg.SetExcludedPaths("chrome-cache", []string{"/path/one", "/path/two"})
 
 	paths = cfg.GetExcludedPaths("chrome-cache")
-	if len(paths) != 2 {
-		t.Errorf("Expected 2 excluded paths, got %d", len(paths))
-	}
-
-	if !cfg.IsExcluded("chrome-cache", "/path/one") {
-		t.Error("/path/one should be excluded")
-	}
-
-	if !cfg.IsExcluded("chrome-cache", "/path/two") {
-		t.Error("/path/two should be excluded")
-	}
-
-	if cfg.IsExcluded("chrome-cache", "/path/three") {
-		t.Error("/path/three should not be excluded")
-	}
-
-	// Different category should not be affected
-	if cfg.IsExcluded("safari-cache", "/path/one") {
-		t.Error("safari-cache should not have excluded paths")
-	}
+	assert.Len(t, paths, 2)
+	assert.True(t, cfg.IsExcluded("chrome-cache", "/path/one"))
+	assert.True(t, cfg.IsExcluded("chrome-cache", "/path/two"))
+	assert.False(t, cfg.IsExcluded("chrome-cache", "/path/three"))
+	assert.False(t, cfg.IsExcluded("safari-cache", "/path/one"), "different category should not be affected")
 }
 
 func TestUserConfig_SetExcludedPaths_Empty(t *testing.T) {
@@ -68,57 +40,35 @@ func TestUserConfig_SetExcludedPaths_Empty(t *testing.T) {
 		ExcludedPaths: make(map[string][]string),
 	}
 
-	// Set some paths
 	cfg.SetExcludedPaths("chrome-cache", []string{"/path/one"})
-	if len(cfg.GetExcludedPaths("chrome-cache")) != 1 {
-		t.Error("Expected 1 excluded path")
-	}
+	assert.Len(t, cfg.GetExcludedPaths("chrome-cache"), 1)
 
-	// Clear by setting empty slice
 	cfg.SetExcludedPaths("chrome-cache", []string{})
-	paths := cfg.GetExcludedPaths("chrome-cache")
-	if len(paths) != 0 {
-		t.Errorf("Expected 0 excluded paths after clearing, got %d", len(paths))
-	}
+	assert.Empty(t, cfg.GetExcludedPaths("chrome-cache"), "paths should be cleared")
 }
 
 func TestUserConfig_SaveAndLoad(t *testing.T) {
-	// Create temp directory for test config
 	tmpDir, err := os.MkdirTemp("", "userconfig-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
+	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	// Override config path for testing
 	originalHome := os.Getenv("HOME")
 	os.Setenv("HOME", tmpDir)
 	defer os.Setenv("HOME", originalHome)
 
-	// Create and save config
 	cfg := &UserConfig{
 		ExcludedPaths: map[string][]string{
 			"chrome-cache": {"/path/one", "/path/two"},
 		},
 	}
 
-	if err := cfg.Save(); err != nil {
-		t.Fatalf("Save() failed: %v", err)
-	}
+	require.NoError(t, cfg.Save())
 
-	// Verify file was created
 	configPath := filepath.Join(tmpDir, ".config", "mac-cleanup-go", "config.yaml")
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		t.Error("Config file was not created")
-	}
+	_, err = os.Stat(configPath)
+	assert.NoError(t, err, "config file should be created")
 
-	// Load and verify
 	loaded, err := Load()
-	if err != nil {
-		t.Fatalf("Load() failed: %v", err)
-	}
-
-	if !loaded.IsExcluded("chrome-cache", "/path/one") {
-		t.Error("Loaded config should have excluded path")
-	}
+	require.NoError(t, err)
+	assert.True(t, loaded.IsExcluded("chrome-cache", "/path/one"))
 }

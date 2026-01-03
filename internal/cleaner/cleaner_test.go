@@ -49,9 +49,7 @@ func (m *mockScanner) IsAvailable() bool {
 func TestNew(t *testing.T) {
 	registry := scanner.NewRegistry()
 	c := New(registry)
-	if c == nil {
-		t.Fatal("New() returned nil")
-	}
+	require.NotNil(t, c)
 }
 
 func TestClean_Command_Success(t *testing.T) {
@@ -66,13 +64,8 @@ func TestClean_Command_Success(t *testing.T) {
 
 	result := c.Clean(cat, nil)
 
-	if result.CleanedItems != 1 {
-		t.Errorf("Expected 1 cleaned item, got %d", result.CleanedItems)
-	}
-
-	if len(result.Errors) != 0 {
-		t.Errorf("Expected no errors, got %v", result.Errors)
-	}
+	assert.Equal(t, 1, result.CleanedItems)
+	assert.Empty(t, result.Errors)
 }
 
 func TestClean_Command_Failure(t *testing.T) {
@@ -87,13 +80,8 @@ func TestClean_Command_Failure(t *testing.T) {
 
 	result := c.Clean(cat, nil)
 
-	if result.CleanedItems != 0 {
-		t.Errorf("Expected 0 cleaned items, got %d", result.CleanedItems)
-	}
-
-	if len(result.Errors) != 1 {
-		t.Errorf("Expected 1 error, got %d", len(result.Errors))
-	}
+	assert.Equal(t, 0, result.CleanedItems)
+	assert.Len(t, result.Errors, 1)
 }
 
 func TestClean_Command_Empty(t *testing.T) {
@@ -108,13 +96,8 @@ func TestClean_Command_Empty(t *testing.T) {
 
 	result := c.Clean(cat, nil)
 
-	if result.CleanedItems != 0 {
-		t.Errorf("Expected 0 cleaned items, got %d", result.CleanedItems)
-	}
-
-	if len(result.Errors) != 0 {
-		t.Errorf("Expected no errors, got %v", result.Errors)
-	}
+	assert.Equal(t, 0, result.CleanedItems)
+	assert.Empty(t, result.Errors)
 }
 
 func TestClean_CategoryInResult(t *testing.T) {
@@ -129,13 +112,8 @@ func TestClean_CategoryInResult(t *testing.T) {
 
 	result := c.Clean(cat, []types.CleanableItem{})
 
-	if result.Category.ID != "test-id" {
-		t.Errorf("Expected category ID 'test-id', got '%s'", result.Category.ID)
-	}
-
-	if result.Category.Name != "Test Category" {
-		t.Errorf("Expected category name 'Test Category', got '%s'", result.Category.Name)
-	}
+	assert.Equal(t, "test-id", result.Category.ID)
+	assert.Equal(t, "Test Category", result.Category.Name)
 }
 
 func TestClean_SkipsSIPProtectedPaths(t *testing.T) {
@@ -154,24 +132,15 @@ func TestClean_SkipsSIPProtectedPaths(t *testing.T) {
 
 	result := c.Clean(cat, items)
 
-	// Both should be skipped (SIP protected)
-	if result.CleanedItems != 0 {
-		t.Errorf("Expected 0 cleaned items, got %d", result.CleanedItems)
-	}
-
-	if result.SkippedItems != 2 {
-		t.Errorf("Expected 2 skipped items, got %d", result.SkippedItems)
-	}
+	assert.Equal(t, 0, result.CleanedItems, "SIP protected items should be skipped")
+	assert.Equal(t, 2, result.SkippedItems)
 }
 
 func TestClean_Permanent_RemovesFiles(t *testing.T) {
 	c := New(nil)
 
-	// Create a temp file to test permanent deletion
 	tmpFile, err := os.CreateTemp("", "cleanup-test-*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	tmpPath := tmpFile.Name()
 	tmpFile.WriteString("test content")
 	tmpFile.Close()
@@ -188,35 +157,21 @@ func TestClean_Permanent_RemovesFiles(t *testing.T) {
 
 	result := c.Clean(cat, items)
 
-	if result.CleanedItems != 1 {
-		t.Errorf("Expected 1 cleaned item, got %d", result.CleanedItems)
-	}
+	assert.Equal(t, 1, result.CleanedItems)
+	assert.Empty(t, result.Errors)
 
-	if len(result.Errors) != 0 {
-		t.Errorf("Expected no errors, got %v", result.Errors)
-	}
-
-	// Verify file is deleted
-	if _, err := os.Stat(tmpPath); !os.IsNotExist(err) {
-		t.Errorf("Expected file to be deleted, but it still exists")
-		os.Remove(tmpPath) // cleanup
-	}
+	_, err = os.Stat(tmpPath)
+	assert.True(t, os.IsNotExist(err), "file should be deleted")
 }
 
 func TestClean_Permanent_RemovesDirectories(t *testing.T) {
 	c := New(nil)
 
-	// Create a temp directory with files
 	tmpDir, err := os.MkdirTemp("", "cleanup-test-dir-*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	// Create a file inside
 	tmpFile, err := os.CreateTemp(tmpDir, "file-*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	tmpFile.Close()
 
 	items := []types.CleanableItem{
@@ -231,15 +186,10 @@ func TestClean_Permanent_RemovesDirectories(t *testing.T) {
 
 	result := c.Clean(cat, items)
 
-	if result.CleanedItems != 1 {
-		t.Errorf("Expected 1 cleaned item, got %d", result.CleanedItems)
-	}
+	assert.Equal(t, 1, result.CleanedItems)
 
-	// Verify directory is deleted
-	if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
-		t.Errorf("Expected directory to be deleted, but it still exists")
-		os.RemoveAll(tmpDir) // cleanup
-	}
+	_, err = os.Stat(tmpDir)
+	assert.True(t, os.IsNotExist(err), "directory should be deleted")
 }
 
 func TestClean_Permanent_SkipsSIPProtectedPaths(t *testing.T) {
@@ -257,9 +207,7 @@ func TestClean_Permanent_SkipsSIPProtectedPaths(t *testing.T) {
 
 	result := c.Clean(cat, items)
 
-	if result.SkippedItems != 1 {
-		t.Errorf("Expected 1 skipped item, got %d", result.SkippedItems)
-	}
+	assert.Equal(t, 1, result.SkippedItems)
 }
 
 func TestClean_MethodBuiltin_DelegatesToScanner(t *testing.T) {
@@ -365,12 +313,6 @@ func TestClean_Manual_SkipsWithGuide(t *testing.T) {
 
 	result := c.Clean(cat, items)
 
-	// Manual methods should skip all items
-	if result.CleanedItems != 0 {
-		t.Errorf("Expected 0 cleaned items for manual, got %d", result.CleanedItems)
-	}
-
-	if result.SkippedItems != 1 {
-		t.Errorf("Expected 1 skipped item for manual, got %d", result.SkippedItems)
-	}
+	assert.Equal(t, 0, result.CleanedItems, "manual methods should skip all items")
+	assert.Equal(t, 1, result.SkippedItems)
 }
