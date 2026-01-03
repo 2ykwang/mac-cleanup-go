@@ -1,4 +1,4 @@
-module mac-cleanup-go
+module github.com/2ykwang/mac-cleanup-go
 
 go 1.25
 
