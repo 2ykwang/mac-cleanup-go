@@ -8,9 +8,8 @@ import (
 
 func (m *Model) doClean() tea.Cmd {
 	type cleanJob struct {
-		category  types.Category
-		items     []types.CleanableItem
-		isBuiltin bool
+		category types.Category
+		items    []types.CleanableItem
 	}
 	var jobs []cleanJob
 
@@ -38,9 +37,8 @@ func (m *Model) doClean() tea.Cmd {
 		}
 
 		jobs = append(jobs, cleanJob{
-			category:  r.Category,
-			items:     items,
-			isBuiltin: r.Category.Method == types.MethodBuiltin,
+			category: r.Category,
+			items:    items,
 		})
 	}
 
@@ -66,22 +64,21 @@ func (m *Model) doClean() tea.Cmd {
 
 		for _, job := range jobs {
 			var result *types.CleanResult
+			cat := job.category
 
-			if job.isBuiltin {
+			// Builtin methods: batch processing (category-level progress)
+			// Other methods: item-by-item processing (item-level progress)
+			if cat.Method == types.MethodBuiltin {
 				m.cleanProgressChan <- cleanProgressMsg{
-					categoryName: job.category.Name,
+					categoryName: cat.Name,
 					currentItem:  "",
 					current:      currentItem,
 					total:        totalItems,
 				}
 
-				if s, ok := m.registry.Get(job.category.ID); ok {
-					result, _ = s.Clean(job.items)
-				}
+				result = m.cleaner.Clean(cat, job.items)
 				currentItem += len(job.items)
 			} else {
-				cat := job.category
-
 				// Clean items one by one for progress tracking
 				itemResult := &types.CleanResult{
 					Category: cat,
@@ -92,7 +89,7 @@ func (m *Model) doClean() tea.Cmd {
 
 					// Send progress update
 					m.cleanProgressChan <- cleanProgressMsg{
-						categoryName: job.category.Name,
+						categoryName: cat.Name,
 						currentItem:  item.Name,
 						current:      currentItem,
 						total:        totalItems,
@@ -128,7 +125,7 @@ func (m *Model) doClean() tea.Cmd {
 
 				// Send category done message
 				m.cleanCategoryDoneCh <- cleanCategoryDoneMsg{
-					categoryName: job.category.Name,
+					categoryName: cat.Name,
 					freedSpace:   result.FreedSpace,
 					cleanedItems: result.CleanedItems,
 					errorCount:   len(result.Errors),

@@ -97,10 +97,12 @@ func NewModel(cfg *types.Config) *Model {
 		}
 	}
 
+	registry := scanner.DefaultRegistry(cfg)
+
 	return &Model{
 		config:            cfg,
-		registry:          scanner.DefaultRegistry(cfg),
-		cleaner:           cleaner.New(),
+		registry:          registry,
+		cleaner:           cleaner.New(registry),
 		selected:          make(map[string]bool),
 		excluded:          excluded,
 		resultMap:         make(map[string]*types.ScanResult),
