@@ -177,37 +177,11 @@ func TestDockerTypeName_UnknownType(t *testing.T) {
 	assert.Equal(t, "Docker unknown", result)
 }
 
-func TestDockerScanner_Clean_DryRun(t *testing.T) {
-	cat := types.Category{ID: "docker", Name: "Docker"}
-	s := NewDockerScanner(cat)
-
-	items := []types.CleanableItem{
-		{Path: "docker:images", Size: 1000},
-		{Path: "docker:containers", Size: 2000},
-	}
-
-	result, err := s.Clean(items, true)
-
-	assert.NoError(t, err)
-	assert.Equal(t, 2, result.CleanedItems)
-	assert.Equal(t, int64(3000), result.FreedSpace)
-}
-
-func TestDockerScanner_Clean_DryRun_EmptyItems(t *testing.T) {
-	cat := types.Category{ID: "docker"}
-	s := NewDockerScanner(cat)
-
-	result, err := s.Clean([]types.CleanableItem{}, true)
-
-	assert.NoError(t, err)
-	assert.Equal(t, 0, result.CleanedItems)
-}
-
 func TestDockerScanner_Clean_IncludesCategoryInResult(t *testing.T) {
 	cat := types.Category{ID: "docker", Name: "Docker"}
 	s := NewDockerScanner(cat)
 
-	result, err := s.Clean(nil, true)
+	result, err := s.Clean(nil)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "docker", result.Category.ID)

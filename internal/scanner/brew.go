@@ -104,18 +104,10 @@ func (s *BrewScanner) Scan() (*types.ScanResult, error) {
 	return result, nil
 }
 
-func (s *BrewScanner) Clean(items []types.CleanableItem, dryRun bool) (*types.CleanResult, error) {
+func (s *BrewScanner) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
 	result := &types.CleanResult{
 		Category: s.category,
 		Errors:   make([]string, 0),
-	}
-
-	if dryRun {
-		for _, item := range items {
-			result.FreedSpace += item.Size
-			result.CleanedItems++
-		}
-		return result, nil
 	}
 
 	// Run actual cleanup

@@ -18,23 +18,10 @@ func New() *Cleaner {
 	return &Cleaner{}
 }
 
-func (c *Cleaner) Clean(cat types.Category, items []types.CleanableItem, dryRun bool) *types.CleanResult {
+func (c *Cleaner) Clean(cat types.Category, items []types.CleanableItem) *types.CleanResult {
 	result := &types.CleanResult{
 		Category: cat,
 		Errors:   make([]string, 0),
-	}
-
-	if dryRun {
-		for _, item := range items {
-			// Skip SIP protected paths
-			if scanner.IsSIPProtected(item.Path) {
-				result.SkippedItems++
-				continue
-			}
-			result.FreedSpace += item.Size
-			result.CleanedItems++
-		}
-		return result
 	}
 
 	switch cat.Method {

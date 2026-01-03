@@ -4,7 +4,7 @@ import "mac-cleanup-go/pkg/types"
 
 type Scanner interface {
 	Scan() (*types.ScanResult, error)
-	Clean(items []types.CleanableItem, dryRun bool) (*types.CleanResult, error)
+	Clean(items []types.CleanableItem) (*types.CleanResult, error)
 	Category() types.Category
 	IsAvailable() bool
 }

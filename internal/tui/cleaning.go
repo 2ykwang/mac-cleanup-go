@@ -77,7 +77,7 @@ func (m *Model) doClean() tea.Cmd {
 				}
 
 				if s, ok := m.registry.Get(job.category.ID); ok {
-					result, _ = s.Clean(job.items, false)
+					result, _ = s.Clean(job.items)
 				}
 				currentItem += len(job.items)
 			} else {
@@ -99,7 +99,7 @@ func (m *Model) doClean() tea.Cmd {
 						total:        totalItems,
 					}
 
-					singleResult := m.cleaner.Clean(cat, []types.CleanableItem{item}, false)
+					singleResult := m.cleaner.Clean(cat, []types.CleanableItem{item})
 					itemResult.FreedSpace += singleResult.FreedSpace
 					itemResult.CleanedItems += singleResult.CleanedItems
 					itemResult.Errors = append(itemResult.Errors, singleResult.Errors...)

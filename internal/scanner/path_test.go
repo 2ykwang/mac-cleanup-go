@@ -275,35 +275,7 @@ func TestScan_HandlesScanPathError_Gracefully(t *testing.T) {
 
 // --- Clean Tests ---
 
-func TestClean_DryRun_ReturnsCorrectStats(t *testing.T) {
-	cat := types.Category{ID: "test", Name: "Test"}
-	s := NewPathScanner(cat)
-
-	items := []types.CleanableItem{
-		{Path: "/fake/1", Size: 100},
-		{Path: "/fake/2", Size: 200},
-		{Path: "/fake/3", Size: 300},
-	}
-
-	result, err := s.Clean(items, true)
-
-	assert.NoError(t, err)
-	assert.Equal(t, 3, result.CleanedItems)
-	assert.Equal(t, int64(600), result.FreedSpace)
-}
-
-func TestClean_DryRun_EmptyItems(t *testing.T) {
-	cat := types.Category{ID: "test"}
-	s := NewPathScanner(cat)
-
-	result, err := s.Clean([]types.CleanableItem{}, true)
-
-	assert.NoError(t, err)
-	assert.Equal(t, 0, result.CleanedItems)
-	assert.Equal(t, int64(0), result.FreedSpace)
-}
-
-func TestClean_NonDryRun_ReturnsEmptyResult(t *testing.T) {
+func TestClean_ReturnsEmptyResult(t *testing.T) {
 	cat := types.Category{ID: "test"}
 	s := NewPathScanner(cat)
 
@@ -311,7 +283,7 @@ func TestClean_NonDryRun_ReturnsEmptyResult(t *testing.T) {
 		{Path: "/fake/1", Size: 100},
 	}
 
-	result, err := s.Clean(items, false)
+	result, err := s.Clean(items)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 0, result.CleanedItems)
@@ -321,7 +293,7 @@ func TestClean_IncludesCategoryInResult(t *testing.T) {
 	cat := types.Category{ID: "my-cat", Name: "My Category"}
 	s := NewPathScanner(cat)
 
-	result, err := s.Clean(nil, true)
+	result, err := s.Clean(nil)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "my-cat", result.Category.ID)

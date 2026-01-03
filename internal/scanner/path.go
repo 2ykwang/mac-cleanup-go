@@ -109,18 +109,10 @@ func (s *PathScanner) scanPath(path string) (types.CleanableItem, error) {
 	}, nil
 }
 
-func (s *PathScanner) Clean(items []types.CleanableItem, dryRun bool) (*types.CleanResult, error) {
+func (s *PathScanner) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
 	result := &types.CleanResult{
 		Category: s.category,
 		Errors:   make([]string, 0),
-	}
-
-	if dryRun {
-		for _, item := range items {
-			result.FreedSpace += item.Size
-			result.CleanedItems++
-		}
-		return result, nil
 	}
 
 	return result, nil
