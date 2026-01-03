@@ -91,8 +91,13 @@ func (m *Model) viewList() string {
 		}
 		b.WriteString("\n")
 	} else {
+		// Column header (align with: cursor(2) + checkbox(3) + space(1) + dot(1) + space(1) = 8 chars)
+		colHeader := fmt.Sprintf("        %-*s %*s %*s",
+			colName, "Name", colSize, "Size", colNum, "Count")
+		b.WriteString(MutedStyle.Render(colHeader) + "\n")
+
 		// Adjust scroll
-		m.scroll = m.adjustScrollFor(m.cursor, m.scroll, visible, len(m.results))
+		m.scroll = m.adjustScrollFor(m.cursor, m.scroll, visible-1, len(m.results))
 
 		for i, r := range m.results {
 			if i < m.scroll || i >= m.scroll+visible {
@@ -147,7 +152,7 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult) string {
 	}
 
 	size := fmt.Sprintf("%*s", colSize, utils.FormatSize(r.TotalSize))
-	count := fmt.Sprintf("%*s", colNum, fmt.Sprintf("(%d)", len(r.Items)))
+	count := fmt.Sprintf("%*d", colNum, r.TotalFileCount)
 
 	if isManual {
 		size = MutedStyle.Render(size)

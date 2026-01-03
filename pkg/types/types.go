@@ -50,16 +50,18 @@ type Config struct {
 type CleanableItem struct {
 	Path        string
 	Size        int64
+	FileCount   int64
 	Name        string
 	IsDirectory bool
 	ModifiedAt  time.Time
 }
 
 type ScanResult struct {
-	Category  Category
-	Items     []CleanableItem
-	TotalSize int64
-	Error     error
+	Category       Category
+	Items          []CleanableItem
+	TotalSize      int64
+	TotalFileCount int64
+	Error          error
 }
 
 type CleanResult struct {

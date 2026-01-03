@@ -31,11 +31,11 @@ func (m *Model) previewHeader(selected []*types.ScanResult, cat *types.ScanResul
 		mBadge := m.methodBadge(cat.Category.Method)
 		effectiveSize := m.getEffectiveSize(cat)
 		if mBadge != "" {
-			b.WriteString(fmt.Sprintf("%s %s  %s  │  %d items\n",
-				badge, mBadge, SizeStyle.Render(formatSize(effectiveSize)), len(cat.Items)))
+			b.WriteString(fmt.Sprintf("%s %s  %s  │  %d files\n",
+				badge, mBadge, SizeStyle.Render(formatSize(effectiveSize)), cat.TotalFileCount))
 		} else {
-			b.WriteString(fmt.Sprintf("%s  %s  │  %d items\n",
-				badge, SizeStyle.Render(formatSize(effectiveSize)), len(cat.Items)))
+			b.WriteString(fmt.Sprintf("%s  %s  │  %d files\n",
+				badge, SizeStyle.Render(formatSize(effectiveSize)), cat.TotalFileCount))
 		}
 		if cat.Category.Note != "" {
 			b.WriteString(MutedStyle.Render(cat.Category.Note) + "\n")
@@ -90,17 +90,21 @@ func (m *Model) viewPreview() string {
 	b.WriteString(header)
 
 	if cat != nil {
+		// Column header (align with: cursor(2) + checkbox(3) + space(1) + icon(1) + space(1) = 8 chars)
+		pathWidth := m.width - 28
+		if pathWidth < 30 {
+			pathWidth = 30
+		}
+		colHeader := fmt.Sprintf("        %-*s %*s %*s",
+			pathWidth-4, "Path", colSize, "Size", colNum, "Count")
+		b.WriteString(MutedStyle.Render(colHeader) + "\n")
+
 		// Adjust scroll
-		m.previewScroll = m.adjustScrollFor(m.previewItemIndex, m.previewScroll, visible, len(cat.Items))
+		m.previewScroll = m.adjustScrollFor(m.previewItemIndex, m.previewScroll, visible-1, len(cat.Items))
 
 		endIdx := m.previewScroll + visible
 		if endIdx > len(cat.Items) {
 			endIdx = len(cat.Items)
-		}
-
-		pathWidth := m.width - 20
-		if pathWidth < 30 {
-			pathWidth = 30
 		}
 
 		for i := m.previewScroll; i < endIdx; i++ {
@@ -131,13 +135,16 @@ func (m *Model) viewPreview() string {
 			}
 
 			size := fmt.Sprintf("%*s", colSize, utils.FormatSize(item.Size))
+			count := fmt.Sprintf("%*d", colNum, item.FileCount)
 			if isExcluded {
 				size = MutedStyle.Render(size)
+				count = MutedStyle.Render(count)
 			} else {
 				size = SizeStyle.Render(size)
+				count = MutedStyle.Render(count)
 			}
 
-			b.WriteString(fmt.Sprintf("%s%s %s %-*s %s\n", cursor, checkbox, icon, pathWidth-4, path, size))
+			b.WriteString(fmt.Sprintf("%s%s %s %-*s %s %s\n", cursor, checkbox, icon, pathWidth-4, path, size, count))
 		}
 
 		if len(cat.Items) > visible {

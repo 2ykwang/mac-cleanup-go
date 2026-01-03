@@ -81,6 +81,7 @@ func (s *PathScanner) Scan() (*types.ScanResult, error) {
 
 			result.Items = append(result.Items, item)
 			result.TotalSize += item.Size
+			result.TotalFileCount += item.FileCount
 		}
 	}
 
@@ -93,16 +94,18 @@ func (s *PathScanner) scanPath(path string) (types.CleanableItem, error) {
 		return types.CleanableItem{}, err
 	}
 
-	var size int64
+	var size, fileCount int64
 	if info.IsDir() {
-		size, _ = utils.GetDirSize(path)
+		size, fileCount, _ = utils.GetDirSizeWithCount(path)
 	} else {
 		size = info.Size()
+		fileCount = 1
 	}
 
 	return types.CleanableItem{
 		Path:        path,
 		Size:        size,
+		FileCount:   fileCount,
 		Name:        filepath.Base(path),
 		IsDirectory: info.IsDir(),
 		ModifiedAt:  info.ModTime(),

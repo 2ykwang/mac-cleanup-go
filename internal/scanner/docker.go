@@ -3,6 +3,7 @@ package scanner
 import (
 	"encoding/json"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"mac-cleanup-go/internal/utils"
@@ -70,14 +71,18 @@ func (s *DockerScanner) Scan() (*types.ScanResult, error) {
 			continue
 		}
 
+		fileCount, _ := strconv.ParseInt(df.TotalCount, 10, 64)
+
 		item := types.CleanableItem{
 			Path:        "docker:" + strings.ToLower(df.Type),
 			Size:        size,
+			FileCount:   fileCount,
 			Name:        dockerTypeName(df.Type),
 			IsDirectory: false,
 		}
 		result.Items = append(result.Items, item)
 		result.TotalSize += size
+		result.TotalFileCount += fileCount
 	}
 
 	return result, nil

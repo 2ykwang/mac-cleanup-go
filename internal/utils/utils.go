@@ -52,17 +52,23 @@ func CommandExists(cmd string) bool {
 	return err == nil
 }
 
-func GetDirSize(path string) (int64, error) {
-	var size int64
+func GetDirSizeWithCount(path string) (int64, int64, error) {
+	var size, count int64
 	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil
 		}
 		if !info.IsDir() {
 			size += info.Size()
+			count++
 		}
 		return nil
 	})
+	return size, count, err
+}
+
+func GetDirSize(path string) (int64, error) {
+	size, _, err := GetDirSizeWithCount(path)
 	return size, err
 }
 

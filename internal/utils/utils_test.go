@@ -81,6 +81,29 @@ func TestGetDirSize(t *testing.T) {
 	assert.Equal(t, int64(300), size)
 }
 
+func TestGetDirSizeWithCount(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "test-dir-size-count")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	// Create files in root
+	file1 := filepath.Join(tmpDir, "file1.txt")
+	file2 := filepath.Join(tmpDir, "file2.txt")
+	require.NoError(t, os.WriteFile(file1, make([]byte, 100), 0o644))
+	require.NoError(t, os.WriteFile(file2, make([]byte, 200), 0o644))
+
+	// Create subdirectory with files
+	subDir := filepath.Join(tmpDir, "subdir")
+	require.NoError(t, os.Mkdir(subDir, 0o755))
+	file3 := filepath.Join(subDir, "file3.txt")
+	require.NoError(t, os.WriteFile(file3, make([]byte, 50), 0o644))
+
+	size, count, err := GetDirSizeWithCount(tmpDir)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(350), size)
+	assert.Equal(t, int64(3), count)
+}
+
 func TestGetFileSize(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "test-file-size")
 	require.NoError(t, err)

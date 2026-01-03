@@ -158,9 +158,10 @@ func (m *Model) readDirectory(path string) []types.CleanableItem {
 		}
 
 		if entry.IsDir() {
-			item.Size, _ = utils.GetDirSize(fullPath)
+			item.Size, item.FileCount, _ = utils.GetDirSizeWithCount(fullPath)
 		} else {
 			item.Size = info.Size()
+			item.FileCount = 1
 		}
 		items = append(items, item)
 	}
