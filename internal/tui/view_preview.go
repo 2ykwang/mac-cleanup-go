@@ -38,10 +38,13 @@ func (m *Model) previewHeader(selected []*types.ScanResult, cat *types.ScanResul
 				badge, SizeStyle.Render(formatSize(effectiveSize)), cat.TotalFileCount))
 		}
 		if cat.Category.Note != "" {
-			b.WriteString(MutedStyle.Render(cat.Category.Note) + "\n")
+			// Auto-wrap note text to fit terminal width
+			noteStyle := MutedStyle.Width(m.width - 4)
+			b.WriteString(noteStyle.Render(cat.Category.Note) + "\n")
 		}
 		if cat.Category.Method == types.MethodManual && cat.Category.Guide != "" {
-			b.WriteString(WarningStyle.Render("[Manual] "+cat.Category.Guide) + "\n")
+			guideStyle := WarningStyle.Width(m.width - 4)
+			b.WriteString(guideStyle.Render("[Manual] "+cat.Category.Guide) + "\n")
 		}
 		b.WriteString(Divider(60) + "\n")
 	}
@@ -66,7 +69,13 @@ func (m *Model) previewFooter(selected []*types.ScanResult) string {
 	}
 
 	b.WriteString("\n\n")
-	b.WriteString(HelpStyle.Render("←→ Tab  ↑↓ Move  / Search  s Sort  space Toggle  o Open  y Delete  esc Back"))
+
+	// Context-specific footer for filter mode
+	if m.filterState == FilterTyping {
+		b.WriteString(HelpStyle.Render(FormatFooter(FilterTypingShortcuts)))
+	} else {
+		b.WriteString(HelpStyle.Render(FormatFooter(FooterShortcuts(ViewPreview))))
+	}
 
 	return b.String()
 }
@@ -158,8 +167,8 @@ func (m *Model) viewPreview() string {
 				icon = ">"
 			}
 
-			// Pad first, then apply style (ANSI codes break fmt width calculation)
-			paddedPath := fmt.Sprintf("%-*s", pathWidth-4, shortenPath(item.Path, pathWidth-4))
+			// Pad using display width (not byte count) for CJK character alignment
+			paddedPath := padToWidth(shortenPath(item.Path, pathWidth-4), pathWidth-4)
 			if isExcluded {
 				paddedPath = MutedStyle.Render(paddedPath)
 			} else if isCurrent {
@@ -236,7 +245,7 @@ func (m *Model) drillDownFooter() string {
 	}
 
 	b.WriteString("\n\n")
-	b.WriteString(HelpStyle.Render("↑↓ Navigate  s Sort  enter Enter folder  o Open  esc/backspace Back  q Quit"))
+	b.WriteString(HelpStyle.Render(FormatFooter(DrillDownFooterShortcuts())))
 
 	return b.String()
 }
@@ -287,11 +296,9 @@ func (m *Model) viewDrillDown() string {
 				icon = ">"
 			}
 
-			name := item.Name
-			if len(name) > nameWidth {
-				name = name[:nameWidth-2] + ".."
-			}
-			paddedName := fmt.Sprintf("%-*s", nameWidth, name)
+			// Truncate and pad using display width for CJK character alignment
+			name := truncateToWidth(item.Name, nameWidth, false)
+			paddedName := padToWidth(name, nameWidth)
 			if isCurrent {
 				paddedName = SelectedStyle.Render(paddedName)
 			}
