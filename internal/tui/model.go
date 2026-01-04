@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -46,6 +47,12 @@ type Model struct {
 	previewItemIndex int
 	previewScroll    int
 	drillDownStack   []drillDownState
+	sortOrder        types.SortOrder // Current sort order for items
+
+	// Filter/search state
+	filterState FilterState
+	filterText  string
+	filterInput textinput.Model
 
 	report       *types.Report
 	startTime    time.Time
@@ -92,6 +99,12 @@ func NewModel(cfg *types.Config) *Model {
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(ColorPrimary)
 
+	// Initialize filter input
+	ti := textinput.New()
+	ti.Placeholder = "Search..."
+	ti.CharLimit = 100
+	ti.Width = 30
+
 	// Load user config
 	userCfg, _ := userconfig.Load()
 
@@ -122,6 +135,9 @@ func NewModel(cfg *types.Config) *Model {
 		userConfig:        userCfg,
 		scanErrors:        make([]scanErrorInfo, 0),
 		recentDeleted:     NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity),
+		sortOrder:         types.SortBySize,
+		filterState:       FilterNone,
+		filterInput:       ti,
 	}
 }
 

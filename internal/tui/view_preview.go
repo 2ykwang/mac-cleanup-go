@@ -16,8 +16,8 @@ func (m *Model) previewHeader(selected []*types.ScanResult, cat *types.ScanResul
 	b.WriteString(HeaderStyle.Render("Cleanup Preview"))
 	b.WriteString("\n\n")
 
-	b.WriteString(fmt.Sprintf("Selected: %d  │  Estimated: %s\n",
-		m.getSelectedCount(), SizeStyle.Render(formatSize(m.getSelectedSize()))))
+	b.WriteString(fmt.Sprintf("Selected: %d  │  Estimated: %s  │  Sort: %s\n",
+		m.getSelectedCount(), SizeStyle.Render(formatSize(m.getSelectedSize())), m.sortOrder.Label()))
 	b.WriteString(Divider(60) + "\n\n")
 
 	// Tabs
@@ -66,7 +66,7 @@ func (m *Model) previewFooter(selected []*types.ScanResult) string {
 	}
 
 	b.WriteString("\n\n")
-	b.WriteString(HelpStyle.Render("←→ Tab  ↑↓ Move  space Toggle  a Include All  d Exclude All  o Open  y Delete  esc Back"))
+	b.WriteString(HelpStyle.Render("←→ Tab  ↑↓ Move  / Search  s Sort  space Toggle  o Open  y Delete  esc Back"))
 
 	return b.String()
 }
@@ -94,20 +94,52 @@ func (m *Model) viewPreview() string {
 		if pathWidth < 30 {
 			pathWidth = 30
 		}
+
+		// Show search input if in typing mode
+		// Show search input if in typing mode
+		if m.filterState == FilterTyping {
+			b.WriteString("Search: " + m.filterInput.View() + "\n")
+		}
+
+		// Apply filter and sort (real-time filtering during typing)
+		items := cat.Items
+		var filterQuery string
+		switch m.filterState {
+		case FilterTyping:
+			filterQuery = m.filterInput.Value()
+		case FilterApplied:
+			filterQuery = m.filterText
+		}
+		if filterQuery != "" {
+			items = m.filterItems(items, filterQuery)
+		}
+		sortedItems := m.sortItems(items)
+
+		// Show filter info
+		if filterQuery != "" {
+			filterInfo := fmt.Sprintf("Filter: \"%s\" (%d items)", filterQuery, len(sortedItems))
+			b.WriteString(MutedStyle.Render(filterInfo) + "\n")
+		}
+
 		colHeader := fmt.Sprintf("%*s%-*s %*s %*s",
-			previewPrefixWidth, "", pathWidth-4, "Path", colSize, "Size", colNum, "Count")
+			previewPrefixWidth, "", pathWidth-4, "Path", colSize, "Size", colAge, "Age")
 		b.WriteString(MutedStyle.Render(colHeader) + "\n")
 
+		// Handle empty filter results
+		if len(sortedItems) == 0 && filterQuery != "" {
+			b.WriteString(MutedStyle.Render("  No matching items\n"))
+		}
+
 		// Adjust scroll
-		m.previewScroll = m.adjustScrollFor(m.previewItemIndex, m.previewScroll, visible-1, len(cat.Items))
+		m.previewScroll = m.adjustScrollFor(m.previewItemIndex, m.previewScroll, visible-1, len(sortedItems))
 
 		endIdx := m.previewScroll + visible
-		if endIdx > len(cat.Items) {
-			endIdx = len(cat.Items)
+		if endIdx > len(sortedItems) {
+			endIdx = len(sortedItems)
 		}
 
 		for i := m.previewScroll; i < endIdx; i++ {
-			item := cat.Items[i]
+			item := sortedItems[i]
 			isCurrent := m.previewItemIndex == i
 			isExcluded := m.isExcluded(cat.Category.ID, item.Path)
 
@@ -116,7 +148,7 @@ func (m *Model) viewPreview() string {
 				cursor = CursorStyle.Render("▸ ")
 			}
 
-			checkbox := SuccessStyle.Render("[✓]")
+			checkbox := SuccessStyle.Render("[x]")
 			if isExcluded {
 				checkbox = MutedStyle.Render("[ ]")
 			}
@@ -126,28 +158,29 @@ func (m *Model) viewPreview() string {
 				icon = ">"
 			}
 
-			path := shortenPath(item.Path, pathWidth-4)
+			// Pad first, then apply style (ANSI codes break fmt width calculation)
+			paddedPath := fmt.Sprintf("%-*s", pathWidth-4, shortenPath(item.Path, pathWidth-4))
 			if isExcluded {
-				path = MutedStyle.Render(path)
+				paddedPath = MutedStyle.Render(paddedPath)
 			} else if isCurrent {
-				path = SelectedStyle.Render(path)
+				paddedPath = SelectedStyle.Render(paddedPath)
 			}
 
 			size := fmt.Sprintf("%*s", colSize, utils.FormatSize(item.Size))
-			count := fmt.Sprintf("%*d", colNum, item.FileCount)
+			age := fmt.Sprintf("%*s", colAge, utils.FormatAge(item.ModifiedAt))
 			if isExcluded {
 				size = MutedStyle.Render(size)
-				count = MutedStyle.Render(count)
+				age = MutedStyle.Render(age)
 			} else {
 				size = SizeStyle.Render(size)
-				count = MutedStyle.Render(count)
+				age = MutedStyle.Render(age)
 			}
 
-			b.WriteString(fmt.Sprintf("%s%s %s %-*s %s %s\n", cursor, checkbox, icon, pathWidth-4, path, size, count))
+			b.WriteString(fmt.Sprintf("%s%s %s %s %s %s\n", cursor, checkbox, icon, paddedPath, size, age))
 		}
 
-		if len(cat.Items) > visible {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("\n  [%d-%d / %d]", m.previewScroll+1, endIdx, len(cat.Items))))
+		if len(sortedItems) > visible {
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("\n  [%d-%d / %d]", m.previewScroll+1, endIdx, len(sortedItems))))
 		}
 	}
 
@@ -203,7 +236,7 @@ func (m *Model) drillDownFooter() string {
 	}
 
 	b.WriteString("\n\n")
-	b.WriteString(HelpStyle.Render("↑↓ Navigate  enter Enter folder  o Open  esc/backspace Back  q Quit"))
+	b.WriteString(HelpStyle.Render("↑↓ Navigate  s Sort  enter Enter folder  o Open  esc/backspace Back  q Quit"))
 
 	return b.String()
 }
@@ -224,12 +257,15 @@ func (m *Model) viewDrillDown() string {
 	if len(state.items) == 0 {
 		b.WriteString(MutedStyle.Render("(empty)") + "\n")
 	} else {
+		// Sort items based on current sort order
+		sortedItems := m.sortItems(state.items)
+
 		// Adjust scroll
-		state.scroll = m.adjustScrollFor(state.cursor, state.scroll, visible, len(state.items))
+		state.scroll = m.adjustScrollFor(state.cursor, state.scroll, visible, len(sortedItems))
 
 		endIdx := state.scroll + visible
-		if endIdx > len(state.items) {
-			endIdx = len(state.items)
+		if endIdx > len(sortedItems) {
+			endIdx = len(sortedItems)
 		}
 
 		nameWidth := m.width - 20
@@ -238,7 +274,7 @@ func (m *Model) viewDrillDown() string {
 		}
 
 		for i := state.scroll; i < endIdx; i++ {
-			item := state.items[i]
+			item := sortedItems[i]
 			isCurrent := i == state.cursor
 
 			cursor := "  "
@@ -255,16 +291,18 @@ func (m *Model) viewDrillDown() string {
 			if len(name) > nameWidth {
 				name = name[:nameWidth-2] + ".."
 			}
+			paddedName := fmt.Sprintf("%-*s", nameWidth, name)
 			if isCurrent {
-				name = SelectedStyle.Render(name)
+				paddedName = SelectedStyle.Render(paddedName)
 			}
 
 			size := fmt.Sprintf("%*s", colSize, utils.FormatSize(item.Size))
-			b.WriteString(fmt.Sprintf("%s%s %-*s %s\n", cursor, icon, nameWidth, name, SizeStyle.Render(size)))
+			age := fmt.Sprintf("%*s", colAge, utils.FormatAge(item.ModifiedAt))
+			b.WriteString(fmt.Sprintf("%s%s %s %s %s\n", cursor, icon, paddedName, SizeStyle.Render(size), MutedStyle.Render(age)))
 		}
 
-		if len(state.items) > visible {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("\n  [%d/%d]", state.cursor+1, len(state.items))))
+		if len(sortedItems) > visible {
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("\n  [%d/%d]", state.cursor+1, len(sortedItems))))
 		}
 	}
 

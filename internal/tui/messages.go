@@ -14,6 +14,15 @@ const (
 	ViewGuide // Manual item guide popup
 )
 
+// FilterState represents the search/filter mode state
+type FilterState int
+
+const (
+	FilterNone    FilterState = iota // No filter active
+	FilterTyping                     // User is typing search query
+	FilterApplied                    // Filter is applied
+)
+
 // Messages
 type (
 	scanResultMsg    struct{ result *types.ScanResult }

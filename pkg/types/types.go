@@ -20,6 +20,41 @@ const (
 	MethodManual    CleanupMethod = "manual"
 )
 
+// SortOrder represents the sorting criterion for items
+type SortOrder string
+
+const (
+	SortBySize SortOrder = "size" // Size descending (default)
+	SortByName SortOrder = "name" // Name ascending (A→Z)
+	SortByAge  SortOrder = "age"  // Age ascending (oldest first)
+)
+
+// Next returns the next sort order in the rotation cycle
+func (s SortOrder) Next() SortOrder {
+	switch s {
+	case SortBySize:
+		return SortByName
+	case SortByName:
+		return SortByAge
+	default:
+		return SortBySize
+	}
+}
+
+// Label returns the display label for the sort order
+func (s SortOrder) Label() string {
+	switch s {
+	case SortBySize:
+		return "Size ↓"
+	case SortByName:
+		return "Name"
+	case SortByAge:
+		return "Age"
+	default:
+		return "Size ↓"
+	}
+}
+
 type Category struct {
 	ID       string        `yaml:"id"`
 	Name     string        `yaml:"name"`

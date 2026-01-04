@@ -36,5 +36,3 @@ func Divider(width int) string {
 	}
 	return DividerStyle.Render(line)
 }
-
-

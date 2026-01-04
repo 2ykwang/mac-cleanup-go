@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func ExpandPath(path string) string {
@@ -38,6 +39,38 @@ func FormatSize(bytes int64) string {
 		return fmt.Sprintf("%.1f KB", float64(bytes)/KB)
 	default:
 		return fmt.Sprintf("%d B", bytes)
+	}
+}
+
+// FormatAge formats a time.Time as a human-readable age string
+// Examples: "5m", "3h", "7d", "2mo", "1y"
+func FormatAge(t time.Time) string {
+	if t.IsZero() {
+		return "-"
+	}
+
+	duration := time.Since(t)
+
+	minutes := int(duration.Minutes())
+	hours := int(duration.Hours())
+	days := hours / 24
+	months := days / 30
+	years := days / 365
+
+	switch {
+	case hours < 1:
+		if minutes < 1 {
+			return "<1m"
+		}
+		return fmt.Sprintf("%dm", minutes)
+	case hours < 24:
+		return fmt.Sprintf("%dh", hours)
+	case days < 30:
+		return fmt.Sprintf("%dd", days)
+	case months < 12:
+		return fmt.Sprintf("%dmo", months)
+	default:
+		return fmt.Sprintf("%dy", years)
 	}
 }
 

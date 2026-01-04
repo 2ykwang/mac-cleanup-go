@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -149,4 +150,58 @@ func TestOpenInFinder_TildeExpansion(t *testing.T) {
 	err := OpenInFinder("~/nonexistent/path/12345")
 
 	assert.Error(t, err, "non-existent home path should return error")
+}
+
+func TestFormatAge_ZeroTime(t *testing.T) {
+	result := FormatAge(time.Time{})
+
+	assert.Equal(t, "-", result)
+}
+
+func TestFormatAge_LessThanMinute(t *testing.T) {
+	now := time.Now()
+
+	result := FormatAge(now.Add(-30 * time.Second))
+
+	assert.Equal(t, "<1m", result)
+}
+
+func TestFormatAge_Minutes(t *testing.T) {
+	now := time.Now()
+
+	result := FormatAge(now.Add(-5 * time.Minute))
+
+	assert.Equal(t, "5m", result)
+}
+
+func TestFormatAge_Hours(t *testing.T) {
+	now := time.Now()
+
+	result := FormatAge(now.Add(-3 * time.Hour))
+
+	assert.Equal(t, "3h", result)
+}
+
+func TestFormatAge_Days(t *testing.T) {
+	now := time.Now()
+
+	result := FormatAge(now.Add(-7 * 24 * time.Hour))
+
+	assert.Equal(t, "7d", result)
+}
+
+func TestFormatAge_Months(t *testing.T) {
+	now := time.Now()
+
+	result := FormatAge(now.Add(-60 * 24 * time.Hour)) // ~2 months
+
+	assert.Equal(t, "2mo", result)
+}
+
+func TestFormatAge_Years(t *testing.T) {
+	now := time.Now()
+
+	result := FormatAge(now.Add(-400 * 24 * time.Hour)) // ~1 year
+
+	assert.Equal(t, "1y", result)
 }

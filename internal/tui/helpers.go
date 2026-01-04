@@ -124,6 +124,51 @@ func (m *Model) availableLines(header, footer string) int {
 	return available
 }
 
+// pageSize returns the number of items to move for page up/down navigation.
+// Uses a reasonable default based on typical terminal heights.
+func (m *Model) pageSize() int {
+	// Reserve space for header/footer, use about 80% of visible area
+	pageSize := (m.height - 10) * 8 / 10
+	if pageSize < 5 {
+		return 5
+	}
+	return pageSize
+}
+
+// getVisiblePreviewItems returns the sorted and filtered items for the current preview.
+// This is what the user actually sees on screen.
+func (m *Model) getVisiblePreviewItems() []types.CleanableItem {
+	r := m.getPreviewCatResult()
+	if r == nil {
+		return nil
+	}
+
+	items := r.Items
+
+	// Apply filter if active
+	if m.filterState == FilterTyping {
+		query := m.filterInput.Value()
+		if query != "" {
+			items = m.filterItems(items, query)
+		}
+	} else if m.filterState == FilterApplied && m.filterText != "" {
+		items = m.filterItems(items, m.filterText)
+	}
+
+	// Apply sort
+	return m.sortItems(items)
+}
+
+// getCurrentPreviewItem returns the item at the current cursor position
+// after applying filter and sort. Returns nil if no valid item.
+func (m *Model) getCurrentPreviewItem() *types.CleanableItem {
+	items := m.getVisiblePreviewItems()
+	if items == nil || m.previewItemIndex < 0 || m.previewItemIndex >= len(items) {
+		return nil
+	}
+	return &items[m.previewItemIndex]
+}
+
 func (m *Model) adjustScrollFor(cursor, scroll, visible, _ int) int {
 	if cursor < scroll {
 		return cursor
@@ -172,35 +217,6 @@ func (m *Model) readDirectory(path string) []types.CleanableItem {
 	return items
 }
 
-func (m *Model) tryDrillDown() bool {
-	r := m.getPreviewCatResult()
-	if r == nil {
-		return false
-	}
-
-	if m.previewItemIndex < 0 || m.previewItemIndex >= len(r.Items) {
-		return false
-	}
-
-	item := r.Items[m.previewItemIndex]
-	if !item.IsDirectory {
-		return false
-	}
-
-	items := m.readDirectory(item.Path)
-	if len(items) == 0 {
-		return false
-	}
-
-	m.drillDownStack = append(m.drillDownStack, drillDownState{
-		path:   item.Path,
-		items:  items,
-		cursor: 0,
-		scroll: 0,
-	})
-	return true
-}
-
 // Exclusion helpers
 
 func (m *Model) isExcluded(catID, path string) bool {
@@ -246,4 +262,74 @@ func (m *Model) clearExcludeCategory(catID string) {
 		m.excluded[catID] = make(map[string]bool)
 		m.saveExcludedPaths()
 	}
+}
+
+// sortItems sorts items based on the current sort order.
+// Returns a new sorted slice without modifying the original.
+func (m *Model) sortItems(items []types.CleanableItem) []types.CleanableItem {
+	if len(items) == 0 {
+		return items
+	}
+
+	// Make a copy to avoid modifying the original slice
+	sorted := make([]types.CleanableItem, len(items))
+	copy(sorted, items)
+
+	switch m.sortOrder {
+	case types.SortBySize:
+		// Size descending (largest first)
+		sort.Slice(sorted, func(i, j int) bool {
+			return sorted[i].Size > sorted[j].Size
+		})
+	case types.SortByName:
+		// Name ascending (A→Z)
+		sort.Slice(sorted, func(i, j int) bool {
+			return sorted[i].Name < sorted[j].Name
+		})
+	case types.SortByAge:
+		// Age ascending (oldest first = earliest ModifiedAt)
+		sort.Slice(sorted, func(i, j int) bool {
+			return sorted[i].ModifiedAt.Before(sorted[j].ModifiedAt)
+		})
+	}
+
+	return sorted
+}
+
+// filterItems filters items by the given query string.
+// Supports space-separated AND matching: "cache simple" matches items
+// containing both "cache" AND "simple" anywhere in Name or Path.
+// Case-insensitive. Returns empty slice if query is empty (no filtering).
+func (m *Model) filterItems(items []types.CleanableItem, query string) []types.CleanableItem {
+	if query == "" {
+		return items
+	}
+
+	// Split query into terms (space = AND)
+	terms := strings.Fields(strings.ToLower(query))
+	if len(terms) == 0 {
+		return items
+	}
+
+	var filtered []types.CleanableItem
+
+	for _, item := range items {
+		// Combine name and path for matching
+		combined := strings.ToLower(item.Name + " " + item.Path)
+
+		// All terms must match (AND logic)
+		match := true
+		for _, term := range terms {
+			if !strings.Contains(combined, term) {
+				match = false
+				break
+			}
+		}
+
+		if match {
+			filtered = append(filtered, item)
+		}
+	}
+
+	return filtered
 }

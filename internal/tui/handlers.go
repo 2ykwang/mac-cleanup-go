@@ -133,6 +133,11 @@ func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Handle filter typing mode first
+	if m.filterState == FilterTyping {
+		return m.handleFilterTypingKey(msg)
+	}
+
 	if len(m.drillDownStack) > 0 {
 		return m.handleDrillDownKey(msg)
 	}
@@ -141,6 +146,14 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+c", "q":
 		return m, tea.Quit
 	case "esc", "n":
+		// Clear filter if applied, otherwise go back
+		if m.filterState == FilterApplied {
+			m.filterState = FilterNone
+			m.filterText = ""
+			m.previewItemIndex = 0
+			m.previewScroll = 0
+			return m, nil
+		}
 		m.view = ViewList
 	case "up", "k":
 		if m.previewItemIndex > 0 {
@@ -160,6 +173,9 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.previewCatID = prevID
 			m.previewItemIndex = 0
 			m.previewScroll = 0
+			// Clear filter on tab change
+			m.filterState = FilterNone
+			m.filterText = ""
 		}
 	case "right", "l":
 		nextID := m.findNextSelectedCatID()
@@ -167,16 +183,30 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.previewCatID = nextID
 			m.previewItemIndex = 0
 			m.previewScroll = 0
+			// Clear filter on tab change
+			m.filterState = FilterNone
+			m.filterText = ""
 		}
 	case " ":
-		// Toggle exclusion for current item
+		// Toggle exclusion for current item (use visible items after filter/sort)
 		r := m.getPreviewCatResult()
-		if r != nil && m.previewItemIndex >= 0 && m.previewItemIndex < len(r.Items) {
-			m.toggleExclude(r.Category.ID, r.Items[m.previewItemIndex].Path)
+		item := m.getCurrentPreviewItem()
+		if r != nil && item != nil {
+			m.toggleExclude(r.Category.ID, item.Path)
 		}
 	case "enter":
-		if m.previewItemIndex >= 0 {
-			m.tryDrillDown()
+		// Drill down into directory (use visible items after filter/sort)
+		item := m.getCurrentPreviewItem()
+		if item != nil && item.IsDirectory {
+			items := m.readDirectory(item.Path)
+			if len(items) > 0 {
+				m.drillDownStack = append(m.drillDownStack, drillDownState{
+					path:   item.Path,
+					items:  items,
+					cursor: 0,
+					scroll: 0,
+				})
+			}
 		}
 	case "y":
 		m.view = ViewConfirm
@@ -193,18 +223,82 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.autoExcludeCategory(r.Category.ID, r)
 		}
 	case "o":
-		// Open in Finder
-		r := m.getPreviewCatResult()
-		if r != nil && m.previewItemIndex >= 0 && m.previewItemIndex < len(r.Items) {
-			path := r.Items[m.previewItemIndex].Path
-			if err := utils.OpenInFinder(path); err != nil {
+		// Open in Finder (use visible items after filter/sort)
+		item := m.getCurrentPreviewItem()
+		if item != nil {
+			if err := utils.OpenInFinder(item.Path); err != nil {
 				m.statusMessage = "Path not found"
 			} else {
 				m.statusMessage = ""
 			}
 		}
+	case "s":
+		// Toggle sort order
+		m.sortOrder = m.sortOrder.Next()
+		m.previewItemIndex = 0
+		m.previewScroll = 0
+	case "pgdown":
+		// Page down
+		r := m.getPreviewCatResult()
+		if r != nil {
+			m.previewItemIndex += m.pageSize()
+			if m.previewItemIndex >= len(r.Items) {
+				m.previewItemIndex = len(r.Items) - 1
+			}
+		}
+	case "pgup":
+		// Page up
+		m.previewItemIndex -= m.pageSize()
+		if m.previewItemIndex < 0 {
+			m.previewItemIndex = 0
+		}
+	case "home":
+		// Go to first item
+		m.previewItemIndex = 0
+		m.previewScroll = 0
+	case "end":
+		// Go to last item
+		r := m.getPreviewCatResult()
+		if r != nil && len(r.Items) > 0 {
+			m.previewItemIndex = len(r.Items) - 1
+		}
+	case "/":
+		// Enter search mode
+		m.filterState = FilterTyping
+		m.filterInput.SetValue("")
+		m.filterInput.Focus()
+		return m, m.filterInput.Focus()
 	}
 	return m, nil
+}
+
+func (m *Model) handleFilterTypingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		// Apply the filter
+		m.filterText = m.filterInput.Value()
+		m.filterState = FilterApplied
+		m.filterInput.Blur()
+		m.previewItemIndex = 0
+		m.previewScroll = 0
+		return m, nil
+	case "esc":
+		// Cancel search
+		m.filterState = FilterNone
+		m.filterText = ""
+		m.filterInput.Blur()
+		return m, nil
+	case "ctrl+c":
+		return m, tea.Quit
+	}
+
+	// Pass other keys to textinput and reset cursor for real-time filtering
+	var cmd tea.Cmd
+	m.filterInput, cmd = m.filterInput.Update(msg)
+	// Reset cursor position when filter changes
+	m.previewItemIndex = 0
+	m.previewScroll = 0
+	return m, cmd
 }
 
 func (m *Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -261,6 +355,32 @@ func (m *Model) handleDrillDownKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			} else {
 				m.statusMessage = ""
 			}
+		}
+	case "s":
+		// Toggle sort order
+		m.sortOrder = m.sortOrder.Next()
+		state.cursor = 0
+		state.scroll = 0
+	case "pgdown":
+		// Page down
+		state.cursor += m.pageSize()
+		if state.cursor >= len(state.items) {
+			state.cursor = len(state.items) - 1
+		}
+	case "pgup":
+		// Page up
+		state.cursor -= m.pageSize()
+		if state.cursor < 0 {
+			state.cursor = 0
+		}
+	case "home":
+		// Go to first item
+		state.cursor = 0
+		state.scroll = 0
+	case "end":
+		// Go to last item
+		if len(state.items) > 0 {
+			state.cursor = len(state.items) - 1
 		}
 	}
 	return m, nil

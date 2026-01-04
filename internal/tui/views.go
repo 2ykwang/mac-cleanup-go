@@ -12,6 +12,7 @@ const (
 	colName = 28
 	colSize = 12
 	colNum  = 8
+	colAge  = 6 // Age column width for FormatAge output (e.g., "2mo")
 
 	// listPrefixWidth: cursor(2) + checkbox(3) + space(1) + dot(1) + space(1)
 	listPrefixWidth = 8
