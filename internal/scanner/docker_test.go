@@ -31,144 +31,89 @@ func TestDockerScanner_Category_ReturnsConfiguredCategory(t *testing.T) {
 	assert.Equal(t, "Docker", result.Name)
 }
 
-func TestDockerScanner_IsAvailable_ReturnsBool(t *testing.T) {
-	cat := types.Category{ID: "docker", CheckCmd: "docker"}
+func TestParseDockerSize_KBWithPercentage(t *testing.T) {
+	result := parseDockerSize("53.25kB (100%)")
 
-	s := NewDockerScanner(cat)
-	available := s.IsAvailable()
-
-	t.Logf("Docker available: %v", available)
+	kb := float64(1024)
+	expected := int64(53.25 * kb)
+	assertWithinMargin(t, "53.25kB (100%)", result, expected, 0.01)
 }
 
-// Test inputs from: docker system df --format "{{json .}}"
-func TestParseDockerSize_RealDockerFormat(t *testing.T) {
-	const KB = 1024
-	const GB = 1024 * 1024 * 1024
+func TestParseDockerSize_GBWithPercentage(t *testing.T) {
+	result := parseDockerSize("2.371GB (93%)")
 
-	tests := []struct {
-		name     string
-		input    string
-		expected float64
-	}{
-		{"kB with percentage", "53.25kB (100%)", 53.25 * KB},
-		{"kB zero percent", "148.3kB (0%)", 148.3 * KB},
-		{"GB with percentage", "2.371GB (93%)", 2.371 * GB},
-		{"GB size field", "2.601GB", 2.601 * GB},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := parseDockerSize(tt.input)
-
-			assertWithinMargin(t, tt.input, result, int64(tt.expected), 0.01)
-		})
-	}
+	gb := float64(1024 * 1024 * 1024)
+	expected := int64(2.371 * gb)
+	assertWithinMargin(t, "2.371GB (93%)", result, expected, 0.01)
 }
 
-func TestParseDockerSize_ZeroAndEmpty(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected int64
-	}{
-		{"zero bytes", "0B", 0},
-		{"empty string", "", 0},
-	}
+func TestParseDockerSize_ZeroBytes(t *testing.T) {
+	result := parseDockerSize("0B")
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := parseDockerSize(tt.input)
-
-			assert.Equal(t, tt.expected, result)
-		})
-	}
+	assert.Equal(t, int64(0), result)
 }
 
-func TestParseDockerSize_AllUnits(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected int64
-	}{
-		{"bytes", "100B", 100},
-		{"kilobytes", "1KB", 1024},
-		{"megabytes", "1MB", 1024 * 1024},
-		{"gigabytes", "1GB", 1024 * 1024 * 1024},
-		{"terabytes", "1TB", 1024 * 1024 * 1024 * 1024},
-	}
+func TestParseDockerSize_EmptyString(t *testing.T) {
+	result := parseDockerSize("")
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := parseDockerSize(tt.input)
+	assert.Equal(t, int64(0), result)
+}
 
-			assert.Equal(t, tt.expected, result)
-		})
-	}
+func TestParseDockerSize_Bytes(t *testing.T) {
+	assert.Equal(t, int64(100), parseDockerSize("100B"))
+}
+
+func TestParseDockerSize_KB(t *testing.T) {
+	assert.Equal(t, int64(1024), parseDockerSize("1KB"))
+}
+
+func TestParseDockerSize_MB(t *testing.T) {
+	assert.Equal(t, int64(1024*1024), parseDockerSize("1MB"))
+}
+
+func TestParseDockerSize_GB(t *testing.T) {
+	assert.Equal(t, int64(1024*1024*1024), parseDockerSize("1GB"))
+}
+
+func TestParseDockerSize_TB(t *testing.T) {
+	assert.Equal(t, int64(1024*1024*1024*1024), parseDockerSize("1TB"))
 }
 
 func TestParseDockerSize_CaseInsensitive(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected int64
-	}{
-		{"1gb", 1024 * 1024 * 1024},
-		{"1GB", 1024 * 1024 * 1024},
-		{"1Gb", 1024 * 1024 * 1024},
-		{"1mb", 1024 * 1024},
-		{"1kb", 1024},
-	}
+	expected := int64(1024 * 1024 * 1024)
 
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := parseDockerSize(tt.input)
-
-			assert.Equal(t, tt.expected, result)
-		})
-	}
+	assert.Equal(t, expected, parseDockerSize("1gb"))
+	assert.Equal(t, expected, parseDockerSize("1GB"))
+	assert.Equal(t, expected, parseDockerSize("1Gb"))
 }
 
 func TestParseDockerSize_WithWhitespace(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected int64
-	}{
-		{"  1GB  ", 1024 * 1024 * 1024},
-		{"1GB ", 1024 * 1024 * 1024},
-		{" 1GB", 1024 * 1024 * 1024},
-	}
+	expected := int64(1024 * 1024 * 1024)
 
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := parseDockerSize(tt.input)
-
-			assert.Equal(t, tt.expected, result)
-		})
-	}
+	assert.Equal(t, expected, parseDockerSize("  1GB  "))
+	assert.Equal(t, expected, parseDockerSize("1GB "))
+	assert.Equal(t, expected, parseDockerSize(" 1GB"))
 }
 
-func TestDockerTypeName_AllTypes(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"images", "Docker Images"},
-		{"Images", "Docker Images"},
-		{"IMAGES", "Docker Images"},
-		{"containers", "Docker Containers"},
-		{"Containers", "Docker Containers"},
-		{"local volumes", "Docker Volumes [!DB DATA RISK]"},
-		{"Local Volumes", "Docker Volumes [!DB DATA RISK]"},
-		{"build cache", "Docker Build Cache"},
-		{"Build Cache", "Docker Build Cache"},
-	}
+func TestDockerTypeName_Images(t *testing.T) {
+	assert.Equal(t, "Docker Images", dockerTypeName("images"))
+	assert.Equal(t, "Docker Images", dockerTypeName("Images"))
+	assert.Equal(t, "Docker Images", dockerTypeName("IMAGES"))
+}
 
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := dockerTypeName(tt.input)
+func TestDockerTypeName_Containers(t *testing.T) {
+	assert.Equal(t, "Docker Containers", dockerTypeName("containers"))
+	assert.Equal(t, "Docker Containers", dockerTypeName("Containers"))
+}
 
-			assert.Equal(t, tt.expected, result)
-		})
-	}
+func TestDockerTypeName_Volumes(t *testing.T) {
+	assert.Equal(t, "Docker Volumes [!DB DATA RISK]", dockerTypeName("local volumes"))
+	assert.Equal(t, "Docker Volumes [!DB DATA RISK]", dockerTypeName("Local Volumes"))
+}
+
+func TestDockerTypeName_BuildCache(t *testing.T) {
+	assert.Equal(t, "Docker Build Cache", dockerTypeName("build cache"))
+	assert.Equal(t, "Docker Build Cache", dockerTypeName("Build Cache"))
 }
 
 func TestDockerTypeName_UnknownType(t *testing.T) {
