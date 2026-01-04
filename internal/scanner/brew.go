@@ -127,14 +127,9 @@ func (s *BrewScanner) Clean(items []types.CleanableItem) (*types.CleanResult, er
 }
 
 func extractBrewItemName(path string) string {
-	// Extract meaningful name from path
-	// e.g., /usr/local/Cellar/node/18.0.0 -> node@18.0.0
 	parts := strings.Split(path, "/")
 	if len(parts) >= 2 {
 		return parts[len(parts)-2] + "@" + parts[len(parts)-1]
 	}
-	if len(parts) >= 1 {
-		return parts[len(parts)-1]
-	}
-	return path
+	return parts[len(parts)-1]
 }
