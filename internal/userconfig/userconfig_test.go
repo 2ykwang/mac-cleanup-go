@@ -72,3 +72,55 @@ func TestUserConfig_SaveAndLoad(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, loaded.IsExcluded("chrome-cache", "/path/one"))
 }
+
+func TestLoad_InvalidYAML(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "userconfig-test-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", originalHome)
+
+	configDir := filepath.Join(tmpDir, ".config", "mac-cleanup-go")
+	require.NoError(t, os.MkdirAll(configDir, 0o755))
+
+	invalidYAML := []byte("invalid: yaml: content: [unclosed")
+	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.yaml"), invalidYAML, 0o644))
+
+	cfg, err := Load()
+
+	assert.Error(t, err)
+	assert.Nil(t, cfg)
+}
+
+func TestLoad_EmptyFile(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "userconfig-test-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", originalHome)
+
+	configDir := filepath.Join(tmpDir, ".config", "mac-cleanup-go")
+	require.NoError(t, os.MkdirAll(configDir, 0o755))
+
+	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte{}, 0o644))
+
+	cfg, err := Load()
+
+	assert.NoError(t, err)
+	assert.NotNil(t, cfg)
+	assert.NotNil(t, cfg.ExcludedPaths)
+}
+
+func TestUserConfig_IsExcluded_EmptyCategory(t *testing.T) {
+	cfg := &UserConfig{
+		ExcludedPaths: make(map[string][]string),
+	}
+
+	result := cfg.IsExcluded("nonexistent", "/some/path")
+
+	assert.False(t, result)
+}
