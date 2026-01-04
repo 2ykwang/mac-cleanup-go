@@ -16,7 +16,6 @@ var (
 
 // Styles
 var (
-	TitleStyle    = lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary).MarginBottom(1)
 	TextStyle     = lipgloss.NewStyle().Foreground(ColorText)
 	MutedStyle    = lipgloss.NewStyle().Foreground(ColorMuted)
 	SuccessStyle  = lipgloss.NewStyle().Foreground(ColorSuccess)
@@ -38,10 +37,4 @@ func Divider(width int) string {
 	return DividerStyle.Render(line)
 }
 
-func Logo() string {
-	logo := `
- ╔╦╗┌─┐┌─┐  ╔═╗┬  ┌─┐┌─┐┌┐┌┬ ┬┌─┐
- ║║║├─┤│    ║  │  ├┤ ├─┤││││ │├─┘
- ╩ ╩┴ ┴└─┘  ╚═╝┴─┘└─┘┴ ┴┘└┘└─┘┴  `
-	return lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(logo)
-}
+
