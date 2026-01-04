@@ -12,6 +12,7 @@ const (
 	ViewCleaning
 	ViewReport
 	ViewGuide // Manual item guide popup
+	ViewHelp  // Shortcut help popup
 )
 
 // FilterState represents the search/filter mode state

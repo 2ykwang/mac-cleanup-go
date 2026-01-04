@@ -28,7 +28,7 @@ func (m *Model) reportHeader() string {
 }
 
 func (m *Model) reportFooter() string {
-	return "\n" + HelpStyle.Render("↑↓ Scroll  enter Rescan  q Quit")
+	return "\n" + HelpStyle.Render(FormatFooter(FooterShortcuts(ViewReport)))
 }
 
 func (m *Model) viewReport() string {

@@ -135,7 +135,7 @@ func (m *Model) listFooter() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(HelpStyle.Render("↑↓ Navigate  space Select  a Select All  d Deselect All  enter Preview  q Quit"))
+	b.WriteString(HelpStyle.Render(FormatFooter(FooterShortcuts(ViewList))))
 
 	return b.String()
 }
@@ -210,7 +210,8 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult) string {
 	case types.MethodBuiltin:
 		name += " [Builtin]"
 	}
-	name = fmt.Sprintf("%-*s", colName, name)
+	// Truncate and pad using display width for consistent alignment
+	name = padToWidth(truncateToWidth(name, colName, false), colName)
 	if isManual {
 		name = MutedStyle.Render(name)
 	} else if isCurrent {

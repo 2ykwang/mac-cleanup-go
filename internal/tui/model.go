@@ -91,6 +91,9 @@ type Model struct {
 	// Guide popup state (for Manual items)
 	guideCategory  *types.Category // Category being shown in guide popup
 	guidePathIndex int             // Selected path index in guide popup
+
+	// Help popup state
+	helpPreviousView View // View to return to when closing help popup
 }
 
 // NewModel creates a new model
@@ -165,6 +168,8 @@ func (m *Model) View() string {
 		return m.viewReport()
 	case ViewGuide:
 		return m.viewGuide()
+	case ViewHelp:
+		return m.viewHelp()
 	default:
 		return m.viewList()
 	}

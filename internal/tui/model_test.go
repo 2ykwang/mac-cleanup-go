@@ -447,9 +447,10 @@ func TestViewList_ContainsHelpText(t *testing.T) {
 
 	output := m.viewList()
 
-	assert.Contains(t, output, "Navigate")
+	// Footer now uses simplified format: "↑↓ Move  space Select  enter Preview  y Delete  ? Help"
+	assert.Contains(t, output, "Move")
 	assert.Contains(t, output, "Select")
-	assert.Contains(t, output, "Quit")
+	assert.Contains(t, output, "? Help")
 }
 
 func TestViewList_ShowsSelectedIndicator(t *testing.T) {
