@@ -67,6 +67,7 @@ func (s *SystemCacheScanner) Scan() (*types.ScanResult, error) {
 
 			result.Items = append(result.Items, item)
 			result.TotalSize += item.Size
+			result.TotalFileCount += item.FileCount
 		}
 	}
 

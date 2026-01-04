@@ -196,3 +196,28 @@ func TestIsExcluded_WithVariousPathPatterns(t *testing.T) {
 		})
 	}
 }
+
+func TestSystemCacheScan_CalculatesTotalFileCount(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "systemcache-filecount-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	cachesDir := filepath.Join(tmpDir, "Caches")
+	appDir := filepath.Join(cachesDir, "TestApp")
+	require.NoError(t, os.MkdirAll(appDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, "file1.dat"), []byte("test"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, "file2.dat"), []byte("test"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, "file3.dat"), []byte("test"), 0o644))
+	systemCache := types.Category{
+		ID:    "system-cache",
+		Paths: []string{filepath.Join(cachesDir, "*")},
+	}
+	s := NewSystemCacheScanner(systemCache, []types.Category{systemCache})
+
+	result, err := s.Scan()
+
+	require.NoError(t, err)
+	require.Len(t, result.Items, 1)
+	assert.Equal(t, int64(3), result.Items[0].FileCount)
+	assert.Equal(t, int64(3), result.TotalFileCount)
+}

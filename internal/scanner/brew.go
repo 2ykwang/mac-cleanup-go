@@ -92,12 +92,14 @@ func (s *BrewScanner) Scan() (*types.ScanResult, error) {
 
 		if size > 0 {
 			item := types.CleanableItem{
-				Path: path,
-				Size: size,
-				Name: extractBrewItemName(path),
+				Path:      path,
+				Size:      size,
+				FileCount: 1,
+				Name:      extractBrewItemName(path),
 			}
 			result.Items = append(result.Items, item)
 			result.TotalSize += size
+			result.TotalFileCount++
 		}
 	}
 
