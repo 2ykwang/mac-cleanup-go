@@ -10,49 +10,59 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestExpandPath(t *testing.T) {
+func TestExpandPath_TildePath(t *testing.T) {
 	home, _ := os.UserHomeDir()
 
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"~/test", filepath.Join(home, "test")},
-		{"~/", filepath.Join(home, "")},
-		{"/absolute/path", "/absolute/path"},
-		{"relative/path", "relative/path"},
-	}
+	result := ExpandPath("~/test")
 
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := ExpandPath(tt.input)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
+	assert.Equal(t, filepath.Join(home, "test"), result)
 }
 
-func TestFormatSize(t *testing.T) {
-	tests := []struct {
-		bytes    int64
-		expected string
-	}{
-		{0, "0 B"},
-		{512, "512 B"},
-		{1024, "1.0 KB"},
-		{1536, "1.5 KB"},
-		{1048576, "1.0 MB"},
-		{1572864, "1.5 MB"},
-		{1073741824, "1.0 GB"},
-		{1610612736, "1.5 GB"},
-		{1099511627776, "1.0 TB"},
-	}
+func TestExpandPath_TildeOnly(t *testing.T) {
+	home, _ := os.UserHomeDir()
 
-	for _, tt := range tests {
-		t.Run(tt.expected, func(t *testing.T) {
-			result := FormatSize(tt.bytes)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
+	result := ExpandPath("~/")
+
+	assert.Equal(t, filepath.Join(home, ""), result)
+}
+
+func TestExpandPath_AbsolutePath(t *testing.T) {
+	result := ExpandPath("/absolute/path")
+
+	assert.Equal(t, "/absolute/path", result)
+}
+
+func TestExpandPath_RelativePath(t *testing.T) {
+	result := ExpandPath("relative/path")
+
+	assert.Equal(t, "relative/path", result)
+}
+
+func TestFormatSize_Zero(t *testing.T) {
+	assert.Equal(t, "0 B", FormatSize(0))
+}
+
+func TestFormatSize_Bytes(t *testing.T) {
+	assert.Equal(t, "512 B", FormatSize(512))
+}
+
+func TestFormatSize_KB(t *testing.T) {
+	assert.Equal(t, "1.0 KB", FormatSize(1024))
+	assert.Equal(t, "1.5 KB", FormatSize(1536))
+}
+
+func TestFormatSize_MB(t *testing.T) {
+	assert.Equal(t, "1.0 MB", FormatSize(1048576))
+	assert.Equal(t, "1.5 MB", FormatSize(1572864))
+}
+
+func TestFormatSize_GB(t *testing.T) {
+	assert.Equal(t, "1.0 GB", FormatSize(1073741824))
+	assert.Equal(t, "1.5 GB", FormatSize(1610612736))
+}
+
+func TestFormatSize_TB(t *testing.T) {
+	assert.Equal(t, "1.0 TB", FormatSize(1099511627776))
 }
 
 func TestPathExists(t *testing.T) {

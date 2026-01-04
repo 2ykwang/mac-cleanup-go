@@ -11,7 +11,7 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
-func TestIsExcluded_WhenPathMatchesOtherCategory_ReturnsTrue(t *testing.T) {
+func newSystemCacheScannerWithArcCategory() *SystemCacheScanner {
 	systemCache := types.Category{
 		ID:    "system-cache",
 		Paths: []string{"/tmp/test/Caches/*"},
@@ -20,37 +20,25 @@ func TestIsExcluded_WhenPathMatchesOtherCategory_ReturnsTrue(t *testing.T) {
 		{ID: "browser-arc", Paths: []string{"/tmp/test/Caches/Arc/*"}},
 	}
 	allCategories := append([]types.Category{systemCache}, otherCategories...)
-	s := NewSystemCacheScanner(systemCache, allCategories)
+	return NewSystemCacheScanner(systemCache, allCategories)
+}
 
-	assert.True(t, s.isExcluded("/tmp/test/Caches/Arc/cache.db"), "path in other category should be excluded")
+func TestIsExcluded_WhenPathMatchesOtherCategory_ReturnsTrue(t *testing.T) {
+	s := newSystemCacheScannerWithArcCategory()
+
+	assert.True(t, s.isExcluded("/tmp/test/Caches/Arc/cache.db"))
 }
 
 func TestIsExcluded_WhenPathNotInAnyCategory_ReturnsFalse(t *testing.T) {
-	systemCache := types.Category{
-		ID:    "system-cache",
-		Paths: []string{"/tmp/test/Caches/*"},
-	}
-	otherCategories := []types.Category{
-		{ID: "browser-arc", Paths: []string{"/tmp/test/Caches/Arc/*"}},
-	}
-	allCategories := append([]types.Category{systemCache}, otherCategories...)
-	s := NewSystemCacheScanner(systemCache, allCategories)
+	s := newSystemCacheScannerWithArcCategory()
 
-	assert.False(t, s.isExcluded("/tmp/test/Caches/RandomApp/data"), "path not in any category should not be excluded")
+	assert.False(t, s.isExcluded("/tmp/test/Caches/RandomApp/data"))
 }
 
 func TestIsExcluded_WhenEmptyPath_ReturnsFalse(t *testing.T) {
-	systemCache := types.Category{
-		ID:    "system-cache",
-		Paths: []string{"/tmp/test/Caches/*"},
-	}
-	otherCategories := []types.Category{
-		{ID: "browser-arc", Paths: []string{"/tmp/test/Caches/Arc/*"}},
-	}
-	allCategories := append([]types.Category{systemCache}, otherCategories...)
-	s := NewSystemCacheScanner(systemCache, allCategories)
+	s := newSystemCacheScannerWithArcCategory()
 
-	assert.False(t, s.isExcluded(""), "empty path should not be excluded")
+	assert.False(t, s.isExcluded(""))
 }
 
 func TestNewSystemCacheScanner_CollectsPathsFromOtherCategories(t *testing.T) {
@@ -165,7 +153,7 @@ func TestScan_WhenNoMatchingPaths_ReturnsEmptyResult(t *testing.T) {
 	assert.Empty(t, result.Items)
 }
 
-func TestIsExcluded_WithVariousPathPatterns(t *testing.T) {
+func newSystemCacheScannerForExclusionTest() *SystemCacheScanner {
 	systemCache := types.Category{
 		ID:    "system-cache",
 		Paths: []string{"/tmp/test/Caches/*"},
@@ -176,25 +164,39 @@ func TestIsExcluded_WithVariousPathPatterns(t *testing.T) {
 		{ID: "no-trailing", Paths: []string{"/tmp/test/Caches/App3"}},
 	}
 	allCategories := append([]types.Category{systemCache}, otherCategories...)
-	s := NewSystemCacheScanner(systemCache, allCategories)
+	return NewSystemCacheScanner(systemCache, allCategories)
+}
 
-	tests := []struct {
-		name     string
-		path     string
-		expected bool
-	}{
-		{"path with /* pattern", "/tmp/test/Caches/App1/file", true},
-		{"path with /** pattern", "/tmp/test/Caches/App2/file", true},
-		{"path with no trailing pattern", "/tmp/test/Caches/App3/file", true},
-		{"path not in any category", "/tmp/test/Caches/App4/file", false},
-	}
+func TestIsExcluded_PathWithStarPattern(t *testing.T) {
+	s := newSystemCacheScannerForExclusionTest()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := s.isExcluded(tt.path)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
+	result := s.isExcluded("/tmp/test/Caches/App1/file")
+
+	assert.True(t, result)
+}
+
+func TestIsExcluded_PathWithDoubleStarPattern(t *testing.T) {
+	s := newSystemCacheScannerForExclusionTest()
+
+	result := s.isExcluded("/tmp/test/Caches/App2/file")
+
+	assert.True(t, result)
+}
+
+func TestIsExcluded_PathWithNoTrailingPattern(t *testing.T) {
+	s := newSystemCacheScannerForExclusionTest()
+
+	result := s.isExcluded("/tmp/test/Caches/App3/file")
+
+	assert.True(t, result)
+}
+
+func TestIsExcluded_PathNotInAnyCategory(t *testing.T) {
+	s := newSystemCacheScannerForExclusionTest()
+
+	result := s.isExcluded("/tmp/test/Caches/App4/file")
+
+	assert.False(t, result)
 }
 
 func TestSystemCacheScan_CalculatesTotalFileCount(t *testing.T) {
