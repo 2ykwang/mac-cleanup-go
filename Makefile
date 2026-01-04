@@ -43,12 +43,24 @@ tidy: ## Run go mod tidy
 ##@ Testing
 
 .PHONY: test
-test: ## Run tests
-	$(GO) test ./...
+test: ## Run tests (pretty output with gotestsum)
+	@if command -v gotestsum >/dev/null 2>&1; then \
+		gotestsum --format pkgname; \
+	else \
+		$(GO) test ./...; \
+	fi
+
+.PHONY: test-watch
+test-watch: ## Run tests in watch mode
+	gotestsum --watch --format pkgname
 
 .PHONY: test-v
 test-v: ## Run tests with verbose output
-	$(GO) test -v ./...
+	@if command -v gotestsum >/dev/null 2>&1; then \
+		gotestsum --format standard-verbose; \
+	else \
+		$(GO) test -v ./...; \
+	fi
 
 .PHONY: test-cover
 test-cover: ## Run tests with coverage

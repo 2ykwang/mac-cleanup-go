@@ -1,0 +1,16 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 2%
+    patch:
+      default:
+        target: 60%
+
+comment:
+  layout: "header, diff, footer"
+  require_changes: true
+
+ignore:
+  - "main.go"

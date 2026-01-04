@@ -2,6 +2,7 @@
 
 [![GitHub Release](https://img.shields.io/github/v/release/2ykwang/mac-cleanup-go)](https://github.com/2ykwang/mac-cleanup-go/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/2ykwang/mac-cleanup-go)](https://goreportcard.com/report/github.com/2ykwang/mac-cleanup-go)
+[![codecov](https://codecov.io/gh/2ykwang/mac-cleanup-go/graph/badge.svg)](https://codecov.io/gh/2ykwang/mac-cleanup-go)
 [![CI](https://github.com/2ykwang/mac-cleanup-go/actions/workflows/test.yml/badge.svg)](https://github.com/2ykwang/mac-cleanup-go/actions/workflows/test.yml)
 [![golangci-lint](https://img.shields.io/badge/linted%20by-golangci--lint-brightgreen)](https://golangci-lint.run/)
 
