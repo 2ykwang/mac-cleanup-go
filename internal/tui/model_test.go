@@ -2,9 +2,12 @@ package tui
 
 import (
 	"testing"
+	"time"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
 	"github.com/2ykwang/mac-cleanup-go/pkg/types"
@@ -838,4 +841,469 @@ func TestHandleGuideKey_PathNavigation(t *testing.T) {
 	m.guidePathIndex = 0
 	m.handleGuideKey(tea.KeyMsg{Type: tea.KeyUp})
 	assert.Equal(t, 0, m.guidePathIndex, "should not go below 0")
+}
+
+func newTestModelWithFilter() *Model {
+	m := newTestModel()
+	ti := textinput.New()
+	ti.Placeholder = "Search..."
+	m.filterInput = ti
+	m.filterState = FilterTyping
+	return m
+}
+
+func TestHandleFilterTypingKey_EnterAppliesFilter(t *testing.T) {
+	m := newTestModelWithFilter()
+	m.filterInput.SetValue("chrome")
+	m.previewItemIndex = 5
+	m.previewScroll = 10
+
+	m.handleFilterTypingKey(tea.KeyMsg{Type: tea.KeyEnter})
+
+	assert.Equal(t, FilterApplied, m.filterState)
+	assert.Equal(t, "chrome", m.filterText)
+	assert.Equal(t, 0, m.previewItemIndex)
+	assert.Equal(t, 0, m.previewScroll)
+}
+
+func TestHandleFilterTypingKey_EscCancelsFilter(t *testing.T) {
+	m := newTestModelWithFilter()
+	m.filterInput.SetValue("test")
+
+	m.handleFilterTypingKey(tea.KeyMsg{Type: tea.KeyEsc})
+
+	assert.Equal(t, FilterNone, m.filterState)
+	assert.Equal(t, "", m.filterText)
+}
+
+func TestHandleFilterTypingKey_CtrlCQuits(t *testing.T) {
+	m := newTestModelWithFilter()
+
+	_, cmd := m.handleFilterTypingKey(tea.KeyMsg{Type: tea.KeyCtrlC})
+
+	require.NotNil(t, cmd)
+	msg := cmd()
+	assert.IsType(t, tea.QuitMsg{}, msg)
+}
+
+func TestHandleFilterTypingKey_RegularKeyResetsScroll(t *testing.T) {
+	m := newTestModelWithFilter()
+	m.previewItemIndex = 5
+	m.previewScroll = 10
+
+	m.handleFilterTypingKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+
+	assert.Equal(t, 0, m.previewItemIndex)
+	assert.Equal(t, 0, m.previewScroll)
+}
+
+func TestHandleConfirmKey_YesStartsCleaning(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewConfirm
+	beforeTime := time.Now()
+
+	_, cmd := m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+
+	assert.Equal(t, ViewCleaning, m.view)
+	assert.False(t, m.startTime.IsZero())
+	assert.True(t, m.startTime.After(beforeTime) || m.startTime.Equal(beforeTime))
+	assert.NotNil(t, cmd)
+}
+
+func TestHandleConfirmKey_EnterStartsCleaning(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewConfirm
+
+	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyEnter})
+
+	assert.Equal(t, ViewCleaning, m.view)
+}
+
+func TestHandleConfirmKey_NoReturnsToPreview(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewConfirm
+
+	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+
+	assert.Equal(t, ViewPreview, m.view)
+}
+
+func TestHandleConfirmKey_EscReturnsToPreview(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewConfirm
+
+	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyEsc})
+
+	assert.Equal(t, ViewPreview, m.view)
+}
+
+func TestHandleConfirmKey_QuestionMarkOpensHelp(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewConfirm
+
+	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+
+	assert.Equal(t, ViewHelp, m.view)
+	assert.Equal(t, ViewConfirm, m.helpPreviousView)
+}
+
+func TestHandleHelpKey_EscReturnsToList(t *testing.T) {
+	m := newTestModel()
+	m.view = ViewHelp
+	m.helpPreviousView = ViewList
+
+	m.handleHelpKey(tea.KeyMsg{Type: tea.KeyEsc})
+
+	assert.Equal(t, ViewList, m.view)
+}
+
+func TestHandleHelpKey_EnterReturnsToPreview(t *testing.T) {
+	m := newTestModel()
+	m.view = ViewHelp
+	m.helpPreviousView = ViewPreview
+
+	m.handleHelpKey(tea.KeyMsg{Type: tea.KeyEnter})
+
+	assert.Equal(t, ViewPreview, m.view)
+}
+
+func TestHandleHelpKey_SpaceReturnsToPreviousView(t *testing.T) {
+	m := newTestModel()
+	m.view = ViewHelp
+	m.helpPreviousView = ViewConfirm
+
+	m.handleHelpKey(tea.KeyMsg{Type: tea.KeySpace})
+
+	assert.Equal(t, ViewConfirm, m.view)
+}
+
+func TestHandleHelpKey_QuestionMarkCloses(t *testing.T) {
+	m := newTestModel()
+	m.view = ViewHelp
+	m.helpPreviousView = ViewList
+
+	m.handleHelpKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+
+	assert.Equal(t, ViewList, m.view)
+}
+
+func newTestModelForPreview() *Model {
+	m := newTestModelWithResults()
+	m.view = ViewPreview
+	m.previewCatID = "cat1"
+	m.selected["cat1"] = true
+	m.selected["cat2"] = true
+	return m
+}
+
+func TestHandlePreviewKey_CursorUpDecreases(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewItemIndex = 1
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyUp})
+
+	assert.Equal(t, 0, m.previewItemIndex)
+}
+
+func TestHandlePreviewKey_CursorUpBoundsAtZero(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewItemIndex = 0
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyUp})
+
+	assert.Equal(t, 0, m.previewItemIndex)
+}
+
+func TestHandlePreviewKey_CursorDownIncreases(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewItemIndex = 0
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyDown})
+
+	assert.Equal(t, 1, m.previewItemIndex)
+}
+
+func TestHandlePreviewKey_SortToggle(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewItemIndex = 5
+	m.previewScroll = 10
+	initialSort := m.sortOrder
+	expectedSort := initialSort.Next()
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+
+	assert.Equal(t, expectedSort, m.sortOrder)
+	assert.Equal(t, 0, m.previewItemIndex)
+	assert.Equal(t, 0, m.previewScroll)
+}
+
+func TestHandlePreviewKey_HomeGoesToFirst(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewItemIndex = 1
+	m.previewScroll = 5
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyHome})
+
+	assert.Equal(t, 0, m.previewItemIndex)
+	assert.Equal(t, 0, m.previewScroll)
+}
+
+func TestHandlePreviewKey_EndGoesToLast(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewItemIndex = 0
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyEnd})
+
+	assert.Equal(t, 1, m.previewItemIndex)
+}
+
+func TestHandlePreviewKey_SlashEntersSearchMode(t *testing.T) {
+	m := newTestModelForPreview()
+	ti := textinput.New()
+	m.filterInput = ti
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+
+	assert.Equal(t, FilterTyping, m.filterState)
+}
+
+func TestHandlePreviewKey_EscClearsAppliedFilter(t *testing.T) {
+	m := newTestModelForPreview()
+	m.filterState = FilterApplied
+	m.filterText = "test"
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyEsc})
+
+	assert.Equal(t, FilterNone, m.filterState)
+	assert.Equal(t, "", m.filterText)
+	assert.Equal(t, ViewPreview, m.view)
+}
+
+func TestHandlePreviewKey_EscReturnsToListWhenNoFilter(t *testing.T) {
+	m := newTestModelForPreview()
+	m.filterState = FilterNone
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyEsc})
+
+	assert.Equal(t, ViewList, m.view)
+}
+
+func TestHandlePreviewKey_YEntersConfirm(t *testing.T) {
+	m := newTestModelForPreview()
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+
+	assert.Equal(t, ViewConfirm, m.view)
+}
+
+func TestHandleDrillDownKey_EscPopsStack(t *testing.T) {
+	m := newTestModelForPreview()
+	m.drillDownStack = append(m.drillDownStack, drillDownState{
+		path:   "/test/path",
+		items:  []types.CleanableItem{{Path: "/test/path/a"}},
+		cursor: 0,
+	})
+
+	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyEsc})
+
+	assert.Empty(t, m.drillDownStack)
+}
+
+func TestHandleDrillDownKey_CursorNavigation(t *testing.T) {
+	m := newTestModelForPreview()
+	m.drillDownStack = append(m.drillDownStack, drillDownState{
+		path:   "/test/path",
+		items:  []types.CleanableItem{{Path: "/a"}, {Path: "/b"}, {Path: "/c"}},
+		cursor: 0,
+	})
+
+	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyDown})
+	assert.Equal(t, 1, m.drillDownStack[0].cursor)
+
+	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyUp})
+	assert.Equal(t, 0, m.drillDownStack[0].cursor)
+}
+
+func TestHandleDrillDownKey_QuestionMarkOpensHelp(t *testing.T) {
+	m := newTestModelForPreview()
+	m.drillDownStack = append(m.drillDownStack, drillDownState{
+		path:   "/test/path",
+		items:  []types.CleanableItem{{Path: "/a"}},
+		cursor: 0,
+	})
+
+	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+
+	assert.Equal(t, ViewHelp, m.view)
+	assert.Equal(t, ViewPreview, m.helpPreviousView)
+}
+
+func TestHandleConfirmKey_CtrlCQuits(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewConfirm
+
+	_, cmd := m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyCtrlC})
+
+	require.NotNil(t, cmd)
+	msg := cmd()
+	assert.IsType(t, tea.QuitMsg{}, msg)
+}
+
+func TestHandleConfirmKey_QQuits(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewConfirm
+
+	_, cmd := m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+
+	require.NotNil(t, cmd)
+	msg := cmd()
+	assert.IsType(t, tea.QuitMsg{}, msg)
+}
+
+func TestHandleHelpKey_CtrlCQuits(t *testing.T) {
+	m := newTestModel()
+	m.view = ViewHelp
+
+	_, cmd := m.handleHelpKey(tea.KeyMsg{Type: tea.KeyCtrlC})
+
+	require.NotNil(t, cmd)
+	msg := cmd()
+	assert.IsType(t, tea.QuitMsg{}, msg)
+}
+
+func TestHandlePreviewKey_LeftSwitchesCategory(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewCatID = "cat2"
+	m.previewItemIndex = 5
+	m.previewScroll = 10
+	m.filterState = FilterApplied
+	m.filterText = "test"
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyLeft})
+
+	assert.Equal(t, "cat1", m.previewCatID)
+	assert.Equal(t, 0, m.previewItemIndex)
+	assert.Equal(t, 0, m.previewScroll)
+	assert.Equal(t, FilterNone, m.filterState)
+	assert.Equal(t, "", m.filterText)
+}
+
+func TestHandlePreviewKey_RightSwitchesCategory(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewCatID = "cat1"
+	m.previewItemIndex = 5
+	m.previewScroll = 10
+	m.filterState = FilterApplied
+	m.filterText = "test"
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRight})
+
+	assert.Equal(t, "cat2", m.previewCatID)
+	assert.Equal(t, 0, m.previewItemIndex)
+	assert.Equal(t, 0, m.previewScroll)
+	assert.Equal(t, FilterNone, m.filterState)
+	assert.Equal(t, "", m.filterText)
+}
+
+func TestHandlePreviewKey_SpaceTogglesExclusion(t *testing.T) {
+	m := newTestModelForPreview()
+	m.excluded = make(map[string]map[string]bool)
+	itemPath := m.results[0].Items[0].Path
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeySpace})
+
+	assert.True(t, m.excluded["cat1"][itemPath])
+}
+
+func TestHandlePreviewKey_PageDown(t *testing.T) {
+	m := newTestModelForPreview()
+	m.height = 20
+	m.previewItemIndex = 0
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyPgDown})
+
+	assert.Greater(t, m.previewItemIndex, 0)
+}
+
+func TestHandlePreviewKey_PageUp(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewItemIndex = 1
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyPgUp})
+
+	assert.Equal(t, 0, m.previewItemIndex)
+}
+
+func TestHandlePreviewKey_AIncludesAll(t *testing.T) {
+	m := newTestModelForPreview()
+	m.excluded = map[string]map[string]bool{
+		"cat1": {"/path/1": true, "/path/2": true},
+	}
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+
+	assert.Empty(t, m.excluded["cat1"])
+}
+
+func TestHandlePreviewKey_DExcludesAll(t *testing.T) {
+	m := newTestModelForPreview()
+	m.excluded = make(map[string]map[string]bool)
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+
+	assert.NotEmpty(t, m.excluded["cat1"])
+}
+
+func TestHandleDrillDownKey_BackspacePopsStack(t *testing.T) {
+	m := newTestModelForPreview()
+	m.drillDownStack = append(m.drillDownStack, drillDownState{
+		path:   "/test/path",
+		items:  []types.CleanableItem{{Path: "/a"}},
+		cursor: 0,
+	})
+
+	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyBackspace})
+
+	assert.Empty(t, m.drillDownStack)
+}
+
+func TestHandleDrillDownKey_HomeGoesToFirst(t *testing.T) {
+	m := newTestModelForPreview()
+	m.drillDownStack = append(m.drillDownStack, drillDownState{
+		path:   "/test/path",
+		items:  []types.CleanableItem{{Path: "/a"}, {Path: "/b"}, {Path: "/c"}},
+		cursor: 2,
+	})
+
+	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyHome})
+
+	assert.Equal(t, 0, m.drillDownStack[0].cursor)
+}
+
+func TestHandleDrillDownKey_EndGoesToLast(t *testing.T) {
+	m := newTestModelForPreview()
+	m.drillDownStack = append(m.drillDownStack, drillDownState{
+		path:   "/test/path",
+		items:  []types.CleanableItem{{Path: "/a"}, {Path: "/b"}, {Path: "/c"}},
+		cursor: 0,
+	})
+
+	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyEnd})
+
+	assert.Equal(t, 2, m.drillDownStack[0].cursor)
+}
+
+func TestHandleDrillDownKey_SortToggle(t *testing.T) {
+	m := newTestModelForPreview()
+	m.drillDownStack = append(m.drillDownStack, drillDownState{
+		path:   "/test/path",
+		items:  []types.CleanableItem{{Path: "/a"}},
+		cursor: 0,
+	})
+	initialSort := m.sortOrder
+	expectedSort := initialSort.Next()
+
+	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+
+	assert.Equal(t, expectedSort, m.sortOrder)
 }
