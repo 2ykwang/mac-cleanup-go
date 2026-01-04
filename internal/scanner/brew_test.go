@@ -99,12 +99,3 @@ func TestBrewScanner_Category_ReturnsConfiguredCategory(t *testing.T) {
 	assert.Equal(t, "Homebrew", result.Name)
 	assert.Equal(t, types.SafetyLevelModerate, result.Safety)
 }
-
-func TestBrewScanner_IsAvailable_ReturnsBool(t *testing.T) {
-	cat := types.Category{ID: "homebrew", CheckCmd: "brew"}
-	s := NewBrewScanner(cat)
-
-	available := s.IsAvailable()
-
-	t.Logf("Homebrew available: %v", available)
-}

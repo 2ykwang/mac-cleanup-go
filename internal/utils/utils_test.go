@@ -205,3 +205,48 @@ func TestFormatAge_Years(t *testing.T) {
 
 	assert.Equal(t, "1y", result)
 }
+
+func TestStripGlobPattern_ExistingPath(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "test-strip-glob")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	result := StripGlobPattern(tmpDir)
+
+	assert.Equal(t, tmpDir, result)
+}
+
+func TestStripGlobPattern_GlobInPath(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "test-strip-glob")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	pattern := filepath.Join(tmpDir, "*.txt")
+
+	result := StripGlobPattern(pattern)
+
+	assert.Equal(t, tmpDir, result)
+}
+
+func TestStripGlobPattern_NestedGlob(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "test-strip-glob")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	subDir := filepath.Join(tmpDir, "subdir")
+	require.NoError(t, os.Mkdir(subDir, 0o755))
+
+	pattern := filepath.Join(subDir, "*", "*.log")
+
+	result := StripGlobPattern(pattern)
+
+	assert.Equal(t, subDir, result)
+}
+
+func TestStripGlobPattern_NonExistentPath(t *testing.T) {
+	pattern := "/nonexistent/path/*.txt"
+
+	result := StripGlobPattern(pattern)
+
+	assert.Equal(t, "/nonexistent/path", result)
+}
