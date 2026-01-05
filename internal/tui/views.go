@@ -60,7 +60,7 @@ func (m *Model) methodBadge(method types.CleanupMethod) string {
 	case types.MethodCommand:
 		return MutedStyle.Render("[Command]")
 	case types.MethodBuiltin:
-		return MutedStyle.Render("[Builtin]")
+		return "" // Internal implementation detail, not shown to user
 	default:
 		return "" // Trash is default, no badge needed
 	}
