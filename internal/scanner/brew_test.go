@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
@@ -88,38 +89,38 @@ func TestBrewScanner_Clean_ReturnsResult(t *testing.T) {
 }
 
 func TestBrewScanner_Scan_WithMockCachePath(t *testing.T) {
-	// Create a temporary directory to simulate brew cache
+	if !utils.CommandExists("brew") {
+		t.Skip("brew not installed")
+	}
+
 	tmpDir := t.TempDir()
 	cacheDir := filepath.Join(tmpDir, "Homebrew")
 	require.NoError(t, os.MkdirAll(cacheDir, 0o755))
 
-	// Create some test files
 	testFile := filepath.Join(cacheDir, "test-package.tar.gz")
 	require.NoError(t, os.WriteFile(testFile, []byte("test content for brew cache"), 0o644))
 
 	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
 	s := NewBrewScanner(cat)
-
-	// Manually set the cache path for testing
 	s.cachePath = cacheDir
 
 	result, err := s.Scan()
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-
-	// Should find the cache directory
 	assert.Len(t, result.Items, 1)
 	assert.Equal(t, "Homebrew Cache", result.Items[0].Name)
 	assert.True(t, result.Items[0].IsDirectory)
 	assert.Greater(t, result.TotalSize, int64(0))
 }
 
-func TestBrewScanner_Scan_EmptyCachePath(t *testing.T) {
+func TestBrewScanner_Scan_NonexistentCachePath(t *testing.T) {
+	if !utils.CommandExists("brew") {
+		t.Skip("brew not installed")
+	}
+
 	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
 	s := NewBrewScanner(cat)
-
-	// Set empty cache path
 	s.cachePath = "/nonexistent/path/that/does/not/exist"
 
 	result, err := s.Scan()
