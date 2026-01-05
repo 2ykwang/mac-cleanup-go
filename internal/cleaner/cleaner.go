@@ -2,16 +2,16 @@ package cleaner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"time"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
+	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
-
-const commandTimeout = 10 * time.Second
 
 type Cleaner struct {
 	registry *scanner.Registry
@@ -53,24 +53,13 @@ func (c *Cleaner) Clean(cat types.Category, items []types.CleanableItem) *types.
 
 func (c *Cleaner) moveToTrash(items []types.CleanableItem, result *types.CleanResult) {
 	for _, item := range items {
-		// Skip SIP protected paths
 		if scanner.IsSIPProtected(item.Path) {
 			result.SkippedItems++
 			continue
 		}
 
-		script := fmt.Sprintf(`tell application "Finder" to delete POSIX file "%s"`, item.Path)
-		ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
-		cmd := exec.CommandContext(ctx, "osascript", "-e", script)
-		err := cmd.Run()
-		cancel()
-
-		if err != nil {
-			if ctx.Err() == context.DeadlineExceeded {
-				result.Errors = append(result.Errors, fmt.Sprintf("%s: timeout", item.Name))
-			} else {
-				result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Name, err))
-			}
+		if err := utils.MoveToTrash(item.Path); err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Name, err))
 		} else {
 			result.FreedSpace += item.Size
 			result.CleanedItems++
@@ -110,15 +99,10 @@ func (c *Cleaner) runCommand(cat types.Category, result *types.CleanResult) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	var cmd *exec.Cmd
-	if cat.Sudo {
-		cmd = exec.CommandContext(ctx, "sudo", "sh", "-c", cat.Command)
-	} else {
-		cmd = exec.CommandContext(ctx, "sh", "-c", cat.Command)
-	}
+	cmd := exec.CommandContext(ctx, "sh", "-c", cat.Command)
 
 	if err := cmd.Run(); err != nil {
-		if ctx.Err() == context.DeadlineExceeded {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			result.Errors = append(result.Errors, "command timeout")
 		} else {
 			result.Errors = append(result.Errors, fmt.Sprintf("command failed: %v", err))
