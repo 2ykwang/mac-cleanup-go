@@ -138,3 +138,49 @@ func TestOldDownloadScanner_IsAvailable(t *testing.T) {
 
 	assert.True(t, scanner.IsAvailable())
 }
+
+func TestOldDownloadScanner_Clean_MovesToTrash(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	testFile := filepath.Join(tmpDir, "to_delete.txt")
+	require.NoError(t, os.WriteFile(testFile, []byte("delete me"), 0o644))
+
+	cat := types.Category{
+		ID:   "old-downloads",
+		Name: "Old Downloads",
+	}
+
+	scanner := NewOldDownloadScanner(cat, 30)
+	items := []types.CleanableItem{
+		{Path: testFile, Size: 9, Name: "to_delete.txt"},
+	}
+
+	result, err := scanner.Clean(items)
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, result.CleanedItems)
+	assert.Equal(t, int64(9), result.FreedSpace)
+	assert.Empty(t, result.Errors)
+
+	// File should no longer exist at original path
+	_, err = os.Stat(testFile)
+	assert.True(t, os.IsNotExist(err))
+}
+
+func TestOldDownloadScanner_Clean_NonexistentFile(t *testing.T) {
+	cat := types.Category{
+		ID:   "old-downloads",
+		Name: "Old Downloads",
+	}
+
+	scanner := NewOldDownloadScanner(cat, 30)
+	items := []types.CleanableItem{
+		{Path: "/nonexistent/file.txt", Size: 100, Name: "file.txt"},
+	}
+
+	result, err := scanner.Clean(items)
+
+	require.NoError(t, err)
+	assert.Equal(t, 0, result.CleanedItems)
+	assert.NotEmpty(t, result.Errors)
+}

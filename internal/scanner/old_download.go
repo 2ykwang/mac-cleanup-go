@@ -3,6 +3,7 @@ package scanner
 import (
 	"time"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
@@ -46,6 +47,25 @@ func (s *OldDownloadScanner) Scan() (*types.ScanResult, error) {
 	result.Items = filtered
 	result.TotalSize = totalSize
 	result.TotalFileCount = totalFileCount
+
+	return result, nil
+}
+
+// Clean moves the selected items to trash.
+func (s *OldDownloadScanner) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
+	result := &types.CleanResult{
+		Category: s.category,
+		Errors:   make([]string, 0),
+	}
+
+	for _, item := range items {
+		if err := utils.MoveToTrash(item.Path); err != nil {
+			result.Errors = append(result.Errors, err.Error())
+			continue
+		}
+		result.FreedSpace += item.Size
+		result.CleanedItems++
+	}
 
 	return result, nil
 }
