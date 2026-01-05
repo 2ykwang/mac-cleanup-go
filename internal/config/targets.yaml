@@ -68,7 +68,6 @@ categories:
     safety: moderate
     method: trash
     note: Browser incomplete download files - can be re-downloaded
-    check: "~/Downloads/"
     paths:
       - "~/Downloads/*.download"
       - "~/Downloads/*.crdownload"
@@ -80,7 +79,6 @@ categories:
     safety: safe
     method: trash
     note: User-level crash reports and diagnostics - regenerated as needed
-    check: "~/Library/DiagnosticReports/"
     paths:
       - "~/Library/DiagnosticReports/*"
 
@@ -91,7 +89,6 @@ categories:
     safety: safe
     method: trash
     note: Web page cache and GPU cache - regenerated on browsing
-    check: "~/Library/Application Support/Google/Chrome/"
     paths:
       - "~/Library/Application Support/Google/Chrome/Default/Application Cache/*"
       - "~/Library/Application Support/Google/Chrome/Default/GPUCache/*"
@@ -113,7 +110,6 @@ categories:
     safety: safe
     method: trash
     note: Firefox browsing cache - regenerated automatically
-    check: "~/Library/Application Support/Firefox/"
     paths:
       - "~/Library/Caches/Firefox/*"
 
@@ -123,7 +119,6 @@ categories:
     safety: safe
     method: trash
     note: Arc browser cache - regenerated automatically
-    check: "~/Library/Application Support/Arc/"
     paths:
       - "~/Library/Caches/Arc/*"
       - "~/Library/Caches/company.thebrowser.Browser/*"
@@ -134,7 +129,6 @@ categories:
     safety: safe
     method: trash
     note: Chromium browsing cache - regenerated automatically
-    check: "~/Library/Application Support/Chromium/"
     paths:
       - "~/Library/Application Support/Chromium/Default/Application Cache/*"
       - "~/Library/Application Support/Chromium/Default/GPUCache/*"
@@ -146,7 +140,6 @@ categories:
     safety: safe
     method: trash
     note: Brave browser cache - regenerated automatically
-    check: "~/Library/Application Support/BraveSoftware/Brave-Browser/"
     paths:
       - "~/Library/Application Support/BraveSoftware/Brave-Browser/Default/Application Cache/*"
       - "~/Library/Application Support/BraveSoftware/Brave-Browser/Default/GPUCache/*"
@@ -158,7 +151,6 @@ categories:
     safety: safe
     method: trash
     note: Microsoft Edge cache - regenerated automatically
-    check: "~/Library/Application Support/Microsoft Edge/"
     paths:
       - "~/Library/Application Support/Microsoft Edge/Default/Application Cache/*"
       - "~/Library/Application Support/Microsoft Edge/Default/GPUCache/*"
@@ -170,7 +162,6 @@ categories:
     safety: safe
     method: trash
     note: Opera browser cache - regenerated automatically
-    check: "~/Library/Application Support/com.operasoftware.Opera/"
     paths:
       - "~/Library/Caches/com.operasoftware.Opera/*"
 
@@ -180,7 +171,6 @@ categories:
     safety: safe
     method: trash
     note: Vivaldi browser cache - regenerated automatically
-    check: "~/Library/Application Support/Vivaldi/"
     paths:
       - "~/Library/Caches/com.vivaldi.Vivaldi/*"
 
@@ -190,7 +180,6 @@ categories:
     safety: safe
     method: trash
     note: Zen browser cache - regenerated automatically
-    check: "~/Library/Caches/zen/"
     paths:
       - "~/Library/Caches/zen/*"
 
@@ -201,7 +190,6 @@ categories:
     safety: safe
     method: trash
     note: Build cache - regenerated on next build
-    check: "~/Library/Developer/Xcode/"
     paths:
       - "~/Library/Developer/Xcode/DerivedData/*"
       - "~/Library/Developer/Xcode/iOS Device Logs/*"
@@ -212,7 +200,6 @@ categories:
     safety: risky
     method: trash
     note: "CAUTION: Past build archives with dSYM files - needed for crash symbolication!"
-    check: "~/Library/Developer/Xcode/Archives/"
     paths:
       - "~/Library/Developer/Xcode/Archives/*"
 
@@ -222,7 +209,6 @@ categories:
     safety: moderate
     method: trash
     note: Simulator caches and logs - not simulator data itself
-    check: "~/Library/Developer/CoreSimulator/"
     paths:
       - "~/Library/Developer/CoreSimulator/Caches/*"
       - "~/Library/Logs/CoreSimulator/*"
@@ -233,7 +219,6 @@ categories:
     safety: safe
     method: trash
     note: Android build cache - regenerated on next build
-    check: "~/.android/"
     paths:
       - "~/.android/cache/*"
       - "~/.android/build-cache/*"
@@ -244,7 +229,6 @@ categories:
     safety: safe
     method: trash
     note: Cached pod downloads - re-downloaded when needed
-    check: "~/Library/Caches/CocoaPods/"
     paths:
       - "~/Library/Caches/CocoaPods/*"
 
@@ -254,7 +238,6 @@ categories:
     safety: safe
     method: trash
     note: Cached npm packages - re-downloaded on npm install
-    check: "~/.npm/"
     paths:
       - "~/.npm/_cacache/*"
       - "~/.npm/_logs/*"
@@ -265,18 +248,17 @@ categories:
     safety: safe
     method: trash
     note: Cached yarn packages - re-downloaded when needed
-    check: "~/Library/Caches/Yarn/"
     paths:
       - "~/Library/Caches/Yarn/*"
 
   - id: pnpm
     name: pnpm Store
     group: dev
-    safety: safe
-    method: command
-    note: Runs pnpm store prune to clean unused packages
-    command: "pnpm store prune"
-    check_cmd: "pnpm"
+    safety: moderate
+    method: trash
+    note: "Full store deletion - projects will need 'pnpm install' to restore"
+    paths:
+      - "~/Library/pnpm/store/*"
 
   - id: bun
     name: Bun Cache
@@ -284,7 +266,6 @@ categories:
     safety: safe
     method: trash
     note: Cached bun packages - re-downloaded when needed
-    check: "~/.bun/"
     paths:
       - "~/.bun/install/cache/*"
 
@@ -294,7 +275,6 @@ categories:
     safety: moderate
     method: trash
     note: Cached Go modules - re-downloaded on go mod download
-    check: "~/go/pkg/mod/"
     paths:
       - "~/go/pkg/mod/cache/*"
 
@@ -304,7 +284,6 @@ categories:
     safety: safe
     method: trash
     note: Go compiler build cache - regenerated on next build (go clean -cache)
-    check: "~/Library/Caches/go-build/"
     paths:
       - "~/Library/Caches/go-build/*"
 
@@ -314,7 +293,6 @@ categories:
     safety: safe
     method: trash
     note: Caches for gopls, golangci-lint, goimports - regenerated on use
-    check: "~/Library/Caches/gopls/"
     paths:
       - "~/Library/Caches/gopls/*"
       - "~/Library/Caches/golangci-lint/*"
@@ -326,7 +304,6 @@ categories:
     safety: moderate
     method: trash
     note: Gradle build cache - increases build time after deletion
-    check: "~/.gradle/"
     paths:
       - "~/.gradle/caches/*"
 
@@ -336,7 +313,6 @@ categories:
     safety: moderate
     method: trash
     note: Maven local repository - re-downloaded on next build
-    check: "~/.m2/"
     paths:
       - "~/.m2/repository/*"
 
@@ -346,7 +322,6 @@ categories:
     safety: safe
     method: trash
     note: Cached Python packages - re-downloaded on pip install
-    check: "~/Library/Caches/pip/"
     paths:
       - "~/Library/Caches/pip/*"
 
@@ -356,7 +331,6 @@ categories:
     safety: safe
     method: trash
     note: Cached Poetry packages - re-downloaded when needed
-    check: "~/Library/Caches/pypoetry/"
     paths:
       - "~/Library/Caches/pypoetry/*"
 
@@ -366,7 +340,6 @@ categories:
     safety: safe
     method: trash
     note: Cached PHP packages - re-downloaded when needed
-    check: "~/Library/Caches/composer/"
     paths:
       - "~/Library/Caches/composer/*"
 
@@ -376,18 +349,17 @@ categories:
     safety: moderate
     method: trash
     note: Rust crate cache - re-downloaded on cargo build
-    check: "~/.cargo/"
     paths:
       - "~/.cargo/registry/cache/*"
 
   - id: gem
     name: Ruby Gem Cache
     group: dev
-    safety: safe
-    method: command
-    note: Runs gem cleanup to remove old gem versions
-    command: "gem cleanup"
-    check_cmd: "gem"
+    safety: moderate
+    method: trash
+    note: "Full cache deletion - gems will be re-downloaded when needed"
+    paths:
+      - "~/.gem/*"
 
   - id: nuget
     name: NuGet Cache
@@ -395,7 +367,6 @@ categories:
     safety: safe
     method: trash
     note: Cached .NET packages - re-downloaded when needed
-    check: "~/.nuget/"
     paths:
       - "~/.nuget/packages/*"
 
@@ -404,8 +375,7 @@ categories:
     group: dev
     safety: safe
     method: builtin
-    note: Old versions and cached downloads
-    check_cmd: "brew"
+    note: Runs brew cleanup, then moves cache to trash
 
   - id: docker
     name: Docker
@@ -413,7 +383,6 @@ categories:
     safety: moderate
     method: builtin
     note: Unused images, containers, volumes, and build cache
-    check_cmd: "docker"
 
   - id: flutter
     name: Flutter Cache
@@ -421,7 +390,6 @@ categories:
     safety: safe
     method: trash
     note: Flutter engine cache and pub packages
-    check: "~/.pub-cache/"
     paths:
       - "~/Library/Caches/flutter_engine/*"
       - "~/.pub-cache/hosted/*"
@@ -433,7 +401,6 @@ categories:
     safety: safe
     method: trash
     note: MongoDB Compass app cache
-    check: "~/Library/Caches/com.mongodb.compass/"
     paths:
       - "~/Library/Caches/com.mongodb.compass/*"
 
@@ -443,7 +410,6 @@ categories:
     safety: safe
     method: trash
     note: Python tool caches (uv, ruff, mypy, pytest, jupyter) - regenerated on use
-    check: "~/.cache/uv/"
     paths:
       - "~/.cache/uv/*"
       - "~/.cache/ruff/*"
@@ -457,7 +423,6 @@ categories:
     safety: safe
     method: trash
     note: Rust toolchain download cache - re-downloaded when needed
-    check: "~/.rustup/"
     paths:
       - "~/.rustup/downloads/*"
       - "~/.rustup/tmp/*"
@@ -468,7 +433,6 @@ categories:
     safety: safe
     method: trash
     note: Frontend build tool caches - regenerated on build
-    check: "~/.cache/typescript/"
     paths:
       - "~/.cache/typescript/*"
       - "~/.turbo/*"
@@ -483,7 +447,6 @@ categories:
     safety: safe
     method: trash
     note: Cloud CLI caches and logs - regenerated on use
-    check: "~/.kube/"
     paths:
       - "~/.kube/cache/*"
       - "~/.aws/cli/cache/*"
@@ -496,7 +459,6 @@ categories:
     safety: moderate
     method: trash
     note: Scala build tool cache - re-downloaded on build
-    check: "~/.sbt/"
     paths:
       - "~/.sbt/boot/*"
       - "~/.sbt/preloaded/*"
@@ -507,7 +469,6 @@ categories:
     safety: moderate
     method: trash
     note: Ivy dependency cache - re-downloaded on build
-    check: "~/.ivy2/"
     paths:
       - "~/.ivy2/cache/*"
 
@@ -517,7 +478,6 @@ categories:
     safety: safe
     method: trash
     note: Bazel build cache - regenerated on build
-    check: "~/.cache/bazel/"
     paths:
       - "~/.cache/bazel/*"
 
@@ -527,7 +487,6 @@ categories:
     safety: safe
     method: trash
     note: Deno runtime cache - regenerated on use
-    check: "~/Library/Caches/deno/"
     paths:
       - "~/Library/Caches/deno/*"
 
@@ -537,7 +496,6 @@ categories:
     safety: safe
     method: trash
     note: Swift Package Manager cache - re-downloaded when needed
-    check: "~/.cache/org.swift.swiftpm/"
     paths:
       - "~/.cache/org.swift.swiftpm/*"
 
@@ -547,7 +505,6 @@ categories:
     safety: safe
     method: trash
     note: Android Studio IDE cache - regenerated on use
-    check: "~/Library/Caches/Google/"
     paths:
       - "~/Library/Caches/Google/AndroidStudio*/*"
 
@@ -557,7 +514,6 @@ categories:
     safety: safe
     method: trash
     note: iOS/watchOS device logs - not needed for development
-    check: "~/Library/Developer/Xcode/"
     paths:
       - "~/Library/Developer/Xcode/iOS Device Logs/*"
       - "~/Library/Developer/Xcode/watchOS Device Logs/*"
@@ -569,7 +525,6 @@ categories:
     safety: safe
     method: trash
     note: Game download cache and shader cache - not game data
-    check: "~/Library/Application Support/Steam/"
     paths:
       - "~/Library/Application Support/Steam/appcache/*"
       - "~/Library/Application Support/Steam/depotcache/*"
@@ -584,7 +539,6 @@ categories:
     safety: safe
     method: trash
     note: Cached music for offline playback - re-downloaded when needed
-    check: "~/Library/Caches/com.spotify.client/"
     paths:
       - "~/Library/Caches/com.spotify.client/*"
 
@@ -594,7 +548,6 @@ categories:
     safety: safe
     method: trash
     note: Cached images, emojis, and GPU data
-    check: "~/Library/Application Support/discord/"
     paths:
       - "~/Library/Application Support/discord/Cache/*"
       - "~/Library/Application Support/discord/Code Cache/*"
@@ -606,7 +559,6 @@ categories:
     safety: risky
     method: trash
     note: Includes Service Worker data - slower startup until cache rebuilds
-    check: "~/Library/Application Support/Slack/"
     paths:
       - "~/Library/Application Support/Slack/Cache/*"
       - "~/Library/Application Support/Slack/Code Cache/*"
@@ -618,7 +570,6 @@ categories:
     safety: risky
     method: trash
     note: Classic Teams - includes session data, may require re-login
-    check: "~/Library/Application Support/Microsoft/Teams/"
     paths:
       - "~/Library/Application Support/Microsoft/Teams/Cache/*"
       - "~/Library/Application Support/Microsoft/Teams/Code Cache/*"
@@ -636,7 +587,6 @@ categories:
     safety: risky
     method: trash
     note: New Teams - includes session data, may require re-login
-    check: "~/Library/Containers/com.microsoft.teams2/"
     paths:
       - "~/Library/Group Containers/UBF8T346G9.com.microsoft.teams/*"
       - "~/Library/Containers/com.microsoft.teams2/Data/Library/Application Support/Microsoft/MSTeams/Cache/*"
@@ -650,7 +600,6 @@ categories:
     safety: safe
     method: trash
     note: Auto-updater downloads and app cache
-    check: "~/Library/Application Support/zoom.us/"
     paths:
       - "~/Library/Caches/us.zoom.xos/*"
       - "~/Library/Application Support/zoom.us/AutoUpdater/*"
@@ -661,7 +610,6 @@ categories:
     safety: safe
     method: trash
     note: Media cache for Premiere, After Effects, etc.
-    check: "~/Library/Application Support/Adobe/"
     paths:
       - "~/Library/Application Support/Adobe/Common/Media Cache Files/*"
       - "~/Library/Application Support/Adobe/Common/Media Cache/*"
@@ -674,7 +622,6 @@ categories:
     safety: safe
     method: trash
     note: IDE caches and logs - IDEs may need to reindex
-    check: "~/Library/Caches/JetBrains/"
     paths:
       - "~/Library/Caches/JetBrains/*"
       - "~/Library/Logs/JetBrains/*"
@@ -685,7 +632,6 @@ categories:
     safety: safe
     method: trash
     note: Extension cache, logs, and cached data
-    check: "~/Library/Application Support/Code/"
     paths:
       - "~/Library/Application Support/Code/Cache/*"
       - "~/Library/Application Support/Code/CachedData/*"
@@ -700,7 +646,6 @@ categories:
     safety: safe
     method: trash
     note: AI IDE cache and logs
-    check: "~/Library/Application Support/Cursor/"
     paths:
       - "~/Library/Application Support/Cursor/Cache/*"
       - "~/Library/Application Support/Cursor/CachedData/*"
@@ -713,7 +658,6 @@ categories:
     safety: safe
     method: trash
     note: Local file cache - not synced files
-    check: "~/Dropbox/"
     paths:
       - "~/Dropbox/.dropbox.cache/*"
 
@@ -723,7 +667,6 @@ categories:
     safety: moderate
     method: trash
     note: Offline cache - large re-download may occur
-    check: "~/Library/Application Support/Google/DriveFS/"
     paths:
       - "~/Library/Application Support/Google/DriveFS/*/content_cache/*"
       - "~/Library/Caches/com.google.drivefs/*"
@@ -747,7 +690,6 @@ categories:
     guide: |
       Quit KakaoTalk, then run:
       rm -rf ~/Library/Containers/com.kakao.KakaoTalkMac/Data/Library/Application\ Support/*
-    check: "~/Library/Containers/com.kakao.KakaoTalkMac/"
     paths:
       - "~/Library/Containers/com.kakao.KakaoTalkMac/Data/Library/Application Support/*"
 
@@ -757,7 +699,6 @@ categories:
     safety: safe
     method: trash
     note: App cache and GPU data - not your notes
-    check: "~/Library/Application Support/Notion/"
     paths:
       - "~/Library/Application Support/Notion/Cache/*"
       - "~/Library/Application Support/Notion/Code Cache/*"
@@ -770,7 +711,6 @@ categories:
     safety: safe
     method: trash
     note: Design file cache - originals are in cloud
-    check: "~/Library/Caches/com.figma.Desktop/"
     paths:
       - "~/Library/Caches/com.figma.Desktop/*"
 
@@ -780,7 +720,6 @@ categories:
     safety: safe
     method: trash
     note: App cache and GPU data - not your vaults
-    check: "~/Library/Application Support/obsidian/"
     paths:
       - "~/Library/Application Support/obsidian/Cache/*"
       - "~/Library/Application Support/obsidian/Code Cache/*"
@@ -792,7 +731,6 @@ categories:
     safety: safe
     method: trash
     note: Crash reports and logs - not saves or worlds
-    check: "~/Library/Application Support/minecraft/"
     paths:
       - "~/Library/Application Support/minecraft/logs/*"
       - "~/Library/Application Support/minecraft/crash-reports/*"
@@ -804,7 +742,6 @@ categories:
     safety: safe
     method: trash
     note: App cache - issue data is synced
-    check: "~/Library/Application Support/Linear/"
     paths:
       - "~/Library/Application Support/Linear/Cache/*"
       - "~/Library/Application Support/Linear/Code Cache/*"
@@ -816,7 +753,6 @@ categories:
     safety: safe
     method: trash
     note: Claude desktop app and CLI cache
-    check: "~/Library/Caches/com.anthropic.claudefordesktop/"
     paths:
       - "~/Library/Caches/com.anthropic.claudefordesktop/*"
       - "~/Library/Caches/claude-cli-nodejs/*"
@@ -827,7 +763,6 @@ categories:
     safety: safe
     method: trash
     note: ChatGPT desktop app cache
-    check: "~/Library/Caches/com.openai.chat/"
     paths:
       - "~/Library/Caches/com.openai.chat/*"
 
@@ -846,7 +781,6 @@ categories:
     safety: safe
     method: trash
     note: IINA video player cache
-    check: "~/Library/Caches/com.colliderli.iina/"
     paths:
       - "~/Library/Caches/com.colliderli.iina/*"
 
@@ -856,7 +790,6 @@ categories:
     safety: safe
     method: trash
     note: WeChat app cache - regenerated on use
-    check: "~/Library/Caches/com.tencent.xinWeChat/"
     paths:
       - "~/Library/Caches/com.tencent.xinWeChat/*"
 
@@ -866,7 +799,6 @@ categories:
     safety: safe
     method: trash
     note: WhatsApp app cache - regenerated on use
-    check: "~/Library/Caches/net.whatsapp.WhatsApp/"
     paths:
       - "~/Library/Caches/net.whatsapp.WhatsApp/*"
 
@@ -876,7 +808,6 @@ categories:
     safety: safe
     method: trash
     note: Skype app cache - regenerated on use
-    check: "~/Library/Caches/com.skype.skype/"
     paths:
       - "~/Library/Caches/com.skype.skype/*"
 
@@ -886,7 +817,6 @@ categories:
     safety: safe
     method: trash
     note: Tencent Meeting app cache - regenerated on use
-    check: "~/Library/Caches/com.tencent.meeting/"
     paths:
       - "~/Library/Caches/com.tencent.meeting/*"
 
@@ -896,7 +826,6 @@ categories:
     safety: safe
     method: trash
     note: Sketch design app cache - regenerated on use
-    check: "~/Library/Caches/com.bohemiancoding.sketch3/"
     paths:
       - "~/Library/Caches/com.bohemiancoding.sketch3/*"
 
@@ -906,7 +835,6 @@ categories:
     safety: safe
     method: trash
     note: Final Cut Pro video editing cache - regenerated on use
-    check: "~/Library/Caches/com.apple.FinalCut/"
     paths:
       - "~/Library/Caches/com.apple.FinalCut/*"
 
@@ -916,7 +844,6 @@ categories:
     safety: safe
     method: trash
     note: DaVinci Resolve video editing cache - regenerated on use
-    check: "~/Library/Caches/com.blackmagic-design.DaVinciResolve/"
     paths:
       - "~/Library/Caches/com.blackmagic-design.DaVinciResolve/*"
 
@@ -926,7 +853,6 @@ categories:
     safety: safe
     method: trash
     note: Adobe Premiere Pro cache - regenerated on use
-    check: "~/Library/Application Support/Adobe/Premiere Pro/"
     paths:
       - "~/Library/Caches/com.adobe.PremierePro.*/*"
 
@@ -936,7 +862,6 @@ categories:
     safety: safe
     method: trash
     note: Blender 3D modeling cache - regenerated on use
-    check: "~/Library/Caches/org.blenderfoundation.blender/"
     paths:
       - "~/Library/Caches/org.blenderfoundation.blender/*"
 
@@ -946,7 +871,6 @@ categories:
     safety: safe
     method: trash
     note: ScreenFlow screen recording cache - regenerated on use
-    check: "~/Library/Caches/net.telestream.screenflow10/"
     paths:
       - "~/Library/Caches/net.telestream.screenflow10/*"
 
@@ -956,7 +880,6 @@ categories:
     safety: safe
     method: trash
     note: VLC media player cache - regenerated on use
-    check: "~/Library/Caches/org.videolan.vlc/"
     paths:
       - "~/Library/Caches/org.videolan.vlc/*"
 
@@ -966,7 +889,6 @@ categories:
     safety: safe
     method: trash
     note: MPV media player cache - regenerated on use
-    check: "~/Library/Caches/io.mpv/"
     paths:
       - "~/Library/Caches/io.mpv/*"
 
@@ -976,7 +898,6 @@ categories:
     safety: safe
     method: trash
     note: Apple Music app cache - regenerated on use
-    check: "~/Library/Caches/com.apple.Music/"
     paths:
       - "~/Library/Caches/com.apple.Music/*"
 
@@ -986,7 +907,6 @@ categories:
     safety: safe
     method: trash
     note: Bilibili app cache - regenerated on use
-    check: "~/Library/Caches/tv.danmaku.bili/"
     paths:
       - "~/Library/Caches/tv.danmaku.bili/*"
 
@@ -996,7 +916,6 @@ categories:
     safety: safe
     method: trash
     note: Epic Games launcher cache - regenerated on use
-    check: "~/Library/Caches/com.epicgames.EpicGamesLauncher/"
     paths:
       - "~/Library/Caches/com.epicgames.EpicGamesLauncher/*"
 
@@ -1006,7 +925,6 @@ categories:
     safety: safe
     method: trash
     note: Battle.net launcher cache - regenerated on use
-    check: "~/Library/Caches/com.blizzard.Battle.net/"
     paths:
       - "~/Library/Caches/com.blizzard.Battle.net/*"
       - "~/Library/Application Support/Battle.net/Cache/*"
@@ -1017,7 +935,6 @@ categories:
     safety: safe
     method: trash
     note: GOG Galaxy launcher cache - regenerated on use
-    check: "~/Library/Caches/com.gog.galaxy/"
     paths:
       - "~/Library/Caches/com.gog.galaxy/*"
 
@@ -1027,7 +944,6 @@ categories:
     safety: safe
     method: trash
     note: Logseq note-taking app cache - regenerated on use
-    check: "~/Library/Application Support/Logseq/"
     paths:
       - "~/Library/Caches/com.logseq.*/*"
 
@@ -1037,7 +953,6 @@ categories:
     safety: safe
     method: trash
     note: Bear note-taking app cache - regenerated on use
-    check: "~/Library/Containers/com.bear-writer/"
     paths:
       - "~/Library/Caches/com.bear-writer.*/*"
 
@@ -1047,7 +962,6 @@ categories:
     safety: safe
     method: trash
     note: Evernote app cache - regenerated on use
-    check: "~/Library/Application Support/Evernote/"
     paths:
       - "~/Library/Caches/com.evernote.*/*"
 
@@ -1057,7 +971,6 @@ categories:
     safety: safe
     method: trash
     note: Postman API tool cache - regenerated on use
-    check: "~/Library/Caches/com.postmanlabs.mac/"
     paths:
       - "~/Library/Caches/com.postmanlabs.mac/*"
 
@@ -1067,7 +980,6 @@ categories:
     safety: safe
     method: trash
     note: TablePlus database tool cache - regenerated on use
-    check: "~/Library/Caches/com.tinyapp.TablePlus/"
     paths:
       - "~/Library/Caches/com.tinyapp.TablePlus/*"
 
@@ -1077,7 +989,6 @@ categories:
     safety: safe
     method: trash
     note: Charles Proxy debugging tool cache - regenerated on use
-    check: "~/Library/Caches/com.charlesproxy.charles/"
     paths:
       - "~/Library/Caches/com.charlesproxy.charles/*"
 
@@ -1087,7 +998,6 @@ categories:
     safety: safe
     method: trash
     note: Sequel Ace database tool cache - regenerated on use
-    check: "~/Library/Caches/com.sequel-ace.sequel-ace/"
     paths:
       - "~/Library/Caches/com.sequel-ace.sequel-ace/*"
 
@@ -1097,7 +1007,6 @@ categories:
     safety: safe
     method: trash
     note: VMware Fusion virtualization cache - regenerated on use
-    check: "~/Library/Caches/com.vmware.fusion/"
     paths:
       - "~/Library/Caches/com.vmware.fusion/*"
 
@@ -1107,7 +1016,6 @@ categories:
     safety: safe
     method: trash
     note: Parallels virtualization cache - regenerated on use
-    check: "~/Library/Preferences/Parallels/"
     paths:
       - "~/Library/Caches/com.parallels.*/*"
 
@@ -1117,7 +1025,6 @@ categories:
     safety: safe
     method: trash
     note: Alfred launcher cache - regenerated on use
-    check: "~/Library/Caches/com.runningwithcrayons.Alfred/"
     paths:
       - "~/Library/Caches/com.runningwithcrayons.Alfred/*"
 
@@ -1127,7 +1034,6 @@ categories:
     safety: safe
     method: trash
     note: TeamViewer remote desktop cache - regenerated on use
-    check: "~/Library/Application Support/TeamViewer/"
     paths:
       - "~/Library/Caches/com.teamviewer.*/*"
 
@@ -1145,8 +1051,7 @@ categories:
     name: Old Downloads
     group: storage
     safety: risky
-    method: trash
-    days_old: 30
+    method: builtin
     note: "CAUTION: Files older than 30 days - may contain important documents!"
     paths:
       - "~/Downloads/*"

@@ -3,7 +3,6 @@ package scanner
 import (
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 	"github.com/2ykwang/mac-cleanup-go/pkg/types"
@@ -27,13 +26,7 @@ func (s *PathScanner) IsAvailable() bool {
 		return utils.CommandExists(s.category.CheckCmd)
 	}
 
-	// For path-based methods, check if check path OR any of the paths exist
-	// This handles cases where app is uninstalled but cache folder remains
-	if s.category.Check != "" && utils.PathExists(s.category.Check) {
-		return true
-	}
-
-	// Check if any of the paths have matching files
+	// For path-based methods, check if any of the paths have matching files
 	for _, pattern := range s.category.Paths {
 		paths, err := utils.GlobPaths(pattern)
 		if err == nil && len(paths) > 0 {
@@ -41,8 +34,8 @@ func (s *PathScanner) IsAvailable() bool {
 		}
 	}
 
-	// No check specified and no paths found
-	return s.category.Check == "" && len(s.category.Paths) == 0
+	// No paths configured - nothing to scan
+	return false
 }
 
 func (s *PathScanner) Scan() (*types.ScanResult, error) {
@@ -70,13 +63,6 @@ func (s *PathScanner) Scan() (*types.ScanResult, error) {
 			item, err := s.scanPath(path)
 			if err != nil {
 				continue
-			}
-
-			if s.category.DaysOld > 0 {
-				cutoff := time.Now().AddDate(0, 0, -s.category.DaysOld)
-				if item.ModifiedAt.After(cutoff) {
-					continue
-				}
 			}
 
 			result.Items = append(result.Items, item)

@@ -26,8 +26,9 @@ func LoadEmbedded() (*types.Config, error) {
 
 // validBuiltinIDs defines the known builtin scanner IDs
 var validBuiltinIDs = map[string]bool{
-	"docker":   true,
-	"homebrew": true,
+	"docker":        true,
+	"homebrew":      true,
+	"old-downloads": true,
 }
 
 // validateConfig validates the configuration for correctness
