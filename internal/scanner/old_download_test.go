@@ -3,6 +3,7 @@ package scanner
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -140,6 +141,10 @@ func TestOldDownloadScanner_IsAvailable(t *testing.T) {
 }
 
 func TestOldDownloadScanner_Clean_MovesToTrash(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("MoveToTrash requires macOS")
+	}
+
 	tmpDir := t.TempDir()
 
 	testFile := filepath.Join(tmpDir, "to_delete.txt")
@@ -168,6 +173,10 @@ func TestOldDownloadScanner_Clean_MovesToTrash(t *testing.T) {
 }
 
 func TestOldDownloadScanner_Clean_NonexistentFile(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("MoveToTrash requires macOS")
+	}
+
 	cat := types.Category{
 		ID:   "old-downloads",
 		Name: "Old Downloads",
