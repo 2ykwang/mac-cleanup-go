@@ -6,65 +6,45 @@
 [![CI](https://github.com/2ykwang/mac-cleanup-go/actions/workflows/test.yml/badge.svg)](https://github.com/2ykwang/mac-cleanup-go/actions/workflows/test.yml)
 [![golangci-lint](https://img.shields.io/badge/linted%20by-golangci--lint-brightgreen)](https://golangci-lint.run/)
 
-Interactive TUI for cleaning macOS caches, logs, and temporary files.
+A TUI tool for cleaning up macOS caches, logs, and temporary files.
 
 ![demo](assets/demo2.gif)
 
 ## Features
 
-- **65+ cleanup targets** - System caches, browsers, dev tools, apps
-- **Safety levels** - Each item labeled as Safe / Moderate / Risky
-- **File-level control** - Preview and exclude individual files before deletion
-
-## How It Works
-
-```
-┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
-│  Scan   │───▶│  List   │───▶│ Preview │───▶│  Clean  │
-└─────────┘    └─────────┘    └─────────┘    └─────────┘
- Detect all     Sort by size   File-level     Move to
- targets        + select       exclusion      Trash
-```
-
-Each item is labeled by deletion risk
-
-- Safe: Auto-regenerated (browser cache, build artifacts)
-- Moderate: Regenerable but costly (re-index, rebuild, re-login)
-- Risky: May contain important data (backups, downloads)
-
-Moved to Trash by default. Some use native commands (Docker, Homebrew), others guide manual deletion.
+- **Preview before delete** - See the full list and select only what you want
+- **Safety levels** - Safe (auto-regenerated) / Moderate (re-login required) / Risky (important data)
+- **90 targets** - 10 browsers, 32 dev tools, 38 apps, and more
+- **Trash by default** - Recoverable if you make a mistake
 
 ## Installation
 
 ```bash
 # Homebrew
-brew tap 2ykwang/mac-cleanup-go
-brew install mac-cleanup-go
+brew tap 2ykwang/mac-cleanup-go && brew install mac-cleanup-go
 
 # Go install
 go install github.com/2ykwang/mac-cleanup-go@latest
-```
 
-Or build from source:
-
-```bash
+# Build from source
 git clone https://github.com/2ykwang/mac-cleanup-go.git
 cd mac-cleanup-go && make build
-./bin/mac-cleanup
 ```
 
 ## Usage
 
 ```bash
-mac-cleanup          # Run the TUI
+mac-cleanup          # Run TUI
 mac-cleanup -v       # Show version
 ```
 
-> **Tip**: Grant Full Disk Access to your terminal for complete cleanup access.
+> **Tip**: Grant Full Disk Access to your terminal to clean Trash as well.
+> System Settings → Privacy & Security → Full Disk Access
 
-## Inspired by
+## Alternatives
 
-[mac-cleanup-py](https://github.com/mac-cleanup/mac-cleanup-py)
+- [mac-cleanup-py](https://github.com/mac-cleanup/mac-cleanup-py) - Python cleanup script for macOS
+- [Mole](https://github.com/tw93/Mole) - Deep clean and optimize your Mac
 
 ## License
 
