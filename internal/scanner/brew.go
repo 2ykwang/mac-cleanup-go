@@ -1,9 +1,8 @@
 package scanner
 
 import (
+	"os"
 	"os/exec"
-	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
@@ -11,7 +10,8 @@ import (
 )
 
 type BrewScanner struct {
-	category types.Category
+	category  types.Category
+	cachePath string
 }
 
 func NewBrewScanner(cat types.Category) *BrewScanner {
@@ -26,6 +26,22 @@ func (s *BrewScanner) IsAvailable() bool {
 	return utils.CommandExists("brew")
 }
 
+// getBrewCachePath returns the brew cache directory path.
+func (s *BrewScanner) getBrewCachePath() string {
+	if s.cachePath != "" {
+		return s.cachePath
+	}
+
+	cmd := exec.Command("brew", "--cache")
+	output, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+
+	s.cachePath = strings.TrimSpace(string(output))
+	return s.cachePath
+}
+
 func (s *BrewScanner) Scan() (*types.ScanResult, error) {
 	result := &types.ScanResult{
 		Category: s.category,
@@ -36,71 +52,31 @@ func (s *BrewScanner) Scan() (*types.ScanResult, error) {
 		return result, nil
 	}
 
-	// Run brew cleanup --dry-run to see what would be cleaned
-	cmd := exec.Command("brew", "cleanup", "--dry-run")
-	output, err := cmd.Output()
-	if err != nil {
-		// No cleanup needed or error
+	cachePath := s.getBrewCachePath()
+	if cachePath == "" {
 		return result, nil
 	}
 
-	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	// Verify cache path exists
+	info, err := os.Stat(cachePath)
+	if err != nil || !info.IsDir() {
+		return result, nil
+	}
 
-	// Parse output - format varies:
-	// "Would remove: /path/to/file (123.4MB)"
-	// or just paths
-	sizeRegex := regexp.MustCompile(`\(([0-9.]+)\s*(B|KB|MB|GB)\)`)
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
+	// Scan the cache directory
+	size, fileCount, _ := utils.GetDirSizeWithCount(cachePath)
+	if size > 0 {
+		item := types.CleanableItem{
+			Path:        cachePath,
+			Size:        size,
+			FileCount:   fileCount,
+			Name:        "Homebrew Cache",
+			IsDirectory: true,
+			ModifiedAt:  info.ModTime(),
 		}
-
-		// Extract path
-		path := line
-		if strings.HasPrefix(line, "Would remove: ") {
-			path = strings.TrimPrefix(line, "Would remove: ")
-		}
-
-		// Extract size if present
-		var size int64
-		if matches := sizeRegex.FindStringSubmatch(line); len(matches) == 3 {
-			path = strings.TrimSpace(sizeRegex.ReplaceAllString(path, ""))
-			val, _ := strconv.ParseFloat(matches[1], 64)
-			switch matches[2] {
-			case "KB":
-				size = int64(val * 1024)
-			case "MB":
-				size = int64(val * 1024 * 1024)
-			case "GB":
-				size = int64(val * 1024 * 1024 * 1024)
-			default:
-				size = int64(val)
-			}
-		}
-
-		// Skip if no valid path
-		if path == "" || !strings.HasPrefix(path, "/") {
-			continue
-		}
-
-		// Get actual size if not parsed
-		if size == 0 {
-			size, _ = utils.GetFileSize(path)
-		}
-
-		if size > 0 {
-			item := types.CleanableItem{
-				Path:      path,
-				Size:      size,
-				FileCount: 1,
-				Name:      extractBrewItemName(path),
-			}
-			result.Items = append(result.Items, item)
-			result.TotalSize += size
-			result.TotalFileCount++
-		}
+		result.Items = append(result.Items, item)
+		result.TotalSize = size
+		result.TotalFileCount = fileCount
 	}
 
 	return result, nil
@@ -112,24 +88,30 @@ func (s *BrewScanner) Clean(items []types.CleanableItem) (*types.CleanResult, er
 		Errors:   make([]string, 0),
 	}
 
-	// Run actual cleanup
-	cmd := exec.Command("brew", "cleanup", "-s")
-	if err := cmd.Run(); err != nil {
-		result.Errors = append(result.Errors, err.Error())
-	} else {
-		for _, item := range items {
-			result.FreedSpace += item.Size
-			result.CleanedItems++
+	if len(items) == 0 {
+		return result, nil
+	}
+
+	cmd := exec.Command("brew", "cleanup", "--prune=all", "-s")
+	_ = cmd.Run()
+
+	// Move selected items to trash
+	for _, item := range items {
+		// Verify the path is within brew cache (safety check)
+		cachePath := s.getBrewCachePath()
+		if cachePath == "" || !strings.HasPrefix(item.Path, cachePath) {
+			result.Errors = append(result.Errors, "invalid path: "+item.Path)
+			continue
 		}
+
+		if err := utils.MoveToTrash(item.Path); err != nil {
+			result.Errors = append(result.Errors, err.Error())
+			continue
+		}
+
+		result.FreedSpace += item.Size
+		result.CleanedItems++
 	}
 
 	return result, nil
-}
-
-func extractBrewItemName(path string) string {
-	parts := strings.Split(path, "/")
-	if len(parts) >= 2 {
-		return parts[len(parts)-2] + "@" + parts[len(parts)-1]
-	}
-	return parts[len(parts)-1]
 }

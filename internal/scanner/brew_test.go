@@ -1,68 +1,15 @@
 package scanner
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
-
-func TestExtractBrewItemName_CellarPath(t *testing.T) {
-	path := "/usr/local/Cellar/node/18.0.0"
-
-	result := extractBrewItemName(path)
-
-	assert.Equal(t, "node@18.0.0", result)
-}
-
-func TestExtractBrewItemName_CellarPathAppleSilicon(t *testing.T) {
-	path := "/opt/homebrew/Cellar/bat/0.26.1"
-
-	result := extractBrewItemName(path)
-
-	assert.Equal(t, "bat@0.26.1", result)
-}
-
-func TestExtractBrewItemName_CaskroomPath(t *testing.T) {
-	path := "/opt/homebrew/Caskroom/visual-studio-code/1.85.0"
-
-	result := extractBrewItemName(path)
-
-	assert.Equal(t, "visual-studio-code@1.85.0", result)
-}
-
-func TestExtractBrewItemName_VersionedPackage(t *testing.T) {
-	path := "/opt/homebrew/Cellar/python@3.11/3.11.0"
-
-	result := extractBrewItemName(path)
-
-	assert.Equal(t, "python@3.11@3.11.0", result)
-}
-
-func TestExtractBrewItemName_SingleElement(t *testing.T) {
-	path := "filename"
-
-	result := extractBrewItemName(path)
-
-	assert.Equal(t, "filename", result)
-}
-
-func TestExtractBrewItemName_TwoElements(t *testing.T) {
-	path := "parent/child"
-
-	result := extractBrewItemName(path)
-
-	assert.Equal(t, "parent@child", result)
-}
-
-func TestExtractBrewItemName_EmptyPath(t *testing.T) {
-	path := ""
-
-	result := extractBrewItemName(path)
-
-	assert.Equal(t, "", result)
-}
 
 func TestNewBrewScanner_ReturnsNonNil(t *testing.T) {
 	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
@@ -98,4 +45,85 @@ func TestBrewScanner_Category_ReturnsConfiguredCategory(t *testing.T) {
 	assert.Equal(t, "homebrew", result.ID)
 	assert.Equal(t, "Homebrew", result.Name)
 	assert.Equal(t, types.SafetyLevelModerate, result.Safety)
+}
+
+func TestBrewScanner_Scan_ReturnsEmptyWhenNotAvailable(t *testing.T) {
+	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
+	s := NewBrewScanner(cat)
+
+	result, err := s.Scan()
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "homebrew", result.Category.ID)
+}
+
+func TestBrewScanner_GetBrewCachePath_CachesResult(t *testing.T) {
+	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
+	s := NewBrewScanner(cat)
+
+	// First call
+	path1 := s.getBrewCachePath()
+	// Second call should return cached value
+	path2 := s.getBrewCachePath()
+
+	assert.Equal(t, path1, path2)
+}
+
+func TestBrewScanner_Clean_ReturnsResult(t *testing.T) {
+	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
+	s := NewBrewScanner(cat)
+	s.cachePath = "/nonexistent/path"
+
+	items := []types.CleanableItem{
+		{Path: "/nonexistent/path", Size: 1000, Name: "Homebrew Cache", IsDirectory: true},
+	}
+
+	result, err := s.Clean(items)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "homebrew", result.Category.ID)
+	// MoveToTrash will fail for nonexistent path, but Clean should not return error
+	assert.NotEmpty(t, result.Errors)
+}
+
+func TestBrewScanner_Scan_WithMockCachePath(t *testing.T) {
+	// Create a temporary directory to simulate brew cache
+	tmpDir := t.TempDir()
+	cacheDir := filepath.Join(tmpDir, "Homebrew")
+	require.NoError(t, os.MkdirAll(cacheDir, 0o755))
+
+	// Create some test files
+	testFile := filepath.Join(cacheDir, "test-package.tar.gz")
+	require.NoError(t, os.WriteFile(testFile, []byte("test content for brew cache"), 0o644))
+
+	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
+	s := NewBrewScanner(cat)
+
+	// Manually set the cache path for testing
+	s.cachePath = cacheDir
+
+	result, err := s.Scan()
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+
+	// Should find the cache directory
+	assert.Len(t, result.Items, 1)
+	assert.Equal(t, "Homebrew Cache", result.Items[0].Name)
+	assert.True(t, result.Items[0].IsDirectory)
+	assert.Greater(t, result.TotalSize, int64(0))
+}
+
+func TestBrewScanner_Scan_EmptyCachePath(t *testing.T) {
+	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
+	s := NewBrewScanner(cat)
+
+	// Set empty cache path
+	s.cachePath = "/nonexistent/path/that/does/not/exist"
+
+	result, err := s.Scan()
+
+	assert.NoError(t, err)
+	assert.Empty(t, result.Items)
 }
