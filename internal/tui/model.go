@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -92,8 +93,8 @@ type Model struct {
 	guideCategory  *types.Category // Category being shown in guide popup
 	guidePathIndex int             // Selected path index in guide popup
 
-	// Help popup state
-	helpPreviousView View // View to return to when closing help popup
+	// Help component
+	help help.Model
 }
 
 // NewModel creates a new model
@@ -141,6 +142,7 @@ func NewModel(cfg *types.Config) *Model {
 		sortOrder:         types.SortBySize,
 		filterState:       FilterNone,
 		filterInput:       ti,
+		help:              help.New(),
 	}
 }
 
@@ -168,8 +170,6 @@ func (m *Model) View() string {
 		return m.viewReport()
 	case ViewGuide:
 		return m.viewGuide()
-	case ViewHelp:
-		return m.viewHelp()
 	default:
 		return m.viewList()
 	}

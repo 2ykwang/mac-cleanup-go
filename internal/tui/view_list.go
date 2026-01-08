@@ -135,7 +135,7 @@ func (m *Model) listFooter() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(HelpStyle.Render(FormatFooter(FooterShortcuts(ViewList))))
+	b.WriteString(m.help.View(ListKeyMap))
 
 	return b.String()
 }

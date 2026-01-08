@@ -19,8 +19,6 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleConfirmKey(msg)
 	case ViewGuide:
 		return m.handleGuideKey(msg)
-	case ViewHelp:
-		return m.handleHelpKey(msg)
 	case ViewCleaning:
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
@@ -28,8 +26,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case ViewReport:
 		switch msg.String() {
 		case "?":
-			m.helpPreviousView = ViewReport
-			m.view = ViewHelp
+			m.help.ShowAll = !m.help.ShowAll
 			return m, nil
 		case "ctrl+c", "q":
 			return m, tea.Quit
@@ -71,8 +68,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "?":
-		m.helpPreviousView = ViewList
-		m.view = ViewHelp
+		m.help.ShowAll = !m.help.ShowAll
 		return m, nil
 	case "ctrl+c", "q":
 		return m, tea.Quit
@@ -154,8 +150,7 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "?":
-		m.helpPreviousView = ViewPreview
-		m.view = ViewHelp
+		m.help.ShowAll = !m.help.ShowAll
 		return m, nil
 	case "ctrl+c", "q":
 		return m, tea.Quit
@@ -318,8 +313,7 @@ func (m *Model) handleFilterTypingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "?":
-		m.helpPreviousView = ViewConfirm
-		m.view = ViewHelp
+		m.help.ShowAll = !m.help.ShowAll
 		return m, nil
 	case "ctrl+c", "q":
 		return m, tea.Quit
@@ -338,8 +332,7 @@ func (m *Model) handleDrillDownKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "?":
-		m.helpPreviousView = ViewPreview // DrillDown is part of Preview
-		m.view = ViewHelp
+		m.help.ShowAll = !m.help.ShowAll
 		return m, nil
 	case "ctrl+c", "q":
 		return m, tea.Quit
@@ -441,14 +434,4 @@ func (m *Model) handleGuideKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handleHelpKey handles key events in the help popup view
-func (m *Model) handleHelpKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "ctrl+c", "q":
-		return m, tea.Quit
-	case "esc", "?", "enter", " ":
-		// Close help and return to previous view
-		m.view = m.helpPreviousView
-	}
-	return m, nil
-}
+

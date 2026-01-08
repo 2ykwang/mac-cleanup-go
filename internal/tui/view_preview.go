@@ -189,7 +189,7 @@ func (m *Model) previewFooter(selected []*types.ScanResult) string {
 	if m.filterState == FilterTyping {
 		b.WriteString(HelpStyle.Render(FormatFooter(FilterTypingShortcuts)))
 	} else {
-		b.WriteString(HelpStyle.Render(FormatFooter(FooterShortcuts(ViewPreview))))
+		b.WriteString(m.help.View(PreviewKeyMap))
 	}
 
 	return b.String()
@@ -360,7 +360,7 @@ func (m *Model) drillDownFooter() string {
 	}
 
 	b.WriteString("\n\n")
-	b.WriteString(HelpStyle.Render(FormatFooter(DrillDownFooterShortcuts())))
+	b.WriteString(m.help.View(PreviewKeyMap))
 
 	return b.String()
 }

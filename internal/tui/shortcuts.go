@@ -1,6 +1,139 @@
 package tui
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/charmbracelet/bubbles/key"
+)
+
+// ListKeys defines key bindings for list view
+type ListKeys struct {
+	Up     key.Binding
+	Down   key.Binding
+	Select key.Binding
+	Enter  key.Binding
+	Delete key.Binding
+	Quit   key.Binding
+	Help   key.Binding
+}
+
+func (k ListKeys) ShortHelp() []key.Binding {
+	return []key.Binding{k.Up, k.Select, k.Enter, k.Delete, k.Help}
+}
+
+func (k ListKeys) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.Up, k.Down},
+		{k.Select, k.Enter},
+		{k.Delete, k.Quit, k.Help},
+	}
+}
+
+var ListKeyMap = ListKeys{
+	Up:     key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
+	Down:   key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
+	Select: key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "select")),
+	Enter:  key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "preview")),
+	Delete: key.NewBinding(key.WithKeys("y"), key.WithHelp("y", "delete")),
+	Quit:   key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+	Help:   key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
+}
+
+// PreviewKeys defines key bindings for preview view
+type PreviewKeys struct {
+	Up     key.Binding
+	Down   key.Binding
+	Left   key.Binding
+	Right  key.Binding
+	Select key.Binding
+	Enter  key.Binding
+	Back   key.Binding
+	Delete key.Binding
+	Open   key.Binding
+	Search key.Binding
+	Sort   key.Binding
+	Quit   key.Binding
+	Help   key.Binding
+}
+
+func (k PreviewKeys) ShortHelp() []key.Binding {
+	return []key.Binding{k.Up, k.Left, k.Select, k.Search, k.Help}
+}
+
+func (k PreviewKeys) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.Up, k.Down, k.Left, k.Right},
+		{k.Select, k.Enter, k.Back, k.Open},
+		{k.Search, k.Sort, k.Delete, k.Help},
+	}
+}
+
+var PreviewKeyMap = PreviewKeys{
+	Up:     key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
+	Down:   key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
+	Left:   key.NewBinding(key.WithKeys("left", "h"), key.WithHelp("←/h", "prev tab")),
+	Right:  key.NewBinding(key.WithKeys("right", "l"), key.WithHelp("→/l", "next tab")),
+	Select: key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "toggle")),
+	Enter:  key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "drill down")),
+	Back:   key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
+	Delete: key.NewBinding(key.WithKeys("y"), key.WithHelp("y", "delete")),
+	Open:   key.NewBinding(key.WithKeys("o"), key.WithHelp("o", "open")),
+	Search: key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
+	Sort:   key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "sort")),
+	Quit:   key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+	Help:   key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
+}
+
+// ConfirmKeys defines key bindings for confirm view
+type ConfirmKeys struct {
+	Confirm key.Binding
+	Cancel  key.Binding
+	Help    key.Binding
+}
+
+func (k ConfirmKeys) ShortHelp() []key.Binding {
+	return []key.Binding{k.Confirm, k.Cancel, k.Help}
+}
+
+func (k ConfirmKeys) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.Confirm, k.Cancel, k.Help},
+	}
+}
+
+var ConfirmKeyMap = ConfirmKeys{
+	Confirm: key.NewBinding(key.WithKeys("y", "enter"), key.WithHelp("y", "confirm")),
+	Cancel:  key.NewBinding(key.WithKeys("n", "esc"), key.WithHelp("n/esc", "cancel")),
+	Help:    key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
+}
+
+// ReportKeys defines key bindings for report view
+type ReportKeys struct {
+	Up    key.Binding
+	Down  key.Binding
+	Enter key.Binding
+	Quit  key.Binding
+	Help  key.Binding
+}
+
+func (k ReportKeys) ShortHelp() []key.Binding {
+	return []key.Binding{k.Up, k.Enter, k.Quit, k.Help}
+}
+
+func (k ReportKeys) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.Up, k.Down},
+		{k.Enter, k.Quit, k.Help},
+	}
+}
+
+var ReportKeyMap = ReportKeys{
+	Up:    key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
+	Down:  key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
+	Enter: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "rescan")),
+	Quit:  key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+	Help:  key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
+}
 
 // Shortcut represents a single key binding
 type Shortcut struct {
@@ -8,138 +141,10 @@ type Shortcut struct {
 	Desc string
 }
 
-// ShortcutGroup represents a group of related shortcuts
-type ShortcutGroup struct {
-	Name      string
-	Shortcuts []Shortcut
-}
-
-// ViewShortcuts maps each View to its shortcut groups for help popup
-var ViewShortcuts = map[View][]ShortcutGroup{
-	ViewList: {
-		{Name: "Navigation", Shortcuts: []Shortcut{
-			{"↑↓", "Move"},
-			{"enter", "Preview"},
-		}},
-		{Name: "Selection", Shortcuts: []Shortcut{
-			{"space", "Select"},
-			{"a", "Select All"},
-			{"d", "Deselect All"},
-		}},
-		{Name: "Actions", Shortcuts: []Shortcut{
-			{"y", "Delete selected"},
-			{"q", "Quit"},
-			{"?", "Help"},
-		}},
-	},
-	ViewPreview: {
-		{Name: "Navigation", Shortcuts: []Shortcut{
-			{"↑↓", "Move"},
-			{"←→", "Switch tab"},
-			{"PgUp/Dn", "Page scroll"},
-			{"Home/End", "Jump to start/end"},
-		}},
-		{Name: "Search & Sort", Shortcuts: []Shortcut{
-			{"/", "Search"},
-			{"s", "Sort toggle"},
-		}},
-		{Name: "Actions", Shortcuts: []Shortcut{
-			{"space", "Toggle select"},
-			{"o", "Open in Finder"},
-			{"y", "Delete selected"},
-			{"esc", "Back to list"},
-			{"?", "Help"},
-		}},
-	},
-	ViewConfirm: {
-		{Name: "Actions", Shortcuts: []Shortcut{
-			{"y", "Confirm delete"},
-			{"n/esc", "Cancel"},
-			{"?", "Help"},
-		}},
-	},
-	ViewReport: {
-		{Name: "Navigation", Shortcuts: []Shortcut{
-			{"↑↓", "Scroll"},
-		}},
-		{Name: "Actions", Shortcuts: []Shortcut{
-			{"enter", "Rescan"},
-			{"q", "Quit"},
-			{"?", "Help"},
-		}},
-	},
-}
-
-// DrillDownShortcuts are shown when in drill-down mode (inside a directory)
-var DrillDownShortcuts = []ShortcutGroup{
-	{Name: "Navigation", Shortcuts: []Shortcut{
-		{"↑↓", "Move"},
-		{"enter", "Enter folder"},
-		{"esc/⌫", "Go back"},
-	}},
-	{Name: "Actions", Shortcuts: []Shortcut{
-		{"s", "Sort toggle"},
-		{"o", "Open in Finder"},
-		{"q", "Quit"},
-		{"?", "Help"},
-	}},
-}
-
 // FilterTypingShortcuts are shown when user is typing in filter mode
 var FilterTypingShortcuts = []Shortcut{
 	{"enter", "Apply"},
 	{"esc", "Cancel"},
-}
-
-// footerShortcutsMap defines essential shortcuts for footer display (4-5 items max)
-var footerShortcutsMap = map[View][]Shortcut{
-	ViewList: {
-		{"↑↓", "Move"},
-		{"space", "Select"},
-		{"enter", "Preview"},
-		{"y", "Delete"},
-		{"?", "Help"},
-	},
-	ViewPreview: {
-		{"↑↓", "Move"},
-		{"←→", "Tab"},
-		{"space", "Toggle"},
-		{"esc", "Back"},
-		{"?", "Help"},
-	},
-	ViewConfirm: {
-		{"y", "Confirm"},
-		{"n", "Cancel"},
-		{"?", "Help"},
-	},
-	ViewReport: {
-		{"↑↓", "Scroll"},
-		{"enter", "Rescan"},
-		{"q", "Quit"},
-		{"?", "Help"},
-	},
-}
-
-// drillDownFooterShortcuts are shown in drill-down mode
-var drillDownFooterShortcuts = []Shortcut{
-	{"↑↓", "Move"},
-	{"enter", "Enter"},
-	{"o", "Open"},
-	{"esc", "Back"},
-	{"?", "Help"},
-}
-
-// FooterShortcuts returns the essential shortcuts for footer display
-func FooterShortcuts(v View) []Shortcut {
-	if shortcuts, ok := footerShortcutsMap[v]; ok {
-		return shortcuts
-	}
-	return []Shortcut{{"?", "Help"}}
-}
-
-// DrillDownFooterShortcuts returns shortcuts for drill-down mode
-func DrillDownFooterShortcuts() []Shortcut {
-	return drillDownFooterShortcuts
 }
 
 // FormatFooter formats shortcuts for footer display
