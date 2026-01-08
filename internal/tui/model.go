@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -71,6 +72,7 @@ type Model struct {
 	cleaningCurrent   int
 	cleaningTotal     int
 	cleaningCompleted []cleanedCategory // Completed categories
+	cleaningProgress  progress.Model
 
 	// Channels for cleaning progress
 	cleanProgressChan   chan cleanProgressMsg
@@ -123,6 +125,12 @@ func NewModel(cfg *types.Config) *Model {
 
 	registry := scanner.DefaultRegistry(cfg)
 
+	// Initialize progress bar
+	prog := progress.New(
+		progress.WithDefaultGradient(),
+		progress.WithWidth(40),
+	)
+
 	return &Model{
 		config:            cfg,
 		registry:          registry,
@@ -143,6 +151,7 @@ func NewModel(cfg *types.Config) *Model {
 		filterState:       FilterNone,
 		filterInput:       ti,
 		help:              help.New(),
+		cleaningProgress:  prog,
 	}
 }
 

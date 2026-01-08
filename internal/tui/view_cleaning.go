@@ -7,20 +7,13 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
+// cleaningRowWidth matches list view width for visual consistency
+const cleaningRowWidth = 60
+
 func (m *Model) viewCleaning() string {
 	var b strings.Builder
 
 	b.WriteString(HeaderStyle.Render("Cleaning..."))
-	b.WriteString("\n\n")
-
-	// Progress info
-	if m.cleaningTotal > 0 {
-		progress := fmt.Sprintf("[%d/%d]", m.cleaningCurrent, m.cleaningTotal)
-		b.WriteString(SizeStyle.Render(progress))
-		b.WriteString("\n\n")
-	}
-
-	b.WriteString(Divider(50))
 	b.WriteString("\n\n")
 
 	// Show completed categories
@@ -48,18 +41,6 @@ func (m *Model) viewCleaning() string {
 		}
 	}
 
-	// Show recent deletions list
-	if m.recentDeleted.Len() > 0 {
-		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render("Recent deletions:"))
-		b.WriteString("\n")
-		b.WriteString(m.renderRecentDeleted())
-		b.WriteString("\n")
-	}
-
-	b.WriteString(Divider(50))
-	b.WriteString("\n\n")
-
 	// Show current category being processed
 	if m.cleaningCategory != "" {
 		b.WriteString(fmt.Sprintf("%s %s\n",
@@ -73,6 +54,28 @@ func (m *Model) viewCleaning() string {
 			}
 			b.WriteString(MutedStyle.Render(fmt.Sprintf("  └ %s\n", item)))
 		}
+	}
+
+	// Show recent deletions list
+	if m.recentDeleted.Len() > 0 {
+		b.WriteString("\n")
+		b.WriteString(MutedStyle.Render("Recent:"))
+		b.WriteString("\n")
+		b.WriteString(m.renderRecentDeleted())
+	}
+
+	b.WriteString("\n")
+
+	if m.cleaningTotal > 0 {
+		m.cleaningProgress.Width = cleaningRowWidth
+		b.WriteString(m.cleaningProgress.View())
+		b.WriteString("\n")
+		percent := 0
+		if m.cleaningTotal > 0 {
+			percent = m.cleaningCurrent * 100 / m.cleaningTotal
+		}
+		progress := fmt.Sprintf("%d%% (%d/%d)", percent, m.cleaningCurrent, m.cleaningTotal)
+		b.WriteString(MutedStyle.Render(progress))
 	}
 
 	return b.String()

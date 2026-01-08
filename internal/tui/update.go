@@ -4,6 +4,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -48,8 +49,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cleaningItem = msg.currentItem
 		m.cleaningCurrent = msg.current
 		m.cleaningTotal = msg.total
-		// Continue waiting for next progress or done message
+
+		// Update progress bar
+		if m.cleaningTotal > 0 {
+			percent := float64(m.cleaningCurrent) / float64(m.cleaningTotal)
+			cmd := m.cleaningProgress.SetPercent(percent)
+			return m, tea.Batch(cmd, m.waitForCleanProgress())
+		}
 		return m, m.waitForCleanProgress()
+	case progress.FrameMsg:
+		var cmd tea.Cmd
+		progressModel, cmd := m.cleaningProgress.Update(msg)
+		m.cleaningProgress = progressModel.(progress.Model)
+		return m, cmd
 	case cleanItemDoneMsg:
 		// Add deleted item to recent deletions list
 		m.recentDeleted.Push(DeletedItemEntry{
