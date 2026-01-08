@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
-	"github.com/2ykwang/mac-cleanup-go/pkg/types"
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
 // mockScanner implements scanner.Scanner for testing

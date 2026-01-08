@@ -1,6 +1,6 @@
 package scanner
 
-import "github.com/2ykwang/mac-cleanup-go/pkg/types"
+import "github.com/2ykwang/mac-cleanup-go/internal/types"
 
 func DefaultRegistry(cfg *types.Config) *Registry {
 	r := NewRegistry()
