@@ -1,12 +1,14 @@
-# mac-cleanup-go
+<div align="center">
+  <h1>mac-cleanup-go</h1>
+  <p>A TUI tool for cleaning up macOS caches, logs, and temporary files.</p>
+</div>
 
-[![GitHub Release](https://img.shields.io/github/v/release/2ykwang/mac-cleanup-go)](https://github.com/2ykwang/mac-cleanup-go/releases)
-[![Go Report Card](https://goreportcard.com/badge/github.com/2ykwang/mac-cleanup-go)](https://goreportcard.com/report/github.com/2ykwang/mac-cleanup-go)
-[![codecov](https://codecov.io/gh/2ykwang/mac-cleanup-go/graph/badge.svg)](https://codecov.io/gh/2ykwang/mac-cleanup-go)
-[![CI](https://github.com/2ykwang/mac-cleanup-go/actions/workflows/test.yml/badge.svg)](https://github.com/2ykwang/mac-cleanup-go/actions/workflows/test.yml)
-[![golangci-lint](https://img.shields.io/badge/linted%20by-golangci--lint-brightgreen)](https://golangci-lint.run/)
-
-A TUI tool for cleaning up macOS caches, logs, and temporary files.
+<p align="center">
+  <a href="https://github.com/2ykwang/mac-cleanup-go/releases"><img src="https://img.shields.io/github/v/release/2ykwang/mac-cleanup-go" alt="GitHub Release"></a>
+  <a href="https://goreportcard.com/report/github.com/2ykwang/mac-cleanup-go"><img src="https://goreportcard.com/badge/github.com/2ykwang/mac-cleanup-go" alt="Go Report Card"></a>
+  <a href="https://github.com/2ykwang/mac-cleanup-go/actions/workflows/test.yml"><img src="https://github.com/2ykwang/mac-cleanup-go/actions/workflows/test.yml/badge.svg" alt="CI"></a>
+  <a href="https://golangci-lint.run/"><img src="https://img.shields.io/badge/linted%20by-golangci--lint-brightgreen" alt="golangci-lint"></a>
+</p>
 
 ![demo](assets/demo2.gif)
 
@@ -22,20 +24,12 @@ A TUI tool for cleaning up macOS caches, logs, and temporary files.
 ```bash
 # Homebrew
 brew tap 2ykwang/mac-cleanup-go && brew install mac-cleanup-go
-
-# Go install
-go install github.com/2ykwang/mac-cleanup-go@latest
-
-# Build from source
-git clone https://github.com/2ykwang/mac-cleanup-go.git
-cd mac-cleanup-go && make build
 ```
 
 ## Usage
 
 ```bash
-mac-cleanup          # Run TUI
-mac-cleanup -v       # Show version
+mac-cleanup
 ```
 
 > **Tip**: Grant Full Disk Access to your terminal to clean Trash as well.
