@@ -433,5 +433,3 @@ func (m *Model) handleGuideKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	return m, nil
 }
-
-

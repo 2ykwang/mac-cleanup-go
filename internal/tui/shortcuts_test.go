@@ -30,5 +30,3 @@ func TestFormatFooter_EmptyShortcuts(t *testing.T) {
 
 	assert.Empty(t, result)
 }
-
-
