@@ -1,6 +1,7 @@
 package cleaner
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
+	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
 // mockScanner implements scanner.Scanner for testing
@@ -315,4 +317,64 @@ func TestClean_Manual_SkipsWithGuide(t *testing.T) {
 
 	assert.Equal(t, 0, result.CleanedItems, "manual methods should skip all items")
 	assert.Equal(t, 1, result.SkippedItems)
+}
+
+func TestClean_Trash_MovesToTrash(t *testing.T) {
+	original := utils.MoveToTrash
+	defer func() { utils.MoveToTrash = original }()
+
+	var trashedPaths []string
+	utils.MoveToTrash = func(path string) error {
+		trashedPaths = append(trashedPaths, path)
+		return nil
+	}
+
+	c := New(nil)
+	cat := types.Category{
+		ID:     "test-trash",
+		Name:   "Test Trash",
+		Method: types.MethodTrash,
+	}
+	items := []types.CleanableItem{
+		{Path: "/tmp/test1", Name: "test1", Size: 100},
+		{Path: "/tmp/test2", Name: "test2", Size: 200},
+	}
+
+	result := c.Clean(cat, items)
+
+	assert.Equal(t, 2, result.CleanedItems)
+	assert.Equal(t, int64(300), result.FreedSpace)
+	assert.Equal(t, []string{"/tmp/test1", "/tmp/test2"}, trashedPaths)
+	assert.Empty(t, result.Errors)
+}
+
+func TestClean_Trash_PartialFailure(t *testing.T) {
+	original := utils.MoveToTrash
+	defer func() { utils.MoveToTrash = original }()
+
+	utils.MoveToTrash = func(path string) error {
+		if path == "/tmp/test2" {
+			return fmt.Errorf("permission denied")
+		}
+		return nil
+	}
+
+	c := New(nil)
+	cat := types.Category{
+		ID:     "test-trash",
+		Name:   "Test Trash",
+		Method: types.MethodTrash,
+	}
+	items := []types.CleanableItem{
+		{Path: "/tmp/test1", Name: "test1", Size: 100},
+		{Path: "/tmp/test2", Name: "test2", Size: 200},
+		{Path: "/tmp/test3", Name: "test3", Size: 300},
+	}
+
+	result := c.Clean(cat, items)
+
+	assert.Equal(t, 2, result.CleanedItems)
+	assert.Equal(t, int64(400), result.FreedSpace)
+	require.Len(t, result.Errors, 1)
+	assert.Contains(t, result.Errors[0], "permission denied")
 }
