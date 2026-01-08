@@ -5,8 +5,8 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
-	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
 type BrewScanner struct {

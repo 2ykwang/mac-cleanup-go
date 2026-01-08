@@ -4,8 +4,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
-	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
 type PathScanner struct {
@@ -56,7 +56,7 @@ func (s *PathScanner) Scan() (*types.ScanResult, error) {
 
 		for _, path := range paths {
 			// Skip SIP protected paths
-			if IsSIPProtected(path) {
+			if utils.IsSIPProtected(path) {
 				continue
 			}
 

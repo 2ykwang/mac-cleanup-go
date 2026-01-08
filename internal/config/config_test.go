@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/2ykwang/mac-cleanup-go/pkg/types"
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
 func TestLoadEmbedded_ReturnsNonNil(t *testing.T) {

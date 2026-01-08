@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
-	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
 func TestNewBrewScanner_ReturnsNonNil(t *testing.T) {

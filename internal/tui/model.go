@@ -11,9 +11,9 @@ import (
 
 	"github.com/2ykwang/mac-cleanup-go/internal/cleaner"
 	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
-	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
 // defaultRecentItemsCapacity is the maximum number of recent deleted items to display

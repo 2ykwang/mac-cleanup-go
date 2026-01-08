@@ -11,7 +11,10 @@ import (
 const trashTimeout = 30 * time.Second
 
 // MoveToTrash moves a file or directory to macOS Trash using Finder.
-func MoveToTrash(path string) error {
+// It is a variable to allow mocking in tests.
+var MoveToTrash = moveToTrashImpl
+
+func moveToTrashImpl(path string) error {
 	script := fmt.Sprintf(`tell application "Finder" to delete POSIX file "%s"`, path)
 	ctx, cancel := context.WithTimeout(context.Background(), trashTimeout)
 	defer cancel()
