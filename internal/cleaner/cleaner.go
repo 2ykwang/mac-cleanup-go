@@ -53,7 +53,7 @@ func (c *Cleaner) Clean(cat types.Category, items []types.CleanableItem) *types.
 
 func (c *Cleaner) moveToTrash(items []types.CleanableItem, result *types.CleanResult) {
 	for _, item := range items {
-		if scanner.IsSIPProtected(item.Path) {
+		if utils.IsSIPProtected(item.Path) {
 			result.SkippedItems++
 			continue
 		}
@@ -70,7 +70,7 @@ func (c *Cleaner) moveToTrash(items []types.CleanableItem, result *types.CleanRe
 func (c *Cleaner) removePermanent(items []types.CleanableItem, result *types.CleanResult) {
 	for _, item := range items {
 		// Skip SIP protected paths
-		if scanner.IsSIPProtected(item.Path) {
+		if utils.IsSIPProtected(item.Path) {
 			result.SkippedItems++
 			continue
 		}
