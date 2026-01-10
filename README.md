@@ -23,7 +23,7 @@
 
 ```bash
 # Homebrew
-brew tap 2ykwang/mac-cleanup-go && brew install mac-cleanup-go
+brew tap 2ykwang/2ykwang && brew install mac-cleanup-go
 ```
 
 ## Usage
