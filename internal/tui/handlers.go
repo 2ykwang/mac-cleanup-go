@@ -24,43 +24,48 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case ViewReport:
-		switch msg.String() {
-		case "?":
-			m.help.ShowAll = !m.help.ShowAll
-			return m, nil
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "up", "k":
-			if m.reportScroll > 0 {
-				m.reportScroll--
-			}
-		case "down", "j":
-			// Estimate visible lines (header ~8, footer ~2)
-			visible := m.height - 10
-			if visible < 5 {
-				visible = 5
-			}
-			maxScroll := len(m.reportLines) - visible
-			if maxScroll < 0 {
-				maxScroll = 0
-			}
-			if m.reportScroll < maxScroll {
-				m.reportScroll++
-			}
-		case "enter", " ":
-			// Return to main screen and rescan
-			m.view = ViewList
-			m.selected = make(map[string]bool)
-			m.excluded = make(map[string]map[string]bool)
-			m.results = make([]*types.ScanResult, 0)
-			m.resultMap = make(map[string]*types.ScanResult)
-			m.cursor = 0
-			m.scroll = 0
-			m.reportScroll = 0
-			m.reportLines = nil
-			m.scanning = true
-			return m, tea.Batch(m.spinner.Tick, m.startScan())
+		return m.handleReportKey(msg)
+	}
+	return m, nil
+}
+
+func (m *Model) handleReportKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "?":
+		m.help.ShowAll = !m.help.ShowAll
+		return m, nil
+	case "ctrl+c", "q":
+		return m, tea.Quit
+	case "up", "k":
+		if m.reportScroll > 0 {
+			m.reportScroll--
 		}
+	case "down", "j":
+		// Estimate visible lines (header ~8, footer ~2)
+		visible := m.height - 10
+		if visible < 5 {
+			visible = 5
+		}
+		maxScroll := len(m.reportLines) - visible
+		if maxScroll < 0 {
+			maxScroll = 0
+		}
+		if m.reportScroll < maxScroll {
+			m.reportScroll++
+		}
+	case "enter", " ":
+		// Return to main screen and rescan
+		m.view = ViewList
+		m.selected = make(map[string]bool)
+		m.excluded = make(map[string]map[string]bool)
+		m.results = make([]*types.ScanResult, 0)
+		m.resultMap = make(map[string]*types.ScanResult)
+		m.cursor = 0
+		m.scroll = 0
+		m.reportScroll = 0
+		m.reportLines = nil
+		m.scanning = true
+		return m, tea.Batch(m.spinner.Tick, m.startScan())
 	}
 	return m, nil
 }
