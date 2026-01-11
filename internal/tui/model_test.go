@@ -22,6 +22,7 @@ func newTestModel() *Model {
 	m.results = make([]*types.ScanResult, 0)
 	m.resultMap = make(map[string]*types.ScanResult)
 	m.selected = make(map[string]bool)
+	m.selectedOrder = make([]string, 0)
 	m.excluded = make(map[string]map[string]bool)
 	m.drillDownStack = make([]drillDownState, 0)
 	m.view = ViewList
@@ -323,6 +324,73 @@ func TestGetSelectedResults(t *testing.T) {
 	assert.Len(t, selected, 2)
 	assert.Equal(t, "cat1", selected[0].Category.ID)
 	assert.Equal(t, "cat3", selected[1].Category.ID)
+}
+
+func TestGetSelectedResults_SelectionOrder(t *testing.T) {
+	m := newTestModelWithResults()
+	m.addSelected("cat2")
+	m.addSelected("cat1")
+
+	selected := m.getSelectedResults()
+
+	assert.Len(t, selected, 2)
+	assert.Equal(t, "cat2", selected[0].Category.ID)
+	assert.Equal(t, "cat1", selected[1].Category.ID)
+}
+
+func TestRemoveSelected_UpdatesOrder(t *testing.T) {
+	m := newTestModelWithResults()
+	m.addSelected("cat1")
+	m.addSelected("cat2")
+	m.addSelected("cat3")
+	m.removeSelected("cat2")
+
+	selected := m.getSelectedResults()
+
+	assert.Len(t, selected, 2)
+	assert.Equal(t, "cat1", selected[0].Category.ID)
+	assert.Equal(t, "cat3", selected[1].Category.ID)
+}
+
+func TestClearSelections_ResetsSelectionState(t *testing.T) {
+	m := newTestModelWithResults()
+	m.addSelected("cat1")
+	m.addSelected("cat2")
+
+	m.clearSelections()
+
+	assert.Empty(t, m.selected)
+	assert.Empty(t, m.selectedOrder)
+	assert.False(t, m.hasSelection())
+}
+
+func TestAddSelected_DedupesOrder(t *testing.T) {
+	m := newTestModelWithResults()
+	m.addSelected("cat2")
+	m.addSelected("cat2")
+
+	selected := m.getSelectedResults()
+
+	assert.Len(t, selected, 1)
+	assert.Equal(t, "cat2", selected[0].Category.ID)
+	assert.Len(t, m.selectedOrder, 1)
+}
+
+func TestRemoveSelected_MissingID(t *testing.T) {
+	m := newTestModelWithResults()
+	m.addSelected("cat1")
+
+	m.removeSelected("missing")
+
+	selected := m.getSelectedResults()
+	assert.Len(t, selected, 1)
+	assert.Equal(t, "cat1", selected[0].Category.ID)
+}
+
+func TestGetAvailableSize(t *testing.T) {
+	m := newTestModelWithResults()
+
+	assert.Equal(t, int64(6000), m.getAvailableSize())
 }
 
 // Exclusion tests
