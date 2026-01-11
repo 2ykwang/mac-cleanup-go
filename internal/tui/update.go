@@ -118,9 +118,6 @@ func (m *Model) handleCleanDone(msg cleanDoneMsg) {
 }
 
 func (m *Model) handleScanResult(result *types.ScanResult) {
-	m.scanMutex.Lock()
-	defer m.scanMutex.Unlock()
-
 	if result != nil {
 		// Collect scan errors for display
 		if result.Error != nil {

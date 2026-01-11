@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"sync"
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -50,7 +49,6 @@ type scanState struct {
 	scanRegistered int
 	scanning       bool
 	spinner        spinner.Model
-	scanMutex      sync.Mutex
 	scanErrors     []scanErrorInfo
 }
 
