@@ -1,6 +1,7 @@
 package cleaner
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -20,6 +21,10 @@ type mockScanner struct {
 	cleanItems  []types.CleanableItem
 	cleanResult *types.CleanResult
 	cleanErr    error
+}
+
+type nilResultScanner struct {
+	category types.Category
 }
 
 func (m *mockScanner) Scan() (*types.ScanResult, error) {
@@ -45,6 +50,22 @@ func (m *mockScanner) Category() types.Category {
 }
 
 func (m *mockScanner) IsAvailable() bool {
+	return true
+}
+
+func (s *nilResultScanner) Scan() (*types.ScanResult, error) {
+	return nil, nil
+}
+
+func (s *nilResultScanner) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
+	return nil, errors.New("scanner failed")
+}
+
+func (s *nilResultScanner) Category() types.Category {
+	return s.category
+}
+
+func (s *nilResultScanner) IsAvailable() bool {
 	return true
 }
 
@@ -272,6 +293,31 @@ func TestClean_MethodBuiltin_ScannerErrorPropagates(t *testing.T) {
 	}
 
 	result := c.Clean(cat, []types.CleanableItem{})
+
+	require.Len(t, result.Errors, 1)
+	assert.Contains(t, result.Errors[0], "scanner failed")
+}
+
+func TestClean_MethodBuiltin_ScannerNilResultWithError(t *testing.T) {
+	registry := scanner.NewRegistry()
+	impl := &nilResultScanner{
+		category: types.Category{
+			ID:     "docker",
+			Name:   "Docker",
+			Method: types.MethodBuiltin,
+		},
+	}
+	registry.Register(impl)
+
+	c := New(registry)
+
+	cat := types.Category{
+		ID:     "docker",
+		Name:   "Docker",
+		Method: types.MethodBuiltin,
+	}
+
+	result := c.Clean(cat, []types.CleanableItem{{Path: "/tmp/test", Name: "test"}})
 
 	require.Len(t, result.Errors, 1)
 	assert.Contains(t, result.Errors[0], "scanner failed")
