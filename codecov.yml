@@ -15,3 +15,4 @@ comment:
 ignore:
   - "main.go"
   - "scripts/"
+  - "internal/tui/view_*.go"
