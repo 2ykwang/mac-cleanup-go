@@ -66,6 +66,11 @@ test-v: ## Run tests with verbose output
 test-cover: ## Run tests with coverage
 	$(GO) test -cover ./...
 
+.PHONY: patch-cover
+patch-cover: ## Report patch coverage against origin/main (set BASE=...)
+	$(GO) test -coverprofile=coverage.out ./...
+	$(GO) run ./scripts/patch_cover.go --base=$${BASE:-origin/main} --profile=coverage.out
+
 .PHONY: test-cover-html
 test-cover-html: ## Generate HTML coverage report
 	$(GO) test -coverprofile=coverage.out ./...
