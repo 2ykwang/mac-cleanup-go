@@ -150,3 +150,23 @@ func TestValidateConfig_ValidConfig_NoError(t *testing.T) {
 
 	assert.NoError(t, err)
 }
+
+func TestLoadConfig_InvalidYaml_ReturnsError(t *testing.T) {
+	_, err := loadConfig([]byte("categories: ["))
+
+	assert.Error(t, err)
+}
+
+func TestLoadConfig_InvalidConfig_ReturnsError(t *testing.T) {
+	invalid := []byte(`
+categories:
+  - id: test
+    name: Test
+    method: invalid
+    safety: safe
+`)
+
+	_, err := loadConfig(invalid)
+
+	assert.Error(t, err)
+}

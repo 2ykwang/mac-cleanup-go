@@ -15,8 +15,12 @@ var embeddedConfig []byte
 
 // LoadEmbedded loads the embedded config
 func LoadEmbedded() (*types.Config, error) {
+	return loadConfig(embeddedConfig)
+}
+
+func loadConfig(data []byte) (*types.Config, error) {
 	var cfg types.Config
-	if err := yaml.Unmarshal(embeddedConfig, &cfg); err != nil {
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, err
 	}
 	if err := validateConfig(&cfg); err != nil {
