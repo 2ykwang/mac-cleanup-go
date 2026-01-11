@@ -147,11 +147,7 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "up", "k":
 		m.movePreviewCursor(-1)
 	case "down", "j":
-		r := m.getPreviewCatResult()
-		if r != nil {
-			maxItem := len(r.Items) - 1
-			m.setPreviewCursor(m.previewItemIndex+1, maxItem)
-		}
+		m.movePreviewCursor(1)
 	case "left", "h":
 		prevID := m.findPrevSelectedCatID()
 		if prevID != m.previewCatID {
@@ -191,14 +187,12 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.view = ViewConfirm
 	case "a", "A":
 		// Include all items in current category (clear exclusions)
-		r := m.getPreviewCatResult()
-		if r != nil {
+		if r := m.getPreviewCatResult(); r != nil {
 			m.clearExcludeCategory(r.Category.ID)
 		}
 	case "d", "D":
 		// Exclude all items in current category
-		r := m.getPreviewCatResult()
-		if r != nil {
+		if r := m.getPreviewCatResult(); r != nil {
 			m.autoExcludeCategory(r.Category.ID, r)
 		}
 	case "o":
@@ -217,10 +211,7 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.resetPreviewSelection()
 	case "pgdown":
 		// Page down
-		r := m.getPreviewCatResult()
-		if r != nil {
-			m.setPreviewCursor(m.previewItemIndex+m.pageSize(), len(r.Items)-1)
-		}
+		m.movePreviewCursor(m.pageSize())
 	case "pgup":
 		// Page up
 		m.movePreviewCursor(-m.pageSize())
