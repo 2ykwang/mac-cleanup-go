@@ -166,16 +166,13 @@ func (m *Model) viewList() string {
 			helpLines = countLines(helpContent) + 1
 		}
 	}
-	visible := m.availableLines(header, footer) - helpLines
-	if visible < 3 {
-		visible = 3
-	}
+	visible := m.visibleLines(header, footer, helpLines)
 	if visible < 16 {
 		showSidePanel = false
 		showHelpInFooter = true
 		footer = m.listFooter(showHelpInFooter)
 		helpContent = ""
-		visible = m.availableLines(header, footer)
+		visible = m.visibleLines(header, footer, 0)
 	}
 
 	listContent := m.renderListBody(visible)
@@ -201,7 +198,9 @@ func (m *Model) viewList() string {
 	var b strings.Builder
 	b.WriteString(header)
 	b.WriteString(listContent)
-	b.WriteString("\n")
+	if listContent != "" && footer != "" {
+		b.WriteString("\n")
+	}
 	b.WriteString(footer)
 	return b.String()
 }
@@ -257,6 +256,10 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult) string {
 func (m *Model) renderListBody(visible int) string {
 	var b strings.Builder
 
+	if visible < 1 {
+		return ""
+	}
+
 	if len(m.results) == 0 {
 		if m.scanning {
 			b.WriteString(MutedStyle.Render("Scanning..."))
@@ -267,21 +270,35 @@ func (m *Model) renderListBody(visible int) string {
 		return b.String()
 	}
 
-	colHeader := fmt.Sprintf("%*s%-*s %*s %*s",
-		listPrefixWidth, "",
-		colName, "Name", colSize, "Size", colNum, "Count")
-	b.WriteString(MutedStyle.Render(colHeader) + "\n")
-
-	// Adjust scroll
-	m.scroll = m.adjustScrollFor(m.cursor, m.scroll, visible-1, len(m.results))
-
-	for i, r := range m.results {
-		if i < m.scroll || i >= m.scroll+visible {
-			continue
-		}
-		b.WriteString(m.renderListItem(i, r))
+	linesRemaining := visible
+	if visible >= 2 {
+		colHeader := fmt.Sprintf("%*s%-*s %*s %*s",
+			listPrefixWidth, "",
+			colName, "Name", colSize, "Size", colNum, "Count")
+		b.WriteString(MutedStyle.Render(colHeader) + "\n")
+		linesRemaining--
 	}
-	if len(m.results) > visible {
+
+	showPager := false
+	itemsVisible := linesRemaining
+	if len(m.results) > itemsVisible && itemsVisible > 0 {
+		showPager = true
+		itemsVisible--
+	}
+
+	if itemsVisible > 0 {
+		// Adjust scroll
+		m.scroll = m.adjustScrollFor(m.cursor, m.scroll, itemsVisible, len(m.results))
+
+		for i, r := range m.results {
+			if i < m.scroll || i >= m.scroll+itemsVisible {
+				continue
+			}
+			b.WriteString(m.renderListItem(i, r))
+		}
+	}
+
+	if showPager {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("\n  [%d/%d]", m.cursor+1, len(m.results))))
 	}
 	return b.String()

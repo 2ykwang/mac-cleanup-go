@@ -11,7 +11,18 @@ func countLines(s string) int {
 	return strings.Count(s, "\n") + 1
 }
 
+// visibleLines returns the exact number of body lines available after header/footer/extra.
+// It never returns a negative value.
+func (m *Model) visibleLines(header, footer string, extra int) int {
+	lines := m.height - countLines(header) - countLines(footer) - extra
+	if lines < 0 {
+		return 0
+	}
+	return lines
+}
+
 func (m *Model) availableLines(header, footer string) int {
+	// Keep a minimum body height so the list view stays usable.
 	used := countLines(header) + countLines(footer)
 	available := m.height - used
 	if available < 3 {
