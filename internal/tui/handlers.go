@@ -158,16 +158,12 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.view = ViewList
 	case "up", "k":
-		if m.previewItemIndex > 0 {
-			m.previewItemIndex--
-		}
+		m.movePreviewCursor(-1)
 	case "down", "j":
 		r := m.getPreviewCatResult()
 		if r != nil {
 			maxItem := len(r.Items) - 1
-			if m.previewItemIndex < maxItem {
-				m.previewItemIndex++
-			}
+			m.setPreviewCursor(m.previewItemIndex+1, maxItem)
 		}
 	case "left", "h":
 		prevID := m.findPrevSelectedCatID()
@@ -236,26 +232,19 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Page down
 		r := m.getPreviewCatResult()
 		if r != nil {
-			m.previewItemIndex += m.pageSize()
-			if m.previewItemIndex >= len(r.Items) {
-				m.previewItemIndex = len(r.Items) - 1
-			}
+			m.setPreviewCursor(m.previewItemIndex+m.pageSize(), len(r.Items)-1)
 		}
 	case "pgup":
 		// Page up
-		m.previewItemIndex -= m.pageSize()
-		if m.previewItemIndex < 0 {
-			m.previewItemIndex = 0
-		}
+		m.movePreviewCursor(-m.pageSize())
 	case "home":
 		// Go to first item
-		m.previewItemIndex = 0
-		m.previewScroll = 0
+		m.setPreviewCursor(0, 0)
 	case "end":
 		// Go to last item
 		r := m.getPreviewCatResult()
 		if r != nil && len(r.Items) > 0 {
-			m.previewItemIndex = len(r.Items) - 1
+			m.setPreviewCursor(len(r.Items)-1, len(r.Items)-1)
 		}
 	case "/":
 		// Enter search mode
@@ -318,13 +307,9 @@ func (m *Model) handleDrillDownKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc", "backspace", "n":
 		m.drillDownStack = m.drillDownStack[:len(m.drillDownStack)-1]
 	case "up", "k":
-		if state.cursor > 0 {
-			state.cursor--
-		}
+		m.moveDrillCursor(state, -1)
 	case "down", "j":
-		if state.cursor < len(state.items)-1 {
-			state.cursor++
-		}
+		m.setDrillCursor(state, state.cursor+1, len(state.items)-1)
 	case "enter":
 		if state.cursor < len(state.items) {
 			item := state.items[state.cursor]
@@ -357,24 +342,17 @@ func (m *Model) handleDrillDownKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		state.scroll = 0
 	case "pgdown":
 		// Page down
-		state.cursor += m.pageSize()
-		if state.cursor >= len(state.items) {
-			state.cursor = len(state.items) - 1
-		}
+		m.setDrillCursor(state, state.cursor+m.pageSize(), len(state.items)-1)
 	case "pgup":
 		// Page up
-		state.cursor -= m.pageSize()
-		if state.cursor < 0 {
-			state.cursor = 0
-		}
+		m.moveDrillCursor(state, -m.pageSize())
 	case "home":
 		// Go to first item
-		state.cursor = 0
-		state.scroll = 0
+		m.setDrillCursor(state, 0, 0)
 	case "end":
 		// Go to last item
 		if len(state.items) > 0 {
-			state.cursor = len(state.items) - 1
+			m.setDrillCursor(state, len(state.items)-1, len(state.items)-1)
 		}
 	}
 	return m, nil
@@ -447,4 +425,41 @@ func (m *Model) applyFilter() {
 	m.filterState = FilterApplied
 	m.filterInput.Blur()
 	m.resetPreviewSelection()
+}
+
+func (m *Model) movePreviewCursor(delta int) {
+	r := m.getPreviewCatResult()
+	if r == nil || len(r.Items) == 0 {
+		return
+	}
+	m.setPreviewCursor(m.previewItemIndex+delta, len(r.Items)-1)
+}
+
+func (m *Model) setPreviewCursor(index int, max int) {
+	if index < 0 {
+		index = 0
+	}
+	if index > max {
+		index = max
+	}
+	m.previewItemIndex = index
+	m.previewScroll = 0
+}
+
+func (m *Model) moveDrillCursor(state *drillDownState, delta int) {
+	if state == nil || len(state.items) == 0 {
+		return
+	}
+	m.setDrillCursor(state, state.cursor+delta, len(state.items)-1)
+}
+
+func (m *Model) setDrillCursor(state *drillDownState, index int, max int) {
+	if index < 0 {
+		index = 0
+	}
+	if index > max {
+		index = max
+	}
+	state.cursor = index
+	state.scroll = 0
 }
