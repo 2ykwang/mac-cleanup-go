@@ -6,6 +6,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
@@ -24,19 +25,11 @@ func LoadEmbedded() (*types.Config, error) {
 	return &cfg, nil
 }
 
-// validBuiltinIDs defines the known builtin scanner IDs
-var validBuiltinIDs = map[string]bool{
-	"docker":        true,
-	"homebrew":      true,
-	"old-downloads": true,
-}
-
 // validateConfig validates the configuration for correctness
 func validateConfig(cfg *types.Config) error {
 	validMethods := map[types.CleanupMethod]bool{
 		types.MethodTrash:     true,
 		types.MethodPermanent: true,
-		types.MethodCommand:   true,
 		types.MethodBuiltin:   true,
 		types.MethodManual:    true,
 	}
@@ -58,15 +51,8 @@ func validateConfig(cfg *types.Config) error {
 		}
 
 		// Method-specific validations
-		switch cat.Method {
-		case types.MethodCommand:
-			if cat.Command == "" {
-				return fmt.Errorf("category '%s': command field required for method 'command'", cat.ID)
-			}
-		case types.MethodBuiltin:
-			if !validBuiltinIDs[cat.ID] {
-				return fmt.Errorf("category '%s': unknown builtin ID, expected one of: docker, homebrew", cat.ID)
-			}
+		if cat.Method == types.MethodBuiltin && !scanner.IsBuiltinID(cat.ID) {
+			return fmt.Errorf("category '%s': unknown builtin ID", cat.ID)
 		}
 	}
 

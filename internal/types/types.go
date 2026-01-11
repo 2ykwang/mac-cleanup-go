@@ -15,7 +15,6 @@ type CleanupMethod string
 const (
 	MethodTrash     CleanupMethod = "trash"
 	MethodPermanent CleanupMethod = "permanent"
-	MethodCommand   CleanupMethod = "command"
 	MethodBuiltin   CleanupMethod = "builtin"
 	MethodManual    CleanupMethod = "manual"
 )
@@ -64,7 +63,6 @@ type Category struct {
 	Note     string        `yaml:"note,omitempty"`
 	Guide    string        `yaml:"guide,omitempty"`
 	Paths    []string      `yaml:"paths,omitempty"`
-	Command  string        `yaml:"command,omitempty"`
 	CheckCmd string        `yaml:"check_cmd,omitempty"`
 }
 

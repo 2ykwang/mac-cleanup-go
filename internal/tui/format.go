@@ -57,8 +57,6 @@ func (m *Model) methodBadge(method types.CleanupMethod) string {
 	switch method {
 	case types.MethodManual:
 		return WarningStyle.Render("[Manual]")
-	case types.MethodCommand:
-		return MutedStyle.Render("[Command]")
 	case types.MethodBuiltin:
 		return "" // Internal implementation detail, not shown to user
 	default:

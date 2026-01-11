@@ -66,7 +66,6 @@ func TestLoadEmbedded_MethodsAreValid(t *testing.T) {
 	validMethods := map[types.CleanupMethod]bool{
 		types.MethodTrash:     true,
 		types.MethodPermanent: true,
-		types.MethodCommand:   true,
 		types.MethodBuiltin:   true,
 		types.MethodManual:    true,
 	}
@@ -100,31 +99,6 @@ func TestValidateConfig_InvalidSafety_ReturnsError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid safety")
-}
-
-func TestValidateConfig_MethodCommand_RequiresCommandField(t *testing.T) {
-	cfg := &types.Config{
-		Categories: []types.Category{
-			{ID: "test", Name: "Test", Method: types.MethodCommand, Safety: types.SafetyLevelSafe},
-		},
-	}
-
-	err := validateConfig(cfg)
-
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "command field required")
-}
-
-func TestValidateConfig_MethodCommand_WithCommandField_NoError(t *testing.T) {
-	cfg := &types.Config{
-		Categories: []types.Category{
-			{ID: "test", Name: "Test", Method: types.MethodCommand, Safety: types.SafetyLevelSafe, Command: "echo hello"},
-		},
-	}
-
-	err := validateConfig(cfg)
-
-	assert.NoError(t, err)
 }
 
 func TestValidateConfig_MethodBuiltin_RequiresKnownID(t *testing.T) {
