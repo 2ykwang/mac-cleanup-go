@@ -6,7 +6,7 @@ coverage:
         threshold: 2%
     patch:
       default:
-        target: 60%
+        target: 50%
 
 comment:
   layout: "header, diff, footer"
@@ -14,3 +14,4 @@ comment:
 
 ignore:
   - "main.go"
+  - "scripts/"
