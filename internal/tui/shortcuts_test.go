@@ -48,6 +48,7 @@ func TestListKeys_ShortHelp_ReturnsExpectedBindings(t *testing.T) {
 	assert.Equal(t, "↑/k", bindings[0].Help().Key)
 	assert.Equal(t, "space", bindings[1].Help().Key)
 	assert.Equal(t, "enter", bindings[2].Help().Key)
+	assert.Equal(t, "q", bindings[3].Help().Key)
 }
 
 func TestListKeys_FullHelp_ReturnsGroupedBindings(t *testing.T) {
@@ -56,7 +57,7 @@ func TestListKeys_FullHelp_ReturnsGroupedBindings(t *testing.T) {
 	assert.Len(t, groups, 3)
 	assert.Len(t, groups[0], 2) // Up, Down
 	assert.Len(t, groups[1], 2) // Select, Enter
-	assert.Len(t, groups[2], 3) // Delete, Quit, Help
+	assert.Len(t, groups[2], 2) // Quit, Help
 }
 
 func TestListKeys_FullHelp_ContainsAllKeys(t *testing.T) {
@@ -66,9 +67,8 @@ func TestListKeys_FullHelp_ContainsAllKeys(t *testing.T) {
 	assert.Equal(t, "↓/j", groups[0][1].Help().Key)
 	assert.Equal(t, "space", groups[1][0].Help().Key)
 	assert.Equal(t, "enter", groups[1][1].Help().Key)
-	assert.Equal(t, "y", groups[2][0].Help().Key)
-	assert.Equal(t, "q", groups[2][1].Help().Key)
-	assert.Equal(t, "?", groups[2][2].Help().Key)
+	assert.Equal(t, "q", groups[2][0].Help().Key)
+	assert.Equal(t, "?", groups[2][1].Help().Key)
 }
 
 // PreviewKeys tests
@@ -76,28 +76,36 @@ func TestListKeys_FullHelp_ContainsAllKeys(t *testing.T) {
 func TestPreviewKeys_ShortHelp_ReturnsExpectedBindings(t *testing.T) {
 	bindings := PreviewKeyMap.ShortHelp()
 
-	assert.Len(t, bindings, 5)
+	assert.Len(t, bindings, 7)
 	assert.Equal(t, "↑/k", bindings[0].Help().Key)
-	assert.Equal(t, "/", bindings[3].Help().Key)
+	assert.Equal(t, "y", bindings[3].Help().Key)
+	assert.Equal(t, "o", bindings[4].Help().Key)
+	assert.Equal(t, "/", bindings[5].Help().Key)
+	assert.Equal(t, "enter", bindings[6].Help().Key)
 }
 
 func TestPreviewKeys_FullHelp_ReturnsGroupedBindings(t *testing.T) {
 	groups := PreviewKeyMap.FullHelp()
 
-	assert.Len(t, groups, 3)
-	assert.Len(t, groups[0], 4) // Up, Down, Left, Right
-	assert.Len(t, groups[1], 4) // Select, Enter, Back, Open
-	assert.Len(t, groups[2], 4) // Search, Sort, Delete, Help
+	assert.Len(t, groups, 6)
+	assert.Len(t, groups[0], 2) // Up, Down
+	assert.Len(t, groups[1], 2) // Left, Right
+	assert.Len(t, groups[2], 2) // Select, Delete
+	assert.Len(t, groups[3], 2) // Open, Search
+	assert.Len(t, groups[4], 3) // Enter, Sort, Back
+	assert.Len(t, groups[5], 2) // Quit, Help
 }
 
 func TestPreviewKeys_FullHelp_ContainsAllKeys(t *testing.T) {
 	groups := PreviewKeyMap.FullHelp()
 
-	assert.Equal(t, "←/h", groups[0][2].Help().Key)
-	assert.Equal(t, "→/l", groups[0][3].Help().Key)
-	assert.Equal(t, "esc", groups[1][2].Help().Key)
-	assert.Equal(t, "o", groups[1][3].Help().Key)
-	assert.Equal(t, "s", groups[2][1].Help().Key)
+	assert.Equal(t, "←/h", groups[1][0].Help().Key)
+	assert.Equal(t, "→/l", groups[1][1].Help().Key)
+	assert.Equal(t, "o", groups[3][0].Help().Key)
+	assert.Equal(t, "/", groups[3][1].Help().Key)
+	assert.Equal(t, "enter", groups[4][0].Help().Key)
+	assert.Equal(t, "s", groups[4][1].Help().Key)
+	assert.Equal(t, "esc", groups[4][2].Help().Key)
 }
 
 // ConfirmKeys tests
