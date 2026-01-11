@@ -235,10 +235,7 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "/":
 		// Enter search mode
-		m.filterState = FilterTyping
-		m.filterInput.SetValue("")
-		m.filterInput.Focus()
-		return m, m.filterInput.Focus()
+		return m, m.startFilterTyping()
 	}
 	return m, nil
 }
@@ -412,6 +409,13 @@ func (m *Model) applyFilter() {
 	m.filterState = FilterApplied
 	m.filterInput.Blur()
 	m.resetPreviewSelection()
+}
+
+func (m *Model) startFilterTyping() tea.Cmd {
+	m.filterState = FilterTyping
+	m.filterInput.SetValue("")
+	m.filterInput.Focus()
+	return m.filterInput.Focus()
 }
 
 func (m *Model) maxReportScroll() int {
