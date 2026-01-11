@@ -1,12 +1,8 @@
 package cleaner
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"os"
-	"os/exec"
-	"time"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
@@ -32,11 +28,16 @@ func (c *Cleaner) Clean(cat types.Category, items []types.CleanableItem) *types.
 		c.moveToTrash(items, result)
 	case types.MethodPermanent:
 		c.removePermanent(items, result)
-	case types.MethodCommand:
-		c.runCommand(cat, result)
 	case types.MethodBuiltin:
 		if s, ok := c.registry.Get(cat.ID); ok {
-			builtinResult, _ := s.Clean(items)
+			builtinResult, err := s.Clean(items)
+			if err != nil {
+				if builtinResult != nil {
+					builtinResult.Errors = append(builtinResult.Errors, err.Error())
+				} else {
+					result.Errors = append(result.Errors, err.Error())
+				}
+			}
 			if builtinResult != nil {
 				return builtinResult
 			}
@@ -88,26 +89,5 @@ func (c *Cleaner) removePermanent(items []types.CleanableItem, result *types.Cle
 			result.FreedSpace += item.Size
 			result.CleanedItems++
 		}
-	}
-}
-
-func (c *Cleaner) runCommand(cat types.Category, result *types.CleanResult) {
-	if cat.Command == "" {
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, "sh", "-c", cat.Command)
-
-	if err := cmd.Run(); err != nil {
-		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			result.Errors = append(result.Errors, "command timeout")
-		} else {
-			result.Errors = append(result.Errors, fmt.Sprintf("command failed: %v", err))
-		}
-	} else {
-		result.CleanedItems = 1
 	}
 }

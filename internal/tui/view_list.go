@@ -205,8 +205,6 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult) string {
 	switch r.Category.Method {
 	case types.MethodManual:
 		name += " [Manual]"
-	case types.MethodCommand:
-		name += " [Command]"
 	}
 	// Truncate and pad using display width for consistent alignment
 	name = padToWidth(truncateToWidth(name, colName, false), colName)

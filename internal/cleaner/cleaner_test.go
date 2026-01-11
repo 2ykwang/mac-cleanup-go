@@ -1,6 +1,7 @@
 package cleaner
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -20,6 +21,10 @@ type mockScanner struct {
 	cleanItems  []types.CleanableItem
 	cleanResult *types.CleanResult
 	cleanErr    error
+}
+
+type nilResultScanner struct {
+	category types.Category
 }
 
 func (m *mockScanner) Scan() (*types.ScanResult, error) {
@@ -48,58 +53,26 @@ func (m *mockScanner) IsAvailable() bool {
 	return true
 }
 
+func (s *nilResultScanner) Scan() (*types.ScanResult, error) {
+	return nil, nil
+}
+
+func (s *nilResultScanner) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
+	return nil, errors.New("scanner failed")
+}
+
+func (s *nilResultScanner) Category() types.Category {
+	return s.category
+}
+
+func (s *nilResultScanner) IsAvailable() bool {
+	return true
+}
+
 func TestNew(t *testing.T) {
 	registry := scanner.NewRegistry()
 	c := New(registry)
 	require.NotNil(t, c)
-}
-
-func TestClean_Command_Success(t *testing.T) {
-	c := New(nil)
-
-	cat := types.Category{
-		ID:      "test",
-		Name:    "Test Category",
-		Method:  types.MethodCommand,
-		Command: "echo hello",
-	}
-
-	result := c.Clean(cat, nil)
-
-	assert.Equal(t, 1, result.CleanedItems)
-	assert.Empty(t, result.Errors)
-}
-
-func TestClean_Command_Failure(t *testing.T) {
-	c := New(nil)
-
-	cat := types.Category{
-		ID:      "test",
-		Name:    "Test Category",
-		Method:  types.MethodCommand,
-		Command: "exit 1",
-	}
-
-	result := c.Clean(cat, nil)
-
-	assert.Equal(t, 0, result.CleanedItems)
-	assert.Len(t, result.Errors, 1)
-}
-
-func TestClean_Command_Empty(t *testing.T) {
-	c := New(nil)
-
-	cat := types.Category{
-		ID:      "test",
-		Name:    "Test Category",
-		Method:  types.MethodCommand,
-		Command: "",
-	}
-
-	result := c.Clean(cat, nil)
-
-	assert.Equal(t, 0, result.CleanedItems)
-	assert.Empty(t, result.Errors)
 }
 
 func TestClean_CategoryInResult(t *testing.T) {
@@ -108,7 +81,7 @@ func TestClean_CategoryInResult(t *testing.T) {
 	cat := types.Category{
 		ID:     "test-id",
 		Name:   "Test Category",
-		Method: types.MethodCommand,
+		Method: types.MethodTrash,
 		Safety: types.SafetyLevelSafe,
 	}
 
@@ -297,6 +270,57 @@ func TestClean_MethodBuiltin_ScannerReturnsError(t *testing.T) {
 	assert.Equal(t, 1, result.CleanedItems)
 	assert.Equal(t, int64(50), result.FreedSpace)
 	assert.Contains(t, result.Errors, "partial failure")
+}
+
+func TestClean_MethodBuiltin_ScannerErrorPropagates(t *testing.T) {
+	registry := scanner.NewRegistry()
+	mock := &mockScanner{
+		category: types.Category{
+			ID:     "docker",
+			Name:   "Docker",
+			Method: types.MethodBuiltin,
+		},
+		cleanErr: fmt.Errorf("scanner failed"),
+	}
+	registry.Register(mock)
+
+	c := New(registry)
+
+	cat := types.Category{
+		ID:     "docker",
+		Name:   "Docker",
+		Method: types.MethodBuiltin,
+	}
+
+	result := c.Clean(cat, []types.CleanableItem{})
+
+	require.Len(t, result.Errors, 1)
+	assert.Contains(t, result.Errors[0], "scanner failed")
+}
+
+func TestClean_MethodBuiltin_ScannerNilResultWithError(t *testing.T) {
+	registry := scanner.NewRegistry()
+	impl := &nilResultScanner{
+		category: types.Category{
+			ID:     "docker",
+			Name:   "Docker",
+			Method: types.MethodBuiltin,
+		},
+	}
+	registry.Register(impl)
+
+	c := New(registry)
+
+	cat := types.Category{
+		ID:     "docker",
+		Name:   "Docker",
+		Method: types.MethodBuiltin,
+	}
+
+	result := c.Clean(cat, []types.CleanableItem{{Path: "/tmp/test", Name: "test"}})
+
+	require.Len(t, result.Errors, 1)
+	assert.Contains(t, result.Errors[0], "scanner failed")
 }
 
 func TestClean_Manual_SkipsWithGuide(t *testing.T) {

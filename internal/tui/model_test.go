@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -28,6 +29,19 @@ func newTestModel() *Model {
 		userConfig:     &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)},
 		recentDeleted:  NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity),
 	}
+}
+
+func TestNewModel_InvalidBuiltin_ShowsError(t *testing.T) {
+	cfg := &types.Config{
+		Categories: []types.Category{
+			{ID: "unknown", Name: "Unknown", Method: types.MethodBuiltin, Safety: types.SafetyLevelSafe},
+		},
+	}
+
+	m := NewModel(cfg)
+
+	require.Error(t, m.err)
+	assert.True(t, strings.HasPrefix(m.View(), "Error:"), "expected error view")
 }
 
 func newTestModelWithResults() *Model {
