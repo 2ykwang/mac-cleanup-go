@@ -140,13 +140,19 @@ func (m *Model) listFooter() string {
 }
 
 func (m *Model) viewList() string {
+	maxWidth := 140
+	contentWidth := m.width
+	if contentWidth > maxWidth {
+		contentWidth = maxWidth
+	}
+
 	showSidePanel := false
-	bodyWidth := m.width
+	bodyWidth := contentWidth
 	sideWidth := 0
-	if m.width >= 100 {
-		sideWidth = minInt(32, m.width/3)
-		if m.width-sideWidth-2 >= 60 {
-			bodyWidth = m.width - sideWidth - 2
+	if contentWidth >= 100 {
+		sideWidth = minInt(32, contentWidth/3)
+		if contentWidth-sideWidth-2 >= 60 {
+			bodyWidth = contentWidth - sideWidth - 2
 			showSidePanel = true
 		} else {
 			sideWidth = 0
@@ -156,10 +162,14 @@ func (m *Model) viewList() string {
 	header := m.listHeader(!showSidePanel)
 	footer := m.listFooter()
 	visible := m.availableLines(header, footer)
+	if visible < 16 {
+		showSidePanel = false
+	}
 
 	listContent := m.renderListBody(visible)
 	if showSidePanel {
-		sideHeight := visible - 2
+		sideContent := m.renderListSidePanel(sideWidth)
+		sideHeight := minInt(visible, lipgloss.Height(sideContent)+2)
 		if sideHeight < 1 {
 			sideHeight = 1
 		}
@@ -170,11 +180,21 @@ func (m *Model) viewList() string {
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(ColorBorder).
 			Padding(0, 1)
-		sideContent := m.renderListSidePanel(sideWidth)
 		listContent = lipgloss.JoinHorizontal(lipgloss.Top, listStyle.Render(listContent), sideStyle.Render(sideContent))
 	}
 
 	var b strings.Builder
+	padding := (m.width - contentWidth) / 2
+	if padding < 0 {
+		padding = 0
+	}
+	if padding > 0 {
+		pad := strings.Repeat(" ", padding)
+		header = indentLines(header, pad)
+		listContent = indentLines(listContent, pad)
+		footer = indentLines(footer, pad)
+	}
+
 	b.WriteString(header)
 	b.WriteString(listContent)
 	b.WriteString("\n")
