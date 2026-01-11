@@ -1,6 +1,8 @@
 package cleaner
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"testing"
 
@@ -8,7 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
-	"github.com/2ykwang/mac-cleanup-go/pkg/types"
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
+	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
 // mockScanner implements scanner.Scanner for testing
@@ -18,6 +21,10 @@ type mockScanner struct {
 	cleanItems  []types.CleanableItem
 	cleanResult *types.CleanResult
 	cleanErr    error
+}
+
+type nilResultScanner struct {
+	category types.Category
 }
 
 func (m *mockScanner) Scan() (*types.ScanResult, error) {
@@ -46,58 +53,26 @@ func (m *mockScanner) IsAvailable() bool {
 	return true
 }
 
+func (s *nilResultScanner) Scan() (*types.ScanResult, error) {
+	return nil, nil
+}
+
+func (s *nilResultScanner) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
+	return nil, errors.New("scanner failed")
+}
+
+func (s *nilResultScanner) Category() types.Category {
+	return s.category
+}
+
+func (s *nilResultScanner) IsAvailable() bool {
+	return true
+}
+
 func TestNew(t *testing.T) {
 	registry := scanner.NewRegistry()
 	c := New(registry)
 	require.NotNil(t, c)
-}
-
-func TestClean_Command_Success(t *testing.T) {
-	c := New(nil)
-
-	cat := types.Category{
-		ID:      "test",
-		Name:    "Test Category",
-		Method:  types.MethodCommand,
-		Command: "echo hello",
-	}
-
-	result := c.Clean(cat, nil)
-
-	assert.Equal(t, 1, result.CleanedItems)
-	assert.Empty(t, result.Errors)
-}
-
-func TestClean_Command_Failure(t *testing.T) {
-	c := New(nil)
-
-	cat := types.Category{
-		ID:      "test",
-		Name:    "Test Category",
-		Method:  types.MethodCommand,
-		Command: "exit 1",
-	}
-
-	result := c.Clean(cat, nil)
-
-	assert.Equal(t, 0, result.CleanedItems)
-	assert.Len(t, result.Errors, 1)
-}
-
-func TestClean_Command_Empty(t *testing.T) {
-	c := New(nil)
-
-	cat := types.Category{
-		ID:      "test",
-		Name:    "Test Category",
-		Method:  types.MethodCommand,
-		Command: "",
-	}
-
-	result := c.Clean(cat, nil)
-
-	assert.Equal(t, 0, result.CleanedItems)
-	assert.Empty(t, result.Errors)
 }
 
 func TestClean_CategoryInResult(t *testing.T) {
@@ -106,7 +81,7 @@ func TestClean_CategoryInResult(t *testing.T) {
 	cat := types.Category{
 		ID:     "test-id",
 		Name:   "Test Category",
-		Method: types.MethodCommand,
+		Method: types.MethodTrash,
 		Safety: types.SafetyLevelSafe,
 	}
 
@@ -297,6 +272,57 @@ func TestClean_MethodBuiltin_ScannerReturnsError(t *testing.T) {
 	assert.Contains(t, result.Errors, "partial failure")
 }
 
+func TestClean_MethodBuiltin_ScannerErrorPropagates(t *testing.T) {
+	registry := scanner.NewRegistry()
+	mock := &mockScanner{
+		category: types.Category{
+			ID:     "docker",
+			Name:   "Docker",
+			Method: types.MethodBuiltin,
+		},
+		cleanErr: fmt.Errorf("scanner failed"),
+	}
+	registry.Register(mock)
+
+	c := New(registry)
+
+	cat := types.Category{
+		ID:     "docker",
+		Name:   "Docker",
+		Method: types.MethodBuiltin,
+	}
+
+	result := c.Clean(cat, []types.CleanableItem{})
+
+	require.Len(t, result.Errors, 1)
+	assert.Contains(t, result.Errors[0], "scanner failed")
+}
+
+func TestClean_MethodBuiltin_ScannerNilResultWithError(t *testing.T) {
+	registry := scanner.NewRegistry()
+	impl := &nilResultScanner{
+		category: types.Category{
+			ID:     "docker",
+			Name:   "Docker",
+			Method: types.MethodBuiltin,
+		},
+	}
+	registry.Register(impl)
+
+	c := New(registry)
+
+	cat := types.Category{
+		ID:     "docker",
+		Name:   "Docker",
+		Method: types.MethodBuiltin,
+	}
+
+	result := c.Clean(cat, []types.CleanableItem{{Path: "/tmp/test", Name: "test"}})
+
+	require.Len(t, result.Errors, 1)
+	assert.Contains(t, result.Errors[0], "scanner failed")
+}
+
 func TestClean_Manual_SkipsWithGuide(t *testing.T) {
 	c := New(nil)
 
@@ -315,4 +341,64 @@ func TestClean_Manual_SkipsWithGuide(t *testing.T) {
 
 	assert.Equal(t, 0, result.CleanedItems, "manual methods should skip all items")
 	assert.Equal(t, 1, result.SkippedItems)
+}
+
+func TestClean_Trash_MovesToTrash(t *testing.T) {
+	original := utils.MoveToTrash
+	defer func() { utils.MoveToTrash = original }()
+
+	var trashedPaths []string
+	utils.MoveToTrash = func(path string) error {
+		trashedPaths = append(trashedPaths, path)
+		return nil
+	}
+
+	c := New(nil)
+	cat := types.Category{
+		ID:     "test-trash",
+		Name:   "Test Trash",
+		Method: types.MethodTrash,
+	}
+	items := []types.CleanableItem{
+		{Path: "/tmp/test1", Name: "test1", Size: 100},
+		{Path: "/tmp/test2", Name: "test2", Size: 200},
+	}
+
+	result := c.Clean(cat, items)
+
+	assert.Equal(t, 2, result.CleanedItems)
+	assert.Equal(t, int64(300), result.FreedSpace)
+	assert.Equal(t, []string{"/tmp/test1", "/tmp/test2"}, trashedPaths)
+	assert.Empty(t, result.Errors)
+}
+
+func TestClean_Trash_PartialFailure(t *testing.T) {
+	original := utils.MoveToTrash
+	defer func() { utils.MoveToTrash = original }()
+
+	utils.MoveToTrash = func(path string) error {
+		if path == "/tmp/test2" {
+			return fmt.Errorf("permission denied")
+		}
+		return nil
+	}
+
+	c := New(nil)
+	cat := types.Category{
+		ID:     "test-trash",
+		Name:   "Test Trash",
+		Method: types.MethodTrash,
+	}
+	items := []types.CleanableItem{
+		{Path: "/tmp/test1", Name: "test1", Size: 100},
+		{Path: "/tmp/test2", Name: "test2", Size: 200},
+		{Path: "/tmp/test3", Name: "test3", Size: 300},
+	}
+
+	result := c.Clean(cat, items)
+
+	assert.Equal(t, 2, result.CleanedItems)
+	assert.Equal(t, int64(400), result.FreedSpace)
+	require.Len(t, result.Errors, 1)
+	assert.Contains(t, result.Errors[0], "permission denied")
 }

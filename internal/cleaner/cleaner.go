@@ -1,17 +1,13 @@
 package cleaner
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"os/exec"
-	"time"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
-	"github.com/2ykwang/mac-cleanup-go/pkg/types"
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
+	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
-
-const commandTimeout = 10 * time.Second
 
 type Cleaner struct {
 	registry *scanner.Registry
@@ -32,11 +28,16 @@ func (c *Cleaner) Clean(cat types.Category, items []types.CleanableItem) *types.
 		c.moveToTrash(items, result)
 	case types.MethodPermanent:
 		c.removePermanent(items, result)
-	case types.MethodCommand:
-		c.runCommand(cat, result)
 	case types.MethodBuiltin:
 		if s, ok := c.registry.Get(cat.ID); ok {
-			builtinResult, _ := s.Clean(items)
+			builtinResult, err := s.Clean(items)
+			if err != nil {
+				if builtinResult != nil {
+					builtinResult.Errors = append(builtinResult.Errors, err.Error())
+				} else {
+					result.Errors = append(result.Errors, err.Error())
+				}
+			}
 			if builtinResult != nil {
 				return builtinResult
 			}
@@ -53,24 +54,13 @@ func (c *Cleaner) Clean(cat types.Category, items []types.CleanableItem) *types.
 
 func (c *Cleaner) moveToTrash(items []types.CleanableItem, result *types.CleanResult) {
 	for _, item := range items {
-		// Skip SIP protected paths
-		if scanner.IsSIPProtected(item.Path) {
+		if utils.IsSIPProtected(item.Path) {
 			result.SkippedItems++
 			continue
 		}
 
-		script := fmt.Sprintf(`tell application "Finder" to delete POSIX file "%s"`, item.Path)
-		ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
-		cmd := exec.CommandContext(ctx, "osascript", "-e", script)
-		err := cmd.Run()
-		cancel()
-
-		if err != nil {
-			if ctx.Err() == context.DeadlineExceeded {
-				result.Errors = append(result.Errors, fmt.Sprintf("%s: timeout", item.Name))
-			} else {
-				result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Name, err))
-			}
+		if err := utils.MoveToTrash(item.Path); err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Name, err))
 		} else {
 			result.FreedSpace += item.Size
 			result.CleanedItems++
@@ -81,7 +71,7 @@ func (c *Cleaner) moveToTrash(items []types.CleanableItem, result *types.CleanRe
 func (c *Cleaner) removePermanent(items []types.CleanableItem, result *types.CleanResult) {
 	for _, item := range items {
 		// Skip SIP protected paths
-		if scanner.IsSIPProtected(item.Path) {
+		if utils.IsSIPProtected(item.Path) {
 			result.SkippedItems++
 			continue
 		}
@@ -99,31 +89,5 @@ func (c *Cleaner) removePermanent(items []types.CleanableItem, result *types.Cle
 			result.FreedSpace += item.Size
 			result.CleanedItems++
 		}
-	}
-}
-
-func (c *Cleaner) runCommand(cat types.Category, result *types.CleanResult) {
-	if cat.Command == "" {
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	var cmd *exec.Cmd
-	if cat.Sudo {
-		cmd = exec.CommandContext(ctx, "sudo", "sh", "-c", cat.Command)
-	} else {
-		cmd = exec.CommandContext(ctx, "sh", "-c", cat.Command)
-	}
-
-	if err := cmd.Run(); err != nil {
-		if ctx.Err() == context.DeadlineExceeded {
-			result.Errors = append(result.Errors, "command timeout")
-		} else {
-			result.Errors = append(result.Errors, fmt.Sprintf("command failed: %v", err))
-		}
-	} else {
-		result.CleanedItems = 1
 	}
 }

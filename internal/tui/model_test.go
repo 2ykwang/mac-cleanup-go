@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -9,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
-	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
 // Test fixtures
@@ -28,6 +29,19 @@ func newTestModel() *Model {
 		userConfig:     &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)},
 		recentDeleted:  NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity),
 	}
+}
+
+func TestNewModel_InvalidBuiltin_ShowsError(t *testing.T) {
+	cfg := &types.Config{
+		Categories: []types.Category{
+			{ID: "unknown", Name: "Unknown", Method: types.MethodBuiltin, Safety: types.SafetyLevelSafe},
+		},
+	}
+
+	m := NewModel(cfg)
+
+	require.Error(t, m.err)
+	assert.True(t, strings.HasPrefix(m.View(), "Error:"), "expected error view")
 }
 
 func newTestModelWithResults() *Model {
@@ -445,15 +459,15 @@ func TestViewList_ContainsResults(t *testing.T) {
 	assert.Contains(t, output, "Xcode Archives")
 }
 
-func TestViewList_ContainsHelpText(t *testing.T) {
+func TestViewList_ContainsFooterShortcuts(t *testing.T) {
 	m := newTestModelWithResults()
 
 	output := m.viewList()
 
-	// Footer now uses simplified format: "↑↓ Move  space Select  enter Preview  y Delete  ? Help"
-	assert.Contains(t, output, "Move")
-	assert.Contains(t, output, "Select")
-	assert.Contains(t, output, "? Help")
+	// Footer shows help component with key bindings
+	assert.Contains(t, output, "up")
+	assert.Contains(t, output, "select")
+	assert.Contains(t, output, "help")
 }
 
 func TestViewList_ShowsSelectedIndicator(t *testing.T) {
@@ -937,56 +951,6 @@ func TestHandleConfirmKey_EscReturnsToPreview(t *testing.T) {
 	assert.Equal(t, ViewPreview, m.view)
 }
 
-func TestHandleConfirmKey_QuestionMarkOpensHelp(t *testing.T) {
-	m := newTestModelWithResults()
-	m.view = ViewConfirm
-
-	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
-
-	assert.Equal(t, ViewHelp, m.view)
-	assert.Equal(t, ViewConfirm, m.helpPreviousView)
-}
-
-func TestHandleHelpKey_EscReturnsToList(t *testing.T) {
-	m := newTestModel()
-	m.view = ViewHelp
-	m.helpPreviousView = ViewList
-
-	m.handleHelpKey(tea.KeyMsg{Type: tea.KeyEsc})
-
-	assert.Equal(t, ViewList, m.view)
-}
-
-func TestHandleHelpKey_EnterReturnsToPreview(t *testing.T) {
-	m := newTestModel()
-	m.view = ViewHelp
-	m.helpPreviousView = ViewPreview
-
-	m.handleHelpKey(tea.KeyMsg{Type: tea.KeyEnter})
-
-	assert.Equal(t, ViewPreview, m.view)
-}
-
-func TestHandleHelpKey_SpaceReturnsToPreviousView(t *testing.T) {
-	m := newTestModel()
-	m.view = ViewHelp
-	m.helpPreviousView = ViewConfirm
-
-	m.handleHelpKey(tea.KeyMsg{Type: tea.KeySpace})
-
-	assert.Equal(t, ViewConfirm, m.view)
-}
-
-func TestHandleHelpKey_QuestionMarkCloses(t *testing.T) {
-	m := newTestModel()
-	m.view = ViewHelp
-	m.helpPreviousView = ViewList
-
-	m.handleHelpKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
-
-	assert.Equal(t, ViewList, m.view)
-}
-
 func newTestModelForPreview() *Model {
 	m := newTestModelWithResults()
 	m.view = ViewPreview
@@ -1124,20 +1088,6 @@ func TestHandleDrillDownKey_CursorNavigation(t *testing.T) {
 	assert.Equal(t, 0, m.drillDownStack[0].cursor)
 }
 
-func TestHandleDrillDownKey_QuestionMarkOpensHelp(t *testing.T) {
-	m := newTestModelForPreview()
-	m.drillDownStack = append(m.drillDownStack, drillDownState{
-		path:   "/test/path",
-		items:  []types.CleanableItem{{Path: "/a"}},
-		cursor: 0,
-	})
-
-	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
-
-	assert.Equal(t, ViewHelp, m.view)
-	assert.Equal(t, ViewPreview, m.helpPreviousView)
-}
-
 func TestHandleConfirmKey_CtrlCQuits(t *testing.T) {
 	m := newTestModelWithResults()
 	m.view = ViewConfirm
@@ -1154,17 +1104,6 @@ func TestHandleConfirmKey_QQuits(t *testing.T) {
 	m.view = ViewConfirm
 
 	_, cmd := m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
-
-	require.NotNil(t, cmd)
-	msg := cmd()
-	assert.IsType(t, tea.QuitMsg{}, msg)
-}
-
-func TestHandleHelpKey_CtrlCQuits(t *testing.T) {
-	m := newTestModel()
-	m.view = ViewHelp
-
-	_, cmd := m.handleHelpKey(tea.KeyMsg{Type: tea.KeyCtrlC})
 
 	require.NotNil(t, cmd)
 	msg := cmd()

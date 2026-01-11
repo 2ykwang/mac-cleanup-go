@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
-	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
 // GroupStat represents aggregated size statistics for a group
@@ -135,7 +135,7 @@ func (m *Model) listFooter() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(HelpStyle.Render(FormatFooter(FooterShortcuts(ViewList))))
+	b.WriteString(m.help.View(ListKeyMap))
 
 	return b.String()
 }
@@ -205,10 +205,6 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult) string {
 	switch r.Category.Method {
 	case types.MethodManual:
 		name += " [Manual]"
-	case types.MethodCommand:
-		name += " [Command]"
-	case types.MethodBuiltin:
-		name += " [Builtin]"
 	}
 	// Truncate and pad using display width for consistent alignment
 	name = padToWidth(truncateToWidth(name, colName, false), colName)

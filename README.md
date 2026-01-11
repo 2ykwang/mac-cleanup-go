@@ -1,70 +1,44 @@
-# mac-cleanup-go
+<div align="center">
+  <h1>mac-cleanup-go</h1>
+  <p>A TUI tool for cleaning up macOS caches, logs, and temporary files.</p>
+</div>
 
-[![GitHub Release](https://img.shields.io/github/v/release/2ykwang/mac-cleanup-go)](https://github.com/2ykwang/mac-cleanup-go/releases)
-[![Go Report Card](https://goreportcard.com/badge/github.com/2ykwang/mac-cleanup-go)](https://goreportcard.com/report/github.com/2ykwang/mac-cleanup-go)
-[![codecov](https://codecov.io/gh/2ykwang/mac-cleanup-go/graph/badge.svg)](https://codecov.io/gh/2ykwang/mac-cleanup-go)
-[![CI](https://github.com/2ykwang/mac-cleanup-go/actions/workflows/test.yml/badge.svg)](https://github.com/2ykwang/mac-cleanup-go/actions/workflows/test.yml)
-[![golangci-lint](https://img.shields.io/badge/linted%20by-golangci--lint-brightgreen)](https://golangci-lint.run/)
-
-Interactive TUI for cleaning macOS caches, logs, and temporary files.
+<p align="center">
+  <a href="https://github.com/2ykwang/mac-cleanup-go/releases"><img src="https://img.shields.io/github/v/release/2ykwang/mac-cleanup-go" alt="GitHub Release"></a>
+  <a href="https://goreportcard.com/report/github.com/2ykwang/mac-cleanup-go"><img src="https://goreportcard.com/badge/github.com/2ykwang/mac-cleanup-go" alt="Go Report Card"></a>
+  <a href="https://github.com/2ykwang/mac-cleanup-go/actions/workflows/test.yml"><img src="https://github.com/2ykwang/mac-cleanup-go/actions/workflows/test.yml/badge.svg" alt="CI"></a>
+  <a href="https://golangci-lint.run/"><img src="https://img.shields.io/badge/linted%20by-golangci--lint-brightgreen" alt="golangci-lint"></a>
+</p>
 
 ![demo](assets/demo2.gif)
 
 ## Features
 
-- **65+ cleanup targets** - System caches, browsers, dev tools, apps
-- **Safety levels** - Each item labeled as Safe / Moderate / Risky
-- **File-level control** - Preview and exclude individual files before deletion
-
-## How It Works
-
-```
-┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
-│  Scan   │───▶│  List   │───▶│ Preview │───▶│  Clean  │
-└─────────┘    └─────────┘    └─────────┘    └─────────┘
- Detect all     Sort by size   File-level     Move to
- targets        + select       exclusion      Trash
-```
-
-Each item is labeled by deletion risk
-
-- Safe: Auto-regenerated (browser cache, build artifacts)
-- Moderate: Regenerable but costly (re-index, rebuild, re-login)
-- Risky: May contain important data (backups, downloads)
-
-Moved to Trash by default. Some use native commands (Docker, Homebrew), others guide manual deletion.
+- **Preview before delete** - See the full list and select only what you want
+- **Safety levels** - Safe (auto-regenerated) / Moderate (re-login required) / Risky (important data)
+- **90 targets** - 10 browsers, 32 dev tools, 38 apps, and more
+- **Trash by default** - Recoverable if you make a mistake
 
 ## Installation
 
 ```bash
 # Homebrew
-brew tap 2ykwang/mac-cleanup-go
-brew install mac-cleanup-go
-
-# Go install
-go install github.com/2ykwang/mac-cleanup-go@latest
-```
-
-Or build from source:
-
-```bash
-git clone https://github.com/2ykwang/mac-cleanup-go.git
-cd mac-cleanup-go && make build
-./bin/mac-cleanup
+brew tap 2ykwang/2ykwang && brew install mac-cleanup-go
 ```
 
 ## Usage
 
 ```bash
-mac-cleanup          # Run the TUI
-mac-cleanup -v       # Show version
+mac-cleanup
 ```
 
-> **Tip**: Grant Full Disk Access to your terminal for complete cleanup access.
+> **Tip**: Grant Full Disk Access to your terminal to clean Trash as well.
+> System Settings → Privacy & Security → Full Disk Access
 
-## Inspired by
+## Alternatives
 
-[mac-cleanup-py](https://github.com/mac-cleanup/mac-cleanup-py)
+- [mac-cleanup-py](https://github.com/mac-cleanup/mac-cleanup-py) - Python cleanup script for macOS
+- [Mole](https://github.com/tw93/Mole) - Deep clean and optimize your Mac
 
 ## License
 

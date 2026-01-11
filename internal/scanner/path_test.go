@@ -4,11 +4,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/2ykwang/mac-cleanup-go/pkg/types"
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
 // --- Category Tests ---
@@ -58,19 +57,21 @@ func TestIsAvailable_ReturnsTrue_WhenCheckPathExists(t *testing.T) {
 
 	cat := types.Category{
 		ID:    "test",
-		Check: tmpDir,
+		Paths: []string{tmpDir + "/*"},
 	}
+
+	// Create a file so glob matches
+	os.WriteFile(filepath.Join(tmpDir, "test.txt"), []byte("test"), 0o644)
 
 	s := NewPathScanner(cat)
 
 	assert.True(t, s.IsAvailable())
 }
 
-func TestIsAvailable_ReturnsFalse_WhenCheckPathNotExists(t *testing.T) {
+func TestIsAvailable_ReturnsFalse_WhenPathsNotExists(t *testing.T) {
 	cat := types.Category{
 		ID:    "test",
-		Check: "/nonexistent/path/xyz",
-		Paths: []string{"/also/nonexistent/*"},
+		Paths: []string{"/nonexistent/path/xyz/*"},
 	}
 
 	s := NewPathScanner(cat)
@@ -88,16 +89,6 @@ func TestIsAvailable_ReturnsTrue_WhenPathsHaveMatchingFiles(t *testing.T) {
 	cat := types.Category{
 		ID:    "test",
 		Paths: []string{filepath.Join(tmpDir, "*")},
-	}
-
-	s := NewPathScanner(cat)
-
-	assert.True(t, s.IsAvailable())
-}
-
-func TestIsAvailable_ReturnsTrue_WhenNoCheckAndNoPaths(t *testing.T) {
-	cat := types.Category{
-		ID: "test",
 	}
 
 	s := NewPathScanner(cat)
@@ -156,32 +147,6 @@ func TestScan_CalculatesTotalSizeCorrectly(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, int64(15), result.TotalSize)
-}
-
-func TestScan_FiltersByDaysOld(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "path-scanner-test")
-	defer os.RemoveAll(tmpDir)
-
-	recentFile := filepath.Join(tmpDir, "recent.txt")
-	os.WriteFile(recentFile, []byte("recent"), 0o644)
-
-	oldFile := filepath.Join(tmpDir, "old.txt")
-	os.WriteFile(oldFile, []byte("old"), 0o644)
-	oldTime := time.Now().AddDate(0, 0, -10)
-	os.Chtimes(oldFile, oldTime, oldTime)
-
-	cat := types.Category{
-		ID:      "test",
-		Paths:   []string{filepath.Join(tmpDir, "*.txt")},
-		DaysOld: 7,
-	}
-
-	s := NewPathScanner(cat)
-	result, err := s.Scan()
-
-	assert.NoError(t, err)
-	assert.Len(t, result.Items, 1)
-	assert.Equal(t, "old.txt", result.Items[0].Name)
 }
 
 func TestScan_HandlesGlobErrors_Gracefully(t *testing.T) {

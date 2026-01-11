@@ -4,10 +4,11 @@ import (
 	"sort"
 	"time"
 
+	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/2ykwang/mac-cleanup-go/pkg/types"
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
 func (m *Model) startScan() tea.Cmd {
@@ -33,6 +34,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleKey(msg)
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		m.help.Width = msg.Width
 		return m, nil
 	case spinner.TickMsg:
 		if m.scanning || m.view == ViewCleaning {
@@ -47,8 +49,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cleaningItem = msg.currentItem
 		m.cleaningCurrent = msg.current
 		m.cleaningTotal = msg.total
-		// Continue waiting for next progress or done message
+
+		// Update progress bar
+		if m.cleaningTotal > 0 {
+			percent := float64(m.cleaningCurrent) / float64(m.cleaningTotal)
+			cmd := m.cleaningProgress.SetPercent(percent)
+			return m, tea.Batch(cmd, m.waitForCleanProgress())
+		}
 		return m, m.waitForCleanProgress()
+	case progress.FrameMsg:
+		var cmd tea.Cmd
+		progressModel, cmd := m.cleaningProgress.Update(msg)
+		m.cleaningProgress = progressModel.(progress.Model)
+		return m, cmd
 	case cleanItemDoneMsg:
 		// Add deleted item to recent deletions list
 		m.recentDeleted.Push(DeletedItemEntry{

@@ -2,13 +2,128 @@ package tui
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
-	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
+
+// Preview navigation helpers
+
+func (m *Model) getPreviewCatResult() *types.ScanResult {
+	if m.previewCatID == "" {
+		return nil
+	}
+	return m.resultMap[m.previewCatID]
+}
+
+func (m *Model) findSelectedCatIndex() int {
+	selected := m.getSelectedResults()
+	for i, r := range selected {
+		if r.Category.ID == m.previewCatID {
+			return i
+		}
+	}
+	return -1
+}
+
+func (m *Model) findPrevSelectedCatID() string {
+	selected := m.getSelectedResults()
+	for i, r := range selected {
+		if r.Category.ID == m.previewCatID && i > 0 {
+			return selected[i-1].Category.ID
+		}
+	}
+	return m.previewCatID
+}
+
+func (m *Model) findNextSelectedCatID() string {
+	selected := m.getSelectedResults()
+	for i, r := range selected {
+		if r.Category.ID == m.previewCatID && i < len(selected)-1 {
+			return selected[i+1].Category.ID
+		}
+	}
+	return m.previewCatID
+}
+
+// getVisiblePreviewItems returns the sorted and filtered items for the current preview.
+// This is what the user actually sees on screen.
+func (m *Model) getVisiblePreviewItems() []types.CleanableItem {
+	r := m.getPreviewCatResult()
+	if r == nil {
+		return nil
+	}
+
+	items := r.Items
+
+	// Apply filter if active
+	if m.filterState == FilterTyping {
+		query := m.filterInput.Value()
+		if query != "" {
+			items = m.filterItems(items, query)
+		}
+	} else if m.filterState == FilterApplied && m.filterText != "" {
+		items = m.filterItems(items, m.filterText)
+	}
+
+	// Apply sort
+	return m.sortItems(items)
+}
+
+// getCurrentPreviewItem returns the item at the current cursor position
+// after applying filter and sort. Returns nil if no valid item.
+func (m *Model) getCurrentPreviewItem() *types.CleanableItem {
+	items := m.getVisiblePreviewItems()
+	if items == nil || m.previewItemIndex < 0 || m.previewItemIndex >= len(items) {
+		return nil
+	}
+	return &items[m.previewItemIndex]
+}
+
+// readDirectory reads directory contents for drill-down view
+func (m *Model) readDirectory(path string) []types.CleanableItem {
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return nil
+	}
+
+	var items []types.CleanableItem
+	for _, entry := range entries {
+		fullPath := filepath.Join(path, entry.Name())
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+
+		item := types.CleanableItem{
+			Path:        fullPath,
+			Name:        entry.Name(),
+			IsDirectory: entry.IsDir(),
+			ModifiedAt:  info.ModTime(),
+		}
+
+		if entry.IsDir() {
+			item.Size, item.FileCount, _ = utils.GetDirSizeWithCount(fullPath)
+		} else {
+			item.Size = info.Size()
+			item.FileCount = 1
+		}
+		items = append(items, item)
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Size > items[j].Size
+	})
+	return items
+}
+
+// View rendering
 
 func (m *Model) previewHeader(selected []*types.ScanResult, cat *types.ScanResult) string {
 	var b strings.Builder
@@ -74,7 +189,7 @@ func (m *Model) previewFooter(selected []*types.ScanResult) string {
 	if m.filterState == FilterTyping {
 		b.WriteString(HelpStyle.Render(FormatFooter(FilterTypingShortcuts)))
 	} else {
-		b.WriteString(HelpStyle.Render(FormatFooter(FooterShortcuts(ViewPreview))))
+		b.WriteString(m.help.View(PreviewKeyMap))
 	}
 
 	return b.String()
@@ -245,7 +360,7 @@ func (m *Model) drillDownFooter() string {
 	}
 
 	b.WriteString("\n\n")
-	b.WriteString(HelpStyle.Render(FormatFooter(DrillDownFooterShortcuts())))
+	b.WriteString(m.help.View(PreviewKeyMap))
 
 	return b.String()
 }

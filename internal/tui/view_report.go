@@ -28,7 +28,7 @@ func (m *Model) reportHeader() string {
 }
 
 func (m *Model) reportFooter() string {
-	return "\n" + HelpStyle.Render(FormatFooter(FooterShortcuts(ViewReport)))
+	return "\n" + m.help.View(ReportKeyMap)
 }
 
 func (m *Model) viewReport() string {

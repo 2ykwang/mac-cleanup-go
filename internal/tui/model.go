@@ -4,6 +4,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -11,9 +13,9 @@ import (
 
 	"github.com/2ykwang/mac-cleanup-go/internal/cleaner"
 	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
-	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
 // defaultRecentItemsCapacity is the maximum number of recent deleted items to display
@@ -70,6 +72,7 @@ type Model struct {
 	cleaningCurrent   int
 	cleaningTotal     int
 	cleaningCompleted []cleanedCategory // Completed categories
+	cleaningProgress  progress.Model
 
 	// Channels for cleaning progress
 	cleanProgressChan   chan cleanProgressMsg
@@ -92,8 +95,8 @@ type Model struct {
 	guideCategory  *types.Category // Category being shown in guide popup
 	guidePathIndex int             // Selected path index in guide popup
 
-	// Help popup state
-	helpPreviousView View // View to return to when closing help popup
+	// Help component
+	help help.Model
 }
 
 // NewModel creates a new model
@@ -120,7 +123,17 @@ func NewModel(cfg *types.Config) *Model {
 		}
 	}
 
-	registry := scanner.DefaultRegistry(cfg)
+	registry, err := scanner.DefaultRegistry(cfg)
+	if err != nil {
+		// Prevent nil registry when we surface a fatal config error.
+		registry = scanner.NewRegistry()
+	}
+
+	// Initialize progress bar
+	prog := progress.New(
+		progress.WithDefaultGradient(),
+		progress.WithWidth(40),
+	)
 
 	return &Model{
 		config:            cfg,
@@ -141,6 +154,9 @@ func NewModel(cfg *types.Config) *Model {
 		sortOrder:         types.SortBySize,
 		filterState:       FilterNone,
 		filterInput:       ti,
+		help:              help.New(),
+		cleaningProgress:  prog,
+		err:               err,
 	}
 }
 
@@ -168,8 +184,6 @@ func (m *Model) View() string {
 		return m.viewReport()
 	case ViewGuide:
 		return m.viewGuide()
-	case ViewHelp:
-		return m.viewHelp()
 	default:
 		return m.viewList()
 	}

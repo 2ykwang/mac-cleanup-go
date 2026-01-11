@@ -3,8 +3,8 @@ package scanner
 import (
 	"strings"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
-	"github.com/2ykwang/mac-cleanup-go/pkg/types"
 )
 
 // SystemCacheScanner scans system cache excluding paths defined in other categories

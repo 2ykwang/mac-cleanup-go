@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/2ykwang/mac-cleanup-go/pkg/types"
+import "github.com/2ykwang/mac-cleanup-go/internal/types"
 
 // View state
 type View int
@@ -12,7 +12,6 @@ const (
 	ViewCleaning
 	ViewReport
 	ViewGuide // Manual item guide popup
-	ViewHelp  // Shortcut help popup
 )
 
 // FilterState represents the search/filter mode state

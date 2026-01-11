@@ -38,7 +38,7 @@ changelog:
 brews:
   - repository:
       owner: 2ykwang
-      name: homebrew-mac-cleanup-go
+      name: homebrew-2ykwang
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     homepage: "https://github.com/2ykwang/mac-cleanup-go"
     description: "Interactive TUI for cleaning macOS caches, logs, and temporary files"
