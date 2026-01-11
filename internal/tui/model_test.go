@@ -93,6 +93,39 @@ func TestHandleScanResult_AddsErrorAndMarksComplete(t *testing.T) {
 	assert.False(t, m.scanning)
 }
 
+func TestUpdate_CleanProgressMsg_UpdatesCleaningState(t *testing.T) {
+	m := newTestModel()
+	m.view = ViewCleaning
+	m.cleanProgressChan = make(chan cleanProgressMsg, 1)
+	m.cleanDoneChan = make(chan cleanDoneMsg, 1)
+	m.cleanCategoryDoneCh = make(chan cleanCategoryDoneMsg, 1)
+	m.cleanItemDoneChan = make(chan cleanItemDoneMsg, 1)
+
+	msg := cleanProgressMsg{
+		categoryName: "Test Category",
+		currentItem:  "item1",
+		current:      2,
+		total:        5,
+	}
+
+	m.Update(msg)
+
+	assert.Equal(t, "Test Category", m.cleaningCategory)
+	assert.Equal(t, "item1", m.cleaningItem)
+	assert.Equal(t, 2, m.cleaningCurrent)
+	assert.Equal(t, 5, m.cleaningTotal)
+}
+
+func TestUpdate_WindowSizeMsg_UpdatesLayout(t *testing.T) {
+	m := newTestModel()
+
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+
+	assert.Equal(t, 120, m.width)
+	assert.Equal(t, 40, m.height)
+	assert.Equal(t, 120, m.help.Width)
+}
+
 func newTestModelWithResults() *Model {
 	m := newTestModel()
 	m.results = []*types.ScanResult{
