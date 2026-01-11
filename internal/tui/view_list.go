@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
@@ -68,7 +70,7 @@ func formatGroupStats(stats []GroupStat) string {
 	return MutedStyle.Render(strings.Join(parts, "  "))
 }
 
-func (m *Model) listHeader() string {
+func (m *Model) listHeader(showSummary bool) string {
 	var b strings.Builder
 
 	b.WriteString(HeaderStyle.Render("Mac Cleanup"))
@@ -95,17 +97,14 @@ func (m *Model) listHeader() string {
 	b.WriteString("\n")
 
 	// Summary
-	var totalSize int64
-	for _, r := range m.results {
-		totalSize += r.TotalSize
+	if showSummary {
+		summary := fmt.Sprintf("Available: %s", SizeStyle.Render(formatSize(m.getAvailableSize())))
+		if m.hasSelection() {
+			summary += fmt.Sprintf("  │  Selected: %s (%d)",
+				SizeStyle.Render(formatSize(m.getSelectedSize())), m.getSelectedCount())
+		}
+		b.WriteString(summary + "\n")
 	}
-
-	summary := fmt.Sprintf("Available: %s", SizeStyle.Render(formatSize(totalSize)))
-	if m.hasSelection() {
-		summary += fmt.Sprintf("  │  Selected: %s (%d)",
-			SizeStyle.Render(formatSize(m.getSelectedSize())), m.getSelectedCount())
-	}
-	b.WriteString(summary + "\n")
 
 	// Group statistics
 	if stats := m.getGroupStats(); len(stats) > 0 {
@@ -141,41 +140,43 @@ func (m *Model) listFooter() string {
 }
 
 func (m *Model) viewList() string {
-	header := m.listHeader()
-	footer := m.listFooter()
-	visible := m.availableLines(header, footer)
-
-	var b strings.Builder
-	b.WriteString(header)
-
-	// Items
-	if len(m.results) == 0 {
-		if m.scanning {
-			b.WriteString(MutedStyle.Render("Scanning..."))
+	showSidePanel := false
+	bodyWidth := m.width
+	sideWidth := 0
+	if m.width >= 100 {
+		sideWidth = minInt(32, m.width/3)
+		if m.width-sideWidth-2 >= 60 {
+			bodyWidth = m.width - sideWidth - 2
+			showSidePanel = true
 		} else {
-			b.WriteString(MutedStyle.Render("No items to clean."))
-		}
-		b.WriteString("\n")
-	} else {
-		colHeader := fmt.Sprintf("%*s%-*s %*s %*s",
-			listPrefixWidth, "",
-			colName, "Name", colSize, "Size", colNum, "Count")
-		b.WriteString(MutedStyle.Render(colHeader) + "\n")
-
-		// Adjust scroll
-		m.scroll = m.adjustScrollFor(m.cursor, m.scroll, visible-1, len(m.results))
-
-		for i, r := range m.results {
-			if i < m.scroll || i >= m.scroll+visible {
-				continue
-			}
-			b.WriteString(m.renderListItem(i, r))
-		}
-		if len(m.results) > visible {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("\n  [%d/%d]", m.cursor+1, len(m.results))))
+			sideWidth = 0
 		}
 	}
 
+	header := m.listHeader(!showSidePanel)
+	footer := m.listFooter()
+	visible := m.availableLines(header, footer)
+
+	listContent := m.renderListBody(visible)
+	if showSidePanel {
+		sideHeight := visible - 2
+		if sideHeight < 1 {
+			sideHeight = 1
+		}
+		listStyle := lipgloss.NewStyle().Width(bodyWidth).Height(visible)
+		sideStyle := lipgloss.NewStyle().
+			Width(sideWidth).
+			Height(sideHeight).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorBorder).
+			Padding(0, 1)
+		sideContent := m.renderListSidePanel(sideWidth)
+		listContent = lipgloss.JoinHorizontal(lipgloss.Top, listStyle.Render(listContent), sideStyle.Render(sideContent))
+	}
+
+	var b strings.Builder
+	b.WriteString(header)
+	b.WriteString(listContent)
 	b.WriteString("\n")
 	b.WriteString(footer)
 	return b.String()
@@ -227,4 +228,96 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult) string {
 
 	return fmt.Sprintf("%s%s %s %s %s %s\n",
 		cursor, checkbox, dot, name, size, count)
+}
+
+func (m *Model) renderListBody(visible int) string {
+	var b strings.Builder
+
+	if len(m.results) == 0 {
+		if m.scanning {
+			b.WriteString(MutedStyle.Render("Scanning..."))
+		} else {
+			b.WriteString(MutedStyle.Render("No items to clean."))
+		}
+		b.WriteString("\n")
+		return b.String()
+	}
+
+	colHeader := fmt.Sprintf("%*s%-*s %*s %*s",
+		listPrefixWidth, "",
+		colName, "Name", colSize, "Size", colNum, "Count")
+	b.WriteString(MutedStyle.Render(colHeader) + "\n")
+
+	// Adjust scroll
+	m.scroll = m.adjustScrollFor(m.cursor, m.scroll, visible-1, len(m.results))
+
+	for i, r := range m.results {
+		if i < m.scroll || i >= m.scroll+visible {
+			continue
+		}
+		b.WriteString(m.renderListItem(i, r))
+	}
+	if len(m.results) > visible {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("\n  [%d/%d]", m.cursor+1, len(m.results))))
+	}
+	return b.String()
+}
+
+func (m *Model) renderListSidePanel(width int) string {
+	var b strings.Builder
+
+	b.WriteString(HeaderStyle.Render("Summary"))
+	b.WriteString("\n")
+	b.WriteString(fmt.Sprintf("%s %s", MutedStyle.Render("Available:"), SizeStyle.Render(formatSize(m.getAvailableSize()))))
+	b.WriteString("\n")
+	b.WriteString(fmt.Sprintf("%s %s (%s)",
+		MutedStyle.Render("Selected:"),
+		SizeStyle.Render(formatSize(m.getSelectedSize())),
+		TextStyle.Render(fmt.Sprintf("%d", m.getSelectedCount())),
+	))
+	b.WriteString("\n")
+	if m.hasSelection() {
+		b.WriteString("\n")
+		b.WriteString(MutedStyle.Render("Selected Items"))
+		b.WriteString("\n")
+		b.WriteString(m.renderSelectedMiniList(width))
+		b.WriteString("\n")
+	}
+	b.WriteString(Divider(minInt(width-2, 30)))
+	return b.String()
+}
+
+func (m *Model) renderSelectedMiniList(width int) string {
+	selected := m.getSelectedResults()
+	if len(selected) == 0 {
+		return ""
+	}
+
+	contentWidth := width - 2
+	if contentWidth < 10 {
+		contentWidth = 10
+	}
+
+	var b strings.Builder
+	limit := 6
+	for i, r := range selected {
+		if i >= limit {
+			break
+		}
+		sizeStr := formatSize(r.TotalSize)
+		nameWidth := contentWidth - lipgloss.Width(sizeStr) - 3
+		if nameWidth < 8 {
+			nameWidth = 8
+		}
+		name := truncateToWidth(r.Category.Name, nameWidth, false)
+		name = padToWidth(name, nameWidth)
+		dot := safetyDot(r.Category.Safety)
+		b.WriteString(fmt.Sprintf("%s %s %s\n", dot, name, SizeStyle.Render(sizeStr)))
+	}
+
+	if len(selected) > limit {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("+%d more", len(selected)-limit)))
+	}
+
+	return strings.TrimRight(b.String(), "\n")
 }

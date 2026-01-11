@@ -81,8 +81,9 @@ func NewModel(cfg *types.Config) *Model {
 			resultMap: make(map[string]*types.ScanResult),
 		},
 		selectionState: selectionState{
-			selected: make(map[string]bool),
-			excluded: excluded,
+			selected:      make(map[string]bool),
+			selectedOrder: make([]string, 0),
+			excluded:      excluded,
 		},
 		layoutState: layoutState{
 			view: ViewList,

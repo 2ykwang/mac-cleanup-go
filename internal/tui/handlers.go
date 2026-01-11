@@ -74,7 +74,11 @@ func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			id := r.Category.ID
 			wasSelected := m.selected[id]
-			m.selected[id] = !wasSelected
+			if wasSelected {
+				m.removeSelected(id)
+			} else {
+				m.addSelected(id)
+			}
 
 			// Auto-exclude all items for risky categories when newly selected
 			if !wasSelected && r.Category.Safety == types.SafetyLevelRisky {
@@ -89,7 +93,7 @@ func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				continue
 			}
 			wasSelected := m.selected[r.Category.ID]
-			m.selected[r.Category.ID] = true
+			m.addSelected(r.Category.ID)
 
 			// Auto-exclude all items for risky categories when newly selected
 			if !wasSelected && r.Category.Safety == types.SafetyLevelRisky {
@@ -98,9 +102,7 @@ func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "d", "D":
 		// Deselect all
-		for _, r := range m.results {
-			m.selected[r.Category.ID] = false
-		}
+		m.clearSelections()
 	case "enter", "p":
 		if m.hasSelection() {
 			m.previewScroll = 0
@@ -373,7 +375,7 @@ func (m *Model) startRescanCmd() tea.Cmd {
 
 func (m *Model) resetForRescan() {
 	m.view = ViewList
-	m.selected = make(map[string]bool)
+	m.clearSelections()
 	m.excluded = make(map[string]map[string]bool)
 	m.results = make([]*types.ScanResult, 0)
 	m.resultMap = make(map[string]*types.ScanResult)

@@ -154,3 +154,10 @@ func padToWidth(s string, targetWidth int) string {
 	}
 	return s + strings.Repeat(" ", targetWidth-currentWidth)
 }
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
