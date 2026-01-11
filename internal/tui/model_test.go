@@ -44,6 +44,20 @@ func TestNewModel_InvalidBuiltin_ShowsError(t *testing.T) {
 	assert.True(t, strings.HasPrefix(m.View(), "Error:"), "expected error view")
 }
 
+func TestHandleReportKey_ScrollClamped(t *testing.T) {
+	m := newTestModel()
+	m.view = ViewReport
+	m.height = 15
+	m.reportLines = make([]string, 20)
+	m.reportScroll = 15
+
+	m.handleReportKey(tea.KeyMsg{Type: tea.KeyDown})
+	assert.Equal(t, 15, m.reportScroll)
+
+	m.handleReportKey(tea.KeyMsg{Type: tea.KeyUp})
+	assert.Equal(t, 14, m.reportScroll)
+}
+
 func newTestModelWithResults() *Model {
 	m := newTestModel()
 	m.results = []*types.ScanResult{
