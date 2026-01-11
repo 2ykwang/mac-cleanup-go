@@ -140,19 +140,13 @@ func (m *Model) listFooter() string {
 }
 
 func (m *Model) viewList() string {
-	maxWidth := 140
-	contentWidth := m.width
-	if contentWidth > maxWidth {
-		contentWidth = maxWidth
-	}
-
 	showSidePanel := false
-	bodyWidth := contentWidth
+	bodyWidth := m.width
 	sideWidth := 0
-	if contentWidth >= 100 {
-		sideWidth = minInt(32, contentWidth/3)
-		if contentWidth-sideWidth-2 >= 60 {
-			bodyWidth = contentWidth - sideWidth - 2
+	if m.width >= 100 {
+		sideWidth = minInt(32, m.width/3)
+		if m.width-sideWidth-2 >= 60 {
+			bodyWidth = m.width - sideWidth - 2
 			showSidePanel = true
 		} else {
 			sideWidth = 0
@@ -184,17 +178,6 @@ func (m *Model) viewList() string {
 	}
 
 	var b strings.Builder
-	padding := (m.width - contentWidth) / 2
-	if padding < 0 {
-		padding = 0
-	}
-	if padding > 0 {
-		pad := strings.Repeat(" ", padding)
-		header = indentLines(header, pad)
-		listContent = indentLines(listContent, pad)
-		footer = indentLines(footer, pad)
-	}
-
 	b.WriteString(header)
 	b.WriteString(listContent)
 	b.WriteString("\n")

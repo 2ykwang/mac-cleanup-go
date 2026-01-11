@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -17,6 +19,7 @@ import (
 
 // defaultRecentItemsCapacity is the maximum number of recent deleted items to display
 const defaultRecentItemsCapacity = 10
+const maxContentWidth = 140
 
 // Model is the main TUI model
 type Model struct {
@@ -118,23 +121,49 @@ func (m *Model) Init() tea.Cmd {
 // View renders the UI
 func (m *Model) View() string {
 	if m.err != nil {
-		return "Error: " + m.err.Error() + "\n\nPress q to quit."
+		return m.renderCentered(func() string {
+			return "Error: " + m.err.Error() + "\n\nPress q to quit."
+		})
 	}
 
 	switch m.view {
 	case ViewList:
-		return m.viewList()
+		return m.renderCentered(m.viewList)
 	case ViewPreview:
-		return m.viewPreview()
+		return m.renderCentered(m.viewPreview)
 	case ViewConfirm:
-		return m.viewConfirm()
+		return m.renderCentered(m.viewConfirm)
 	case ViewCleaning:
-		return m.viewCleaning()
+		return m.renderCentered(m.viewCleaning)
 	case ViewReport:
-		return m.viewReport()
+		return m.renderCentered(m.viewReport)
 	case ViewGuide:
-		return m.viewGuide()
+		return m.renderCentered(m.viewGuide)
 	default:
-		return m.viewList()
+		return m.renderCentered(m.viewList)
 	}
+}
+
+func (m *Model) renderCentered(render func() string) string {
+	if m.width <= maxContentWidth {
+		return render()
+	}
+
+	contentWidth := maxContentWidth
+	padding := (m.width - contentWidth) / 2
+	if padding <= 0 {
+		return render()
+	}
+
+	originalWidth := m.width
+	originalHelpWidth := m.help.Width
+	m.width = contentWidth
+	m.help.Width = contentWidth
+
+	output := render()
+
+	m.width = originalWidth
+	m.help.Width = originalHelpWidth
+
+	return indentLines(output, strings.Repeat(" ", padding))
 }
