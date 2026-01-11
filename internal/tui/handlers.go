@@ -55,23 +55,9 @@ func (m *Model) handleReportKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "enter", " ":
 		// Return to main screen and rescan
-		m.resetForRescan()
-		return m, tea.Batch(m.spinner.Tick, m.startScan())
+		return m, m.startRescanCmd()
 	}
 	return m, nil
-}
-
-func (m *Model) resetForRescan() {
-	m.view = ViewList
-	m.selected = make(map[string]bool)
-	m.excluded = make(map[string]map[string]bool)
-	m.results = make([]*types.ScanResult, 0)
-	m.resultMap = make(map[string]*types.ScanResult)
-	m.cursor = 0
-	m.scroll = 0
-	m.reportScroll = 0
-	m.reportLines = nil
-	m.scanning = true
 }
 
 func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -166,10 +152,8 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc", "n":
 		// Clear filter if applied, otherwise go back
 		if m.filterState == FilterApplied {
-			m.filterState = FilterNone
-			m.filterText = ""
-			m.previewItemIndex = 0
-			m.previewScroll = 0
+			m.clearFilter()
+			m.resetPreviewSelection()
 			return m, nil
 		}
 		m.view = ViewList
@@ -189,21 +173,15 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		prevID := m.findPrevSelectedCatID()
 		if prevID != m.previewCatID {
 			m.previewCatID = prevID
-			m.previewItemIndex = 0
-			m.previewScroll = 0
-			// Clear filter on tab change
-			m.filterState = FilterNone
-			m.filterText = ""
+			m.resetPreviewSelection()
+			m.clearFilter()
 		}
 	case "right", "l":
 		nextID := m.findNextSelectedCatID()
 		if nextID != m.previewCatID {
 			m.previewCatID = nextID
-			m.previewItemIndex = 0
-			m.previewScroll = 0
-			// Clear filter on tab change
-			m.filterState = FilterNone
-			m.filterText = ""
+			m.resetPreviewSelection()
+			m.clearFilter()
 		}
 	case " ":
 		// Toggle exclusion for current item (use visible items after filter/sort)
@@ -253,8 +231,7 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "s":
 		// Toggle sort order
 		m.sortOrder = m.sortOrder.Next()
-		m.previewItemIndex = 0
-		m.previewScroll = 0
+		m.resetPreviewSelection()
 	case "pgdown":
 		// Page down
 		r := m.getPreviewCatResult()
@@ -294,17 +271,11 @@ func (m *Model) handleFilterTypingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
 		// Apply the filter
-		m.filterText = m.filterInput.Value()
-		m.filterState = FilterApplied
-		m.filterInput.Blur()
-		m.previewItemIndex = 0
-		m.previewScroll = 0
+		m.applyFilter()
 		return m, nil
 	case "esc":
 		// Cancel search
-		m.filterState = FilterNone
-		m.filterText = ""
-		m.filterInput.Blur()
+		m.clearFilter()
 		return m, nil
 	case "ctrl+c":
 		return m, tea.Quit
@@ -314,8 +285,7 @@ func (m *Model) handleFilterTypingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.filterInput, cmd = m.filterInput.Update(msg)
 	// Reset cursor position when filter changes
-	m.previewItemIndex = 0
-	m.previewScroll = 0
+	m.resetPreviewSelection()
 	return m, cmd
 }
 
@@ -441,4 +411,40 @@ func (m *Model) handleGuideKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+func (m *Model) startRescanCmd() tea.Cmd {
+	m.resetForRescan()
+	return tea.Batch(m.spinner.Tick, m.startScan())
+}
+
+func (m *Model) resetForRescan() {
+	m.view = ViewList
+	m.selected = make(map[string]bool)
+	m.excluded = make(map[string]map[string]bool)
+	m.results = make([]*types.ScanResult, 0)
+	m.resultMap = make(map[string]*types.ScanResult)
+	m.cursor = 0
+	m.scroll = 0
+	m.reportScroll = 0
+	m.reportLines = nil
+	m.scanning = true
+}
+
+func (m *Model) resetPreviewSelection() {
+	m.previewItemIndex = 0
+	m.previewScroll = 0
+}
+
+func (m *Model) clearFilter() {
+	m.filterState = FilterNone
+	m.filterText = ""
+	m.filterInput.Blur()
+}
+
+func (m *Model) applyFilter() {
+	m.filterText = m.filterInput.Value()
+	m.filterState = FilterApplied
+	m.filterInput.Blur()
+	m.resetPreviewSelection()
 }
