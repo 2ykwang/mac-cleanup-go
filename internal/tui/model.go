@@ -18,8 +18,11 @@ import (
 )
 
 // defaultRecentItemsCapacity is the maximum number of recent deleted items to display
-const defaultRecentItemsCapacity = 10
-const maxContentWidth = 140
+const (
+	defaultRecentItemsCapacity = 10
+	maxContentWidth            = 140
+	maxListContentWidth        = 100
+)
 
 // Model is the main TUI model
 type Model struct {
@@ -123,33 +126,33 @@ func (m *Model) View() string {
 	if m.err != nil {
 		return m.renderCentered(func() string {
 			return "Error: " + m.err.Error() + "\n\nPress q to quit."
-		})
+		}, maxContentWidth)
 	}
 
 	switch m.view {
 	case ViewList:
-		return m.renderCentered(m.viewList)
+		return m.renderCentered(m.viewList, maxListContentWidth)
 	case ViewPreview:
-		return m.renderCentered(m.viewPreview)
+		return m.renderCentered(m.viewPreview, maxContentWidth)
 	case ViewConfirm:
-		return m.renderCentered(m.viewConfirm)
+		return m.renderCentered(m.viewConfirm, maxContentWidth)
 	case ViewCleaning:
-		return m.renderCentered(m.viewCleaning)
+		return m.renderCentered(m.viewCleaning, maxContentWidth)
 	case ViewReport:
-		return m.renderCentered(m.viewReport)
+		return m.renderCentered(m.viewReport, maxContentWidth)
 	case ViewGuide:
-		return m.renderCentered(m.viewGuide)
+		return m.renderCentered(m.viewGuide, maxContentWidth)
 	default:
-		return m.renderCentered(m.viewList)
+		return m.renderCentered(m.viewList, maxListContentWidth)
 	}
 }
 
-func (m *Model) renderCentered(render func() string) string {
-	if m.width <= maxContentWidth {
+func (m *Model) renderCentered(render func() string, maxWidth int) string {
+	if maxWidth <= 0 || m.width <= maxWidth {
 		return render()
 	}
 
-	contentWidth := maxContentWidth
+	contentWidth := maxWidth
 	padding := (m.width - contentWidth) / 2
 	if padding <= 0 {
 		return render()

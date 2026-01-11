@@ -116,7 +116,7 @@ func (m *Model) listHeader(showSummary bool) string {
 	return b.String()
 }
 
-func (m *Model) listFooter() string {
+func (m *Model) listFooter(includeHelp bool) string {
 	var b strings.Builder
 
 	// Show scan warnings after scan completes
@@ -133,8 +133,10 @@ func (m *Model) listFooter() string {
 		}
 	}
 
-	b.WriteString("\n")
-	b.WriteString(m.help.View(ListKeyMap))
+	if includeHelp {
+		b.WriteString("\n")
+		b.WriteString(m.help.View(ListKeyMap))
+	}
 
 	return b.String()
 }
@@ -154,20 +156,40 @@ func (m *Model) viewList() string {
 	}
 
 	header := m.listHeader(!showSidePanel)
-	footer := m.listFooter()
-	visible := m.availableLines(header, footer)
+	showHelpInFooter := !showSidePanel
+	footer := m.listFooter(showHelpInFooter)
+	helpContent := ""
+	helpLines := 0
+	if !showHelpInFooter {
+		helpContent = m.help.View(ListKeyMap)
+		if helpContent != "" {
+			helpLines = countLines(helpContent) + 1
+		}
+	}
+	visible := m.availableLines(header, footer) - helpLines
+	if visible < 3 {
+		visible = 3
+	}
 	if visible < 16 {
 		showSidePanel = false
+		showHelpInFooter = true
+		footer = m.listFooter(showHelpInFooter)
+		helpContent = ""
+		helpLines = 0
+		visible = m.availableLines(header, footer)
 	}
 
 	listContent := m.renderListBody(visible)
 	if showSidePanel {
+		if helpContent != "" {
+			listContent = strings.TrimRight(listContent, "\n") + "\n\n" + helpContent
+		}
 		sideContent := m.renderListSidePanel(sideWidth)
 		sideHeight := minInt(visible, lipgloss.Height(sideContent)+2)
 		if sideHeight < 1 {
 			sideHeight = 1
 		}
-		listStyle := lipgloss.NewStyle().Width(bodyWidth).Height(visible)
+		listStyle := lipgloss.NewStyle().Width(bodyWidth)
 		sideStyle := lipgloss.NewStyle().
 			Width(sideWidth).
 			Height(sideHeight).
