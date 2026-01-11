@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -56,6 +57,40 @@ func TestHandleReportKey_ScrollClamped(t *testing.T) {
 
 	m.handleReportKey(tea.KeyMsg{Type: tea.KeyUp})
 	assert.Equal(t, 14, m.reportScroll)
+}
+
+func TestHandleCleanDoneMsg_SetsReportAndClearsRecentDeleted(t *testing.T) {
+	m := newTestModel()
+	m.view = ViewCleaning
+	m.startTime = time.Now().Add(-time.Second)
+	m.recentDeleted.Push(DeletedItemEntry{Name: "test"})
+	report := &types.Report{}
+
+	m.handleCleanDone(cleanDoneMsg{report: report})
+
+	assert.Equal(t, ViewReport, m.view)
+	assert.Equal(t, report, m.report)
+	assert.Equal(t, 0, m.recentDeleted.Len())
+	assert.Greater(t, m.report.Duration, time.Duration(0))
+}
+
+func TestHandleScanResult_AddsErrorAndMarksComplete(t *testing.T) {
+	m := newTestModel()
+	m.scanning = true
+	m.scanTotal = 1
+	result := &types.ScanResult{
+		Category:  types.Category{ID: "test", Name: "Test"},
+		Items:     []types.CleanableItem{{Path: "/tmp/a", Size: 10}},
+		TotalSize: 10,
+		Error:     errors.New("scan failed"),
+	}
+
+	m.handleScanResult(result)
+
+	assert.Len(t, m.scanErrors, 1)
+	assert.Equal(t, 1, len(m.results))
+	assert.Equal(t, result, m.resultMap["test"])
+	assert.False(t, m.scanning)
 }
 
 func newTestModelWithResults() *Model {
