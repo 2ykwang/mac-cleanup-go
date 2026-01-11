@@ -63,13 +63,8 @@ func (m *Model) getVisiblePreviewItems() []types.CleanableItem {
 	items := r.Items
 
 	// Apply filter if active
-	if m.filterState == FilterTyping {
-		query := m.filterInput.Value()
-		if query != "" {
-			items = m.filterItems(items, query)
-		}
-	} else if m.filterState == FilterApplied && m.filterText != "" {
-		items = m.filterItems(items, m.filterText)
+	if query := m.currentFilterQuery(); query != "" {
+		items = m.filterItems(items, query)
 	}
 
 	// Apply sort
@@ -220,24 +215,12 @@ func (m *Model) viewPreview() string {
 		}
 
 		// Show search input if in typing mode
-		// Show search input if in typing mode
 		if m.filterState == FilterTyping {
 			b.WriteString("Search: " + m.filterInput.View() + "\n")
 		}
 
-		// Apply filter and sort (real-time filtering during typing)
-		items := cat.Items
-		var filterQuery string
-		switch m.filterState {
-		case FilterTyping:
-			filterQuery = m.filterInput.Value()
-		case FilterApplied:
-			filterQuery = m.filterText
-		}
-		if filterQuery != "" {
-			items = m.filterItems(items, filterQuery)
-		}
-		sortedItems := m.sortItems(items)
+		filterQuery := m.currentFilterQuery()
+		sortedItems := m.getVisiblePreviewItems()
 
 		// Show filter info
 		if filterQuery != "" {
