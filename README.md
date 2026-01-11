@@ -19,11 +19,10 @@
 - **90 targets** - 10 browsers, 32 dev tools, 38 apps, and more
 - **Trash by default** - Recoverable if you make a mistake
 
-## Installation
+## Installation (Homebrew)
 
 ```bash
-# Homebrew
-brew tap 2ykwang/2ykwang && brew install mac-cleanup-go
+brew install 2ykwang/2ykwang/mac-cleanup-go
 ```
 
 ## Usage
