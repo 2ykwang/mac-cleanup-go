@@ -37,22 +37,9 @@ func (m *Model) handleReportKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+c", "q":
 		return m, tea.Quit
 	case "up", "k":
-		if m.reportScroll > 0 {
-			m.reportScroll--
-		}
+		m.reportScroll = clamp(m.reportScroll-1, 0, m.maxReportScroll())
 	case "down", "j":
-		// Estimate visible lines (header ~8, footer ~2)
-		visible := m.height - 10
-		if visible < 5 {
-			visible = 5
-		}
-		maxScroll := len(m.reportLines) - visible
-		if maxScroll < 0 {
-			maxScroll = 0
-		}
-		if m.reportScroll < maxScroll {
-			m.reportScroll++
-		}
+		m.reportScroll = clamp(m.reportScroll+1, 0, m.maxReportScroll())
 	case "enter", " ":
 		// Return to main screen and rescan
 		return m, m.startRescanCmd()
@@ -425,6 +412,29 @@ func (m *Model) applyFilter() {
 	m.filterState = FilterApplied
 	m.filterInput.Blur()
 	m.resetPreviewSelection()
+}
+
+func (m *Model) maxReportScroll() int {
+	// Estimate visible lines (header ~8, footer ~2)
+	visible := m.height - 10
+	if visible < 5 {
+		visible = 5
+	}
+	maxScroll := len(m.reportLines) - visible
+	if maxScroll < 0 {
+		return 0
+	}
+	return maxScroll
+}
+
+func clamp(value, min, max int) int {
+	if value < min {
+		return min
+	}
+	if value > max {
+		return max
+	}
+	return value
 }
 
 func (m *Model) movePreviewCursor(delta int) {
