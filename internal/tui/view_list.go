@@ -175,7 +175,6 @@ func (m *Model) viewList() string {
 		showHelpInFooter = true
 		footer = m.listFooter(showHelpInFooter)
 		helpContent = ""
-		helpLines = 0
 		visible = m.availableLines(header, footer)
 	}
 
