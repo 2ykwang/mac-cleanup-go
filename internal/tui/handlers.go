@@ -55,19 +55,23 @@ func (m *Model) handleReportKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "enter", " ":
 		// Return to main screen and rescan
-		m.view = ViewList
-		m.selected = make(map[string]bool)
-		m.excluded = make(map[string]map[string]bool)
-		m.results = make([]*types.ScanResult, 0)
-		m.resultMap = make(map[string]*types.ScanResult)
-		m.cursor = 0
-		m.scroll = 0
-		m.reportScroll = 0
-		m.reportLines = nil
-		m.scanning = true
+		m.resetForRescan()
 		return m, tea.Batch(m.spinner.Tick, m.startScan())
 	}
 	return m, nil
+}
+
+func (m *Model) resetForRescan() {
+	m.view = ViewList
+	m.selected = make(map[string]bool)
+	m.excluded = make(map[string]map[string]bool)
+	m.results = make([]*types.ScanResult, 0)
+	m.resultMap = make(map[string]*types.ScanResult)
+	m.cursor = 0
+	m.scroll = 0
+	m.reportScroll = 0
+	m.reportLines = nil
+	m.scanning = true
 }
 
 func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
