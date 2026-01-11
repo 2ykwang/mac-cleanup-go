@@ -123,7 +123,11 @@ func NewModel(cfg *types.Config) *Model {
 		}
 	}
 
-	registry := scanner.DefaultRegistry(cfg)
+	registry, err := scanner.DefaultRegistry(cfg)
+	if err != nil {
+		// Prevent nil registry when we surface a fatal config error.
+		registry = scanner.NewRegistry()
+	}
 
 	// Initialize progress bar
 	prog := progress.New(
@@ -152,6 +156,7 @@ func NewModel(cfg *types.Config) *Model {
 		filterInput:       ti,
 		help:              help.New(),
 		cleaningProgress:  prog,
+		err:               err,
 	}
 }
 
