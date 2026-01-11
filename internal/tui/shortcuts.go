@@ -18,14 +18,14 @@ type ListKeys struct {
 }
 
 func (k ListKeys) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Select, k.Enter, k.Delete, k.Help}
+	return []key.Binding{k.Up, k.Select, k.Enter, k.Quit, k.Help}
 }
 
 func (k ListKeys) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down},
 		{k.Select, k.Enter},
-		{k.Delete, k.Quit, k.Help},
+		{k.Quit, k.Help},
 	}
 }
 
@@ -57,14 +57,17 @@ type PreviewKeys struct {
 }
 
 func (k PreviewKeys) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Left, k.Select, k.Search, k.Help}
+	return []key.Binding{k.Up, k.Left, k.Select, k.Delete, k.Open, k.Search, k.Enter}
 }
 
 func (k PreviewKeys) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Up, k.Down, k.Left, k.Right},
-		{k.Select, k.Enter, k.Back, k.Open},
-		{k.Search, k.Sort, k.Delete, k.Help},
+		{k.Up, k.Down},
+		{k.Left, k.Right},
+		{k.Select, k.Delete},
+		{k.Open, k.Search},
+		{k.Enter, k.Sort, k.Back},
+		{k.Quit, k.Help},
 	}
 }
 

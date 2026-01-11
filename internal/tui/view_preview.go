@@ -124,14 +124,15 @@ func (m *Model) previewHeader(selected []*types.ScanResult, cat *types.ScanResul
 	var b strings.Builder
 
 	b.WriteString(HeaderStyle.Render("Cleanup Preview"))
-	b.WriteString("\n\n")
+	b.WriteString("\n")
 
 	b.WriteString(fmt.Sprintf("Selected: %d  │  Estimated: %s  │  Sort: %s\n",
 		m.getSelectedCount(), SizeStyle.Render(formatSize(m.getSelectedSize())), m.sortOrder.Label()))
-	b.WriteString(Divider(60) + "\n\n")
+	b.WriteString(Divider(60) + "\n")
 
 	// Tabs
 	catIdx := m.findSelectedCatIndex()
+	b.WriteString(TextStyle.Render("Categories") + "\n")
 	b.WriteString(m.renderTabs(selected, catIdx))
 	b.WriteString("\n\n")
 
@@ -209,9 +210,10 @@ func (m *Model) viewPreview() string {
 	b.WriteString(header)
 
 	if cat != nil {
-		pathWidth := m.width - 28
-		if pathWidth < 30 {
-			pathWidth = 30
+		fixedWidth := previewPrefixWidth + colSize + colAge + 2
+		pathWidth := m.width - fixedWidth
+		if pathWidth < 1 {
+			pathWidth = 1
 		}
 
 		// Show search input if in typing mode
@@ -229,7 +231,7 @@ func (m *Model) viewPreview() string {
 		}
 
 		colHeader := fmt.Sprintf("%*s%-*s %*s %*s",
-			previewPrefixWidth, "", pathWidth-4, "Path", colSize, "Size", colAge, "Age")
+			previewPrefixWidth, "", pathWidth, "Path", colSize, "Size", colAge, "Age")
 		b.WriteString(MutedStyle.Render(colHeader) + "\n")
 
 		// Handle empty filter results
@@ -266,7 +268,7 @@ func (m *Model) viewPreview() string {
 			}
 
 			// Pad using display width (not byte count) for CJK character alignment
-			paddedPath := padToWidth(shortenPath(item.Path, pathWidth-4), pathWidth-4)
+			paddedPath := padToWidth(shortenPath(item.Path, pathWidth), pathWidth)
 			if isExcluded {
 				paddedPath = MutedStyle.Render(paddedPath)
 			} else if isCurrent {
@@ -295,30 +297,101 @@ func (m *Model) viewPreview() string {
 	return b.String()
 }
 
-func (m *Model) renderTabs(selected []*types.ScanResult, _ int) string {
-	var tabs []string
+func (m *Model) renderTabs(selected []*types.ScanResult, currentIdx int) string {
+	if len(selected) == 0 {
+		return ""
+	}
 
+	maxWidth := m.width - 2
+	if maxWidth < 10 {
+		maxWidth = 10
+	}
+
+	if currentIdx < 0 || currentIdx >= len(selected) {
+		currentIdx = 0
+	}
+
+	type tabItem struct {
+		text  string
+		width int
+	}
+
+	items := make([]tabItem, 0, len(selected))
 	for _, r := range selected {
 		name := r.Category.Name
 		isCurrent := r.Category.ID == m.previewCatID
+		tabName := truncateToWidth(name, maxWidth-2, false)
+		var tab string
 		if isCurrent {
-			tab := lipgloss.NewStyle().
+			tab = lipgloss.NewStyle().
 				Bold(true).
 				Foreground(ColorText).
 				Background(ColorPrimary).
 				Padding(0, 1).
-				Render(name)
-			tabs = append(tabs, tab)
+				Render(tabName)
 		} else {
-			tab := lipgloss.NewStyle().
-				Foreground(ColorMuted).
+			tab = lipgloss.NewStyle().
+				Foreground(ColorText).
+				Background(ColorBorder).
 				Padding(0, 1).
-				Render(name)
-			tabs = append(tabs, tab)
+				Render(tabName)
+		}
+		items = append(items, tabItem{text: tab, width: lipgloss.Width(tab)})
+	}
+
+	joinTabs := func(start, end int, left, right bool) (string, int) {
+		parts := make([]string, 0, end-start+3)
+		if left {
+			parts = append(parts, MutedStyle.Render("…"))
+		}
+		for i := start; i <= end; i++ {
+			parts = append(parts, items[i].text)
+		}
+		if right {
+			parts = append(parts, MutedStyle.Render("…"))
+		}
+		line := strings.Join(parts, " ")
+		return line, lipgloss.Width(line)
+	}
+
+	start := currentIdx
+	end := currentIdx
+	for {
+		expanded := false
+		if start > 0 {
+			_, width := joinTabs(start-1, end, start-1 > 0, end < len(items)-1)
+			if width <= maxWidth {
+				start--
+				expanded = true
+			}
+		}
+		if end < len(items)-1 {
+			_, width := joinTabs(start, end+1, start > 0, end+1 < len(items)-1)
+			if width <= maxWidth {
+				end++
+				expanded = true
+			}
+		}
+		if !expanded {
+			break
 		}
 	}
 
-	return strings.Join(tabs, " ")
+	left := start > 0
+	right := end < len(items)-1
+	line, width := joinTabs(start, end, left, right)
+	for width > maxWidth && start < end {
+		if currentIdx-start > end-currentIdx {
+			start++
+		} else {
+			end--
+		}
+		left = start > 0
+		right = end < len(items)-1
+		line, width = joinTabs(start, end, left, right)
+	}
+
+	return line
 }
 
 func (m *Model) drillDownHeader(path string) string {

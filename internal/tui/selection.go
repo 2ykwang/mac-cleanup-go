@@ -6,6 +6,18 @@ import "github.com/2ykwang/mac-cleanup-go/internal/types"
 
 func (m *Model) getSelectedResults() []*types.ScanResult {
 	var selected []*types.ScanResult
+	if len(m.selectedOrder) > 0 {
+		for _, id := range m.selectedOrder {
+			if !m.selected[id] {
+				continue
+			}
+			if r, ok := m.resultMap[id]; ok {
+				selected = append(selected, r)
+			}
+		}
+		return selected
+	}
+
 	for _, r := range m.results {
 		if m.selected[r.Category.ID] {
 			selected = append(selected, r)
@@ -35,6 +47,14 @@ func (m *Model) getSelectedSize() int64 {
 	return total
 }
 
+func (m *Model) getAvailableSize() int64 {
+	var total int64
+	for _, r := range m.results {
+		total += r.TotalSize
+	}
+	return total
+}
+
 func (m *Model) getEffectiveSize(r *types.ScanResult) int64 {
 	excludedMap := m.excluded[r.Category.ID]
 	if excludedMap == nil {
@@ -57,6 +77,32 @@ func (m *Model) getSelectedCount() int {
 		}
 	}
 	return count
+}
+
+func (m *Model) addSelected(id string) {
+	if m.selected[id] {
+		return
+	}
+	m.selected[id] = true
+	m.selectedOrder = append(m.selectedOrder, id)
+}
+
+func (m *Model) removeSelected(id string) {
+	if !m.selected[id] {
+		return
+	}
+	m.selected[id] = false
+	for i, existing := range m.selectedOrder {
+		if existing == id {
+			m.selectedOrder = append(m.selectedOrder[:i], m.selectedOrder[i+1:]...)
+			break
+		}
+	}
+}
+
+func (m *Model) clearSelections() {
+	m.selected = make(map[string]bool)
+	m.selectedOrder = nil
 }
 
 // Exclusion management

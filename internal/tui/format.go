@@ -154,3 +154,24 @@ func padToWidth(s string, targetWidth int) string {
 	}
 	return s + strings.Repeat(" ", targetWidth-currentWidth)
 }
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func indentLines(s, prefix string) string {
+	if prefix == "" || s == "" {
+		return s
+	}
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		if line == "" {
+			continue
+		}
+		lines[i] = prefix + line
+	}
+	return strings.Join(lines, "\n")
+}

@@ -29,9 +29,10 @@ type dataState struct {
 }
 
 type selectionState struct {
-	selected map[string]bool
-	excluded map[string]map[string]bool // categoryID -> itemPath -> excluded
-	cursor   int
+	selected      map[string]bool
+	selectedOrder []string
+	excluded      map[string]map[string]bool // categoryID -> itemPath -> excluded
+	cursor        int
 }
 
 type layoutState struct {
