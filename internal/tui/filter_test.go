@@ -9,9 +9,9 @@ import (
 )
 
 func newTestModelWithSortOrder(order types.SortOrder) *Model {
-	return &Model{
-		sortOrder: order,
-	}
+	m := &Model{}
+	m.sortOrder = order
+	return m
 }
 
 func TestSortItems_EmptySlice(t *testing.T) {

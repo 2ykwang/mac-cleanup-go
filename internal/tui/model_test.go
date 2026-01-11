@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -17,18 +18,18 @@ import (
 // Test fixtures
 
 func newTestModel() *Model {
-	return &Model{
-		results:        make([]*types.ScanResult, 0),
-		resultMap:      make(map[string]*types.ScanResult),
-		selected:       make(map[string]bool),
-		excluded:       make(map[string]map[string]bool),
-		drillDownStack: make([]drillDownState, 0),
-		view:           ViewList,
-		width:          80,
-		height:         24,
-		userConfig:     &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)},
-		recentDeleted:  NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity),
-	}
+	m := &Model{}
+	m.results = make([]*types.ScanResult, 0)
+	m.resultMap = make(map[string]*types.ScanResult)
+	m.selected = make(map[string]bool)
+	m.excluded = make(map[string]map[string]bool)
+	m.drillDownStack = make([]drillDownState, 0)
+	m.view = ViewList
+	m.width = 80
+	m.height = 24
+	m.userConfig = &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)}
+	m.recentDeleted = NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity)
+	return m
 }
 
 func TestNewModel_InvalidBuiltin_ShowsError(t *testing.T) {
@@ -42,6 +43,87 @@ func TestNewModel_InvalidBuiltin_ShowsError(t *testing.T) {
 
 	require.Error(t, m.err)
 	assert.True(t, strings.HasPrefix(m.View(), "Error:"), "expected error view")
+}
+
+func TestHandleReportKey_ScrollClamped(t *testing.T) {
+	m := newTestModel()
+	m.view = ViewReport
+	m.height = 15
+	m.reportLines = make([]string, 20)
+	m.reportScroll = 15
+
+	m.handleReportKey(tea.KeyMsg{Type: tea.KeyDown})
+	assert.Equal(t, 15, m.reportScroll)
+
+	m.handleReportKey(tea.KeyMsg{Type: tea.KeyUp})
+	assert.Equal(t, 14, m.reportScroll)
+}
+
+func TestHandleCleanDoneMsg_SetsReportAndClearsRecentDeleted(t *testing.T) {
+	m := newTestModel()
+	m.view = ViewCleaning
+	m.startTime = time.Now().Add(-time.Second)
+	m.recentDeleted.Push(DeletedItemEntry{Name: "test"})
+	report := &types.Report{}
+
+	m.handleCleanDone(cleanDoneMsg{report: report})
+
+	assert.Equal(t, ViewReport, m.view)
+	assert.Equal(t, report, m.report)
+	assert.Equal(t, 0, m.recentDeleted.Len())
+	assert.Greater(t, m.report.Duration, time.Duration(0))
+}
+
+func TestHandleScanResult_AddsErrorAndMarksComplete(t *testing.T) {
+	m := newTestModel()
+	m.scanning = true
+	m.scanTotal = 1
+	result := &types.ScanResult{
+		Category:  types.Category{ID: "test", Name: "Test"},
+		Items:     []types.CleanableItem{{Path: "/tmp/a", Size: 10}},
+		TotalSize: 10,
+		Error:     errors.New("scan failed"),
+	}
+
+	m.handleScanResult(result)
+
+	assert.Len(t, m.scanErrors, 1)
+	assert.Equal(t, 1, len(m.results))
+	assert.Equal(t, result, m.resultMap["test"])
+	assert.False(t, m.scanning)
+}
+
+func TestUpdate_CleanProgressMsg_UpdatesCleaningState(t *testing.T) {
+	m := newTestModel()
+	m.view = ViewCleaning
+	m.cleanProgressChan = make(chan cleanProgressMsg, 1)
+	m.cleanDoneChan = make(chan cleanDoneMsg, 1)
+	m.cleanCategoryDoneCh = make(chan cleanCategoryDoneMsg, 1)
+	m.cleanItemDoneChan = make(chan cleanItemDoneMsg, 1)
+
+	msg := cleanProgressMsg{
+		categoryName: "Test Category",
+		currentItem:  "item1",
+		current:      2,
+		total:        5,
+	}
+
+	m.Update(msg)
+
+	assert.Equal(t, "Test Category", m.cleaningCategory)
+	assert.Equal(t, "item1", m.cleaningItem)
+	assert.Equal(t, 2, m.cleaningCurrent)
+	assert.Equal(t, 5, m.cleaningTotal)
+}
+
+func TestUpdate_WindowSizeMsg_UpdatesLayout(t *testing.T) {
+	m := newTestModel()
+
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+
+	assert.Equal(t, 120, m.width)
+	assert.Equal(t, 40, m.height)
+	assert.Equal(t, 120, m.help.Width)
 }
 
 func newTestModelWithResults() *Model {

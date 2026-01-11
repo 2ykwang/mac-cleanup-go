@@ -1,9 +1,6 @@
 package tui
 
 import (
-	"sync"
-	"time"
-
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -23,80 +20,15 @@ const defaultRecentItemsCapacity = 10
 
 // Model is the main TUI model
 type Model struct {
-	config   *types.Config
-	registry *scanner.Registry
-	cleaner  *cleaner.Cleaner
-
-	results   []*types.ScanResult
-	resultMap map[string]*types.ScanResult
-	selected  map[string]bool
-	excluded  map[string]map[string]bool // categoryID -> itemPath -> excluded
-	cursor    int
-
-	view   View
-	width  int
-	height int
-
-	scanCompleted  int
-	scanTotal      int
-	scanRegistered int // Total registered categories
-	scanning       bool
-	spinner        spinner.Model
-	scanMutex      sync.Mutex
-
-	// Preview state
-	previewCatID     string // Category ID instead of index
-	previewItemIndex int
-	previewScroll    int
-	drillDownStack   []drillDownState
-	sortOrder        types.SortOrder // Current sort order for items
-
-	// Filter/search state
-	filterState FilterState
-	filterText  string
-	filterInput textinput.Model
-
-	report       *types.Report
-	startTime    time.Time
-	scroll       int
-	reportScroll int
-	reportLines  []string // Pre-rendered report lines for scrolling
-
-	hasFullDiskAccess bool
-
-	userConfig *userconfig.UserConfig
-
-	// Cleaning progress
-	cleaningCategory  string
-	cleaningItem      string
-	cleaningCurrent   int
-	cleaningTotal     int
-	cleaningCompleted []cleanedCategory // Completed categories
-	cleaningProgress  progress.Model
-
-	// Channels for cleaning progress
-	cleanProgressChan   chan cleanProgressMsg
-	cleanDoneChan       chan cleanDoneMsg
-	cleanCategoryDoneCh chan cleanCategoryDoneMsg
-	cleanItemDoneChan   chan cleanItemDoneMsg
-
-	err error
-
-	// Scan errors for display
-	scanErrors []scanErrorInfo
-
-	// Recent deleted items for progress display
-	recentDeleted *RingBuffer[DeletedItemEntry]
-
-	// Status message for user feedback (e.g., error messages)
-	statusMessage string
-
-	// Guide popup state (for Manual items)
-	guideCategory  *types.Category // Category being shown in guide popup
-	guidePathIndex int             // Selected path index in guide popup
-
-	// Help component
-	help help.Model
+	configState
+	dataState
+	selectionState
+	layoutState
+	scanState
+	previewState
+	filterStateData
+	cleaningState
+	reportState
 }
 
 // NewModel creates a new model
@@ -136,27 +68,44 @@ func NewModel(cfg *types.Config) *Model {
 	)
 
 	return &Model{
-		config:            cfg,
-		registry:          registry,
-		cleaner:           cleaner.New(registry),
-		selected:          make(map[string]bool),
-		excluded:          excluded,
-		resultMap:         make(map[string]*types.ScanResult),
-		results:           make([]*types.ScanResult, 0),
-		drillDownStack:    make([]drillDownState, 0),
-		view:              ViewList,
-		spinner:           s,
-		scanning:          true,
-		hasFullDiskAccess: utils.CheckFullDiskAccess(),
-		userConfig:        userCfg,
-		scanErrors:        make([]scanErrorInfo, 0),
-		recentDeleted:     NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity),
-		sortOrder:         types.SortBySize,
-		filterState:       FilterNone,
-		filterInput:       ti,
-		help:              help.New(),
-		cleaningProgress:  prog,
-		err:               err,
+		configState: configState{
+			config:            cfg,
+			registry:          registry,
+			cleaner:           cleaner.New(registry),
+			hasFullDiskAccess: utils.CheckFullDiskAccess(),
+			userConfig:        userCfg,
+			err:               err,
+		},
+		dataState: dataState{
+			results:   make([]*types.ScanResult, 0),
+			resultMap: make(map[string]*types.ScanResult),
+		},
+		selectionState: selectionState{
+			selected: make(map[string]bool),
+			excluded: excluded,
+		},
+		layoutState: layoutState{
+			view: ViewList,
+			help: help.New(),
+		},
+		scanState: scanState{
+			scanning:   true,
+			spinner:    s,
+			scanErrors: make([]scanErrorInfo, 0),
+		},
+		previewState: previewState{
+			drillDownStack: make([]drillDownState, 0),
+			sortOrder:      types.SortBySize,
+		},
+		filterStateData: filterStateData{
+			filterState: FilterNone,
+			filterInput: ti,
+		},
+		cleaningState: cleaningState{
+			cleaningProgress: prog,
+			recentDeleted:    NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity),
+		},
+		reportState: reportState{},
 	}
 }
 

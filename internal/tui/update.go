@@ -33,69 +33,91 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	case tea.WindowSizeMsg:
-		m.width, m.height = msg.Width, msg.Height
-		m.help.Width = msg.Width
-		return m, nil
+		return m.handleWindowSize(msg)
 	case spinner.TickMsg:
-		if m.scanning || m.view == ViewCleaning {
-			var cmd tea.Cmd
-			m.spinner, cmd = m.spinner.Update(msg)
-			return m, cmd
-		}
+		return m.handleSpinnerTick(msg)
 	case scanResultMsg:
 		m.handleScanResult(msg.result)
 	case cleanProgressMsg:
-		m.cleaningCategory = msg.categoryName
-		m.cleaningItem = msg.currentItem
-		m.cleaningCurrent = msg.current
-		m.cleaningTotal = msg.total
-
-		// Update progress bar
-		if m.cleaningTotal > 0 {
-			percent := float64(m.cleaningCurrent) / float64(m.cleaningTotal)
-			cmd := m.cleaningProgress.SetPercent(percent)
-			return m, tea.Batch(cmd, m.waitForCleanProgress())
-		}
-		return m, m.waitForCleanProgress()
+		return m.handleCleanProgress(msg)
 	case progress.FrameMsg:
 		var cmd tea.Cmd
 		progressModel, cmd := m.cleaningProgress.Update(msg)
 		m.cleaningProgress = progressModel.(progress.Model)
 		return m, cmd
 	case cleanItemDoneMsg:
-		// Add deleted item to recent deletions list
-		m.recentDeleted.Push(DeletedItemEntry{
-			Path:    msg.path,
-			Name:    msg.name,
-			Size:    msg.size,
-			Success: msg.success,
-			ErrMsg:  msg.errMsg,
-		})
-		return m, m.waitForCleanProgress()
+		return m.handleCleanItemDone(msg)
 	case cleanCategoryDoneMsg:
-		// Add completed category to list
-		m.cleaningCompleted = append(m.cleaningCompleted, cleanedCategory{
-			name:       msg.categoryName,
-			freedSpace: msg.freedSpace,
-			cleaned:    msg.cleanedItems,
-			errors:     msg.errorCount,
-		})
-		m.cleaningCategory = ""
-		m.cleaningItem = ""
-		return m, m.waitForCleanProgress()
+		return m.handleCleanCategoryDone(msg)
 	case cleanDoneMsg:
-		m.report = msg.report
-		m.report.Duration = time.Since(m.startTime)
-		m.recentDeleted.Clear()
-		m.view = ViewReport
+		m.handleCleanDone(msg)
 	}
 	return m, nil
 }
 
-func (m *Model) handleScanResult(result *types.ScanResult) {
-	m.scanMutex.Lock()
-	defer m.scanMutex.Unlock()
+func (m *Model) handleWindowSize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
+	m.width, m.height = msg.Width, msg.Height
+	m.help.Width = msg.Width
+	return m, nil
+}
 
+func (m *Model) handleSpinnerTick(msg spinner.TickMsg) (tea.Model, tea.Cmd) {
+	if m.scanning || m.view == ViewCleaning {
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+	}
+	return m, nil
+}
+
+func (m *Model) handleCleanProgress(msg cleanProgressMsg) (tea.Model, tea.Cmd) {
+	m.cleaningCategory = msg.categoryName
+	m.cleaningItem = msg.currentItem
+	m.cleaningCurrent = msg.current
+	m.cleaningTotal = msg.total
+
+	// Update progress bar
+	if m.cleaningTotal > 0 {
+		percent := float64(m.cleaningCurrent) / float64(m.cleaningTotal)
+		cmd := m.cleaningProgress.SetPercent(percent)
+		return m, tea.Batch(cmd, m.waitForCleanProgress())
+	}
+	return m, m.waitForCleanProgress()
+}
+
+func (m *Model) handleCleanItemDone(msg cleanItemDoneMsg) (tea.Model, tea.Cmd) {
+	// Add deleted item to recent deletions list
+	m.recentDeleted.Push(DeletedItemEntry{
+		Path:    msg.path,
+		Name:    msg.name,
+		Size:    msg.size,
+		Success: msg.success,
+		ErrMsg:  msg.errMsg,
+	})
+	return m, m.waitForCleanProgress()
+}
+
+func (m *Model) handleCleanCategoryDone(msg cleanCategoryDoneMsg) (tea.Model, tea.Cmd) {
+	// Add completed category to list
+	m.cleaningCompleted = append(m.cleaningCompleted, cleanedCategory{
+		name:       msg.categoryName,
+		freedSpace: msg.freedSpace,
+		cleaned:    msg.cleanedItems,
+		errors:     msg.errorCount,
+	})
+	m.cleaningCategory = ""
+	m.cleaningItem = ""
+	return m, m.waitForCleanProgress()
+}
+
+func (m *Model) handleCleanDone(msg cleanDoneMsg) {
+	m.report = msg.report
+	m.report.Duration = time.Since(m.startTime)
+	m.recentDeleted.Clear()
+	m.view = ViewReport
+}
+
+func (m *Model) handleScanResult(result *types.ScanResult) {
 	if result != nil {
 		// Collect scan errors for display
 		if result.Error != nil {

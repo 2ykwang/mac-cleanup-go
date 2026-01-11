@@ -39,6 +39,18 @@ func (m *Model) sortItems(items []types.CleanableItem) []types.CleanableItem {
 	return sorted
 }
 
+// currentFilterQuery returns the active filter query text.
+func (m *Model) currentFilterQuery() string {
+	switch m.filterState {
+	case FilterTyping:
+		return m.filterInput.Value()
+	case FilterApplied:
+		return m.filterText
+	default:
+		return ""
+	}
+}
+
 // filterItems filters items by the given query string.
 // Supports space-separated AND matching: "cache simple" matches items
 // containing both "cache" AND "simple" anywhere in Name or Path.

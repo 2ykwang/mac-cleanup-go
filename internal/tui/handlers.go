@@ -24,43 +24,25 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case ViewReport:
-		switch msg.String() {
-		case "?":
-			m.help.ShowAll = !m.help.ShowAll
-			return m, nil
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "up", "k":
-			if m.reportScroll > 0 {
-				m.reportScroll--
-			}
-		case "down", "j":
-			// Estimate visible lines (header ~8, footer ~2)
-			visible := m.height - 10
-			if visible < 5 {
-				visible = 5
-			}
-			maxScroll := len(m.reportLines) - visible
-			if maxScroll < 0 {
-				maxScroll = 0
-			}
-			if m.reportScroll < maxScroll {
-				m.reportScroll++
-			}
-		case "enter", " ":
-			// Return to main screen and rescan
-			m.view = ViewList
-			m.selected = make(map[string]bool)
-			m.excluded = make(map[string]map[string]bool)
-			m.results = make([]*types.ScanResult, 0)
-			m.resultMap = make(map[string]*types.ScanResult)
-			m.cursor = 0
-			m.scroll = 0
-			m.reportScroll = 0
-			m.reportLines = nil
-			m.scanning = true
-			return m, tea.Batch(m.spinner.Tick, m.startScan())
-		}
+		return m.handleReportKey(msg)
+	}
+	return m, nil
+}
+
+func (m *Model) handleReportKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "?":
+		m.help.ShowAll = !m.help.ShowAll
+		return m, nil
+	case "ctrl+c", "q":
+		return m, tea.Quit
+	case "up", "k":
+		m.reportScroll = clamp(m.reportScroll-1, 0, m.maxReportScroll())
+	case "down", "j":
+		m.reportScroll = clamp(m.reportScroll+1, 0, m.maxReportScroll())
+	case "enter", " ":
+		// Return to main screen and rescan
+		return m, m.startRescanCmd()
 	}
 	return m, nil
 }
@@ -157,44 +139,28 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc", "n":
 		// Clear filter if applied, otherwise go back
 		if m.filterState == FilterApplied {
-			m.filterState = FilterNone
-			m.filterText = ""
-			m.previewItemIndex = 0
-			m.previewScroll = 0
+			m.clearFilter()
+			m.resetPreviewSelection()
 			return m, nil
 		}
 		m.view = ViewList
 	case "up", "k":
-		if m.previewItemIndex > 0 {
-			m.previewItemIndex--
-		}
+		m.movePreviewCursor(-1)
 	case "down", "j":
-		r := m.getPreviewCatResult()
-		if r != nil {
-			maxItem := len(r.Items) - 1
-			if m.previewItemIndex < maxItem {
-				m.previewItemIndex++
-			}
-		}
+		m.movePreviewCursor(1)
 	case "left", "h":
 		prevID := m.findPrevSelectedCatID()
 		if prevID != m.previewCatID {
 			m.previewCatID = prevID
-			m.previewItemIndex = 0
-			m.previewScroll = 0
-			// Clear filter on tab change
-			m.filterState = FilterNone
-			m.filterText = ""
+			m.resetPreviewSelection()
+			m.clearFilter()
 		}
 	case "right", "l":
 		nextID := m.findNextSelectedCatID()
 		if nextID != m.previewCatID {
 			m.previewCatID = nextID
-			m.previewItemIndex = 0
-			m.previewScroll = 0
-			// Clear filter on tab change
-			m.filterState = FilterNone
-			m.filterText = ""
+			m.resetPreviewSelection()
+			m.clearFilter()
 		}
 	case " ":
 		// Toggle exclusion for current item (use visible items after filter/sort)
@@ -221,14 +187,12 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.view = ViewConfirm
 	case "a", "A":
 		// Include all items in current category (clear exclusions)
-		r := m.getPreviewCatResult()
-		if r != nil {
+		if r := m.getPreviewCatResult(); r != nil {
 			m.clearExcludeCategory(r.Category.ID)
 		}
 	case "d", "D":
 		// Exclude all items in current category
-		r := m.getPreviewCatResult()
-		if r != nil {
+		if r := m.getPreviewCatResult(); r != nil {
 			m.autoExcludeCategory(r.Category.ID, r)
 		}
 	case "o":
@@ -244,39 +208,25 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "s":
 		// Toggle sort order
 		m.sortOrder = m.sortOrder.Next()
-		m.previewItemIndex = 0
-		m.previewScroll = 0
+		m.resetPreviewSelection()
 	case "pgdown":
 		// Page down
-		r := m.getPreviewCatResult()
-		if r != nil {
-			m.previewItemIndex += m.pageSize()
-			if m.previewItemIndex >= len(r.Items) {
-				m.previewItemIndex = len(r.Items) - 1
-			}
-		}
+		m.movePreviewCursor(m.pageSize())
 	case "pgup":
 		// Page up
-		m.previewItemIndex -= m.pageSize()
-		if m.previewItemIndex < 0 {
-			m.previewItemIndex = 0
-		}
+		m.movePreviewCursor(-m.pageSize())
 	case "home":
 		// Go to first item
-		m.previewItemIndex = 0
-		m.previewScroll = 0
+		m.setPreviewCursor(0, 0)
 	case "end":
 		// Go to last item
 		r := m.getPreviewCatResult()
 		if r != nil && len(r.Items) > 0 {
-			m.previewItemIndex = len(r.Items) - 1
+			m.setPreviewCursor(len(r.Items)-1, len(r.Items)-1)
 		}
 	case "/":
 		// Enter search mode
-		m.filterState = FilterTyping
-		m.filterInput.SetValue("")
-		m.filterInput.Focus()
-		return m, m.filterInput.Focus()
+		return m, m.startFilterTyping()
 	}
 	return m, nil
 }
@@ -285,17 +235,11 @@ func (m *Model) handleFilterTypingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
 		// Apply the filter
-		m.filterText = m.filterInput.Value()
-		m.filterState = FilterApplied
-		m.filterInput.Blur()
-		m.previewItemIndex = 0
-		m.previewScroll = 0
+		m.applyFilter()
 		return m, nil
 	case "esc":
 		// Cancel search
-		m.filterState = FilterNone
-		m.filterText = ""
-		m.filterInput.Blur()
+		m.clearFilter()
 		return m, nil
 	case "ctrl+c":
 		return m, tea.Quit
@@ -305,8 +249,7 @@ func (m *Model) handleFilterTypingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.filterInput, cmd = m.filterInput.Update(msg)
 	// Reset cursor position when filter changes
-	m.previewItemIndex = 0
-	m.previewScroll = 0
+	m.resetPreviewSelection()
 	return m, cmd
 }
 
@@ -339,13 +282,9 @@ func (m *Model) handleDrillDownKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc", "backspace", "n":
 		m.drillDownStack = m.drillDownStack[:len(m.drillDownStack)-1]
 	case "up", "k":
-		if state.cursor > 0 {
-			state.cursor--
-		}
+		m.moveDrillCursor(state, -1)
 	case "down", "j":
-		if state.cursor < len(state.items)-1 {
-			state.cursor++
-		}
+		m.setDrillCursor(state, state.cursor+1, len(state.items)-1)
 	case "enter":
 		if state.cursor < len(state.items) {
 			item := state.items[state.cursor]
@@ -378,24 +317,17 @@ func (m *Model) handleDrillDownKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		state.scroll = 0
 	case "pgdown":
 		// Page down
-		state.cursor += m.pageSize()
-		if state.cursor >= len(state.items) {
-			state.cursor = len(state.items) - 1
-		}
+		m.setDrillCursor(state, state.cursor+m.pageSize(), len(state.items)-1)
 	case "pgup":
 		// Page up
-		state.cursor -= m.pageSize()
-		if state.cursor < 0 {
-			state.cursor = 0
-		}
+		m.moveDrillCursor(state, -m.pageSize())
 	case "home":
 		// Go to first item
-		state.cursor = 0
-		state.scroll = 0
+		m.setDrillCursor(state, 0, 0)
 	case "end":
 		// Go to last item
 		if len(state.items) > 0 {
-			state.cursor = len(state.items) - 1
+			m.setDrillCursor(state, len(state.items)-1, len(state.items)-1)
 		}
 	}
 	return m, nil
@@ -432,4 +364,107 @@ func (m *Model) handleGuideKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+func (m *Model) startRescanCmd() tea.Cmd {
+	m.resetForRescan()
+	return tea.Batch(m.spinner.Tick, m.startScan())
+}
+
+func (m *Model) resetForRescan() {
+	m.view = ViewList
+	m.selected = make(map[string]bool)
+	m.excluded = make(map[string]map[string]bool)
+	m.results = make([]*types.ScanResult, 0)
+	m.resultMap = make(map[string]*types.ScanResult)
+	m.cursor = 0
+	m.scroll = 0
+	m.reportScroll = 0
+	m.reportLines = nil
+	m.scanning = true
+}
+
+func (m *Model) resetPreviewSelection() {
+	m.previewItemIndex = 0
+	m.previewScroll = 0
+}
+
+func (m *Model) clearFilter() {
+	m.filterState = FilterNone
+	m.filterText = ""
+	m.filterInput.Blur()
+}
+
+func (m *Model) applyFilter() {
+	m.filterText = m.filterInput.Value()
+	m.filterState = FilterApplied
+	m.filterInput.Blur()
+	m.resetPreviewSelection()
+}
+
+func (m *Model) startFilterTyping() tea.Cmd {
+	m.filterState = FilterTyping
+	m.filterInput.SetValue("")
+	m.filterInput.Focus()
+	return m.filterInput.Focus()
+}
+
+func (m *Model) maxReportScroll() int {
+	// Estimate visible lines (header ~8, footer ~2)
+	visible := m.height - 10
+	if visible < 5 {
+		visible = 5
+	}
+	maxScroll := len(m.reportLines) - visible
+	if maxScroll < 0 {
+		return 0
+	}
+	return maxScroll
+}
+
+func clamp(value, min, max int) int {
+	if value < min {
+		return min
+	}
+	if value > max {
+		return max
+	}
+	return value
+}
+
+func (m *Model) movePreviewCursor(delta int) {
+	r := m.getPreviewCatResult()
+	if r == nil || len(r.Items) == 0 {
+		return
+	}
+	m.setPreviewCursor(m.previewItemIndex+delta, len(r.Items)-1)
+}
+
+func (m *Model) setPreviewCursor(index int, max int) {
+	if index < 0 {
+		index = 0
+	}
+	if index > max {
+		index = max
+	}
+	m.previewItemIndex = index
+	m.previewScroll = 0
+}
+
+func (m *Model) moveDrillCursor(state *drillDownState, delta int) {
+	if state == nil || len(state.items) == 0 {
+		return
+	}
+	m.setDrillCursor(state, state.cursor+delta, len(state.items)-1)
+}
+
+func (m *Model) setDrillCursor(state *drillDownState, index int, max int) {
+	if index < 0 {
+		index = 0
+	}
+	if index > max {
+		index = max
+	}
+	state.cursor = index
+	state.scroll = 0
 }
