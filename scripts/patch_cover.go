@@ -21,9 +21,10 @@ type hunkRange struct {
 func main() {
 	base := flag.String("base", "origin/main", "Base ref for git diff")
 	profile := flag.String("profile", "coverage.out", "Go coverprofile path")
+	worktree := flag.Bool("worktree", false, "Include unstaged changes when diffing")
 	flag.Parse()
 
-	changed, err := diffChangedLines(*base)
+	changed, err := diffChangedLines(*base, *worktree)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "patch-cover: %v\n", err)
 		os.Exit(1)
@@ -81,8 +82,14 @@ func main() {
 	}
 }
 
-func diffChangedLines(base string) (map[string]map[int]bool, error) {
-	cmd := exec.Command("git", "diff", "--unified=0", base+"...HEAD")
+func diffChangedLines(base string, worktree bool) (map[string]map[int]bool, error) {
+	args := []string{"diff", "--unified=0"}
+	if worktree {
+		args = append(args, base)
+	} else {
+		args = append(args, base+"...HEAD")
+	}
+	cmd := exec.Command("git", args...)
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("git diff failed: %w", err)

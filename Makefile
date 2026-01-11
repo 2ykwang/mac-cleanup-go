@@ -71,6 +71,11 @@ patch-cover: ## Report patch coverage against origin/main (set BASE=...)
 	$(GO) test -coverprofile=coverage.out ./...
 	$(GO) run ./scripts/patch_cover.go --base=$${BASE:-origin/main} --profile=coverage.out
 
+.PHONY: patch-cover-worktree
+patch-cover-worktree: ## Report patch coverage including worktree changes (set BASE=...)
+	$(GO) test -coverprofile=coverage.out ./...
+	$(GO) run ./scripts/patch_cover.go --base=$${BASE:-origin/main} --profile=coverage.out --worktree
+
 .PHONY: test-cover-html
 test-cover-html: ## Generate HTML coverage report
 	$(GO) test -coverprofile=coverage.out ./...
