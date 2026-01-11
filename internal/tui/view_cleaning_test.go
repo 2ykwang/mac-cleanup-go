@@ -10,12 +10,12 @@ import (
 )
 
 func newTestModelForViewCleaning() *Model {
-	return &Model{
-		width:         80,
-		height:        24,
-		recentDeleted: NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity),
-		userConfig:    &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)},
-	}
+	m := &Model{}
+	m.width = 80
+	m.height = 24
+	m.recentDeleted = NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity)
+	m.userConfig = &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)}
+	return m
 }
 
 func TestRenderRecentDeleted_SuccessIcon(t *testing.T) {

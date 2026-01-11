@@ -17,18 +17,18 @@ import (
 // Test fixtures
 
 func newTestModel() *Model {
-	return &Model{
-		results:        make([]*types.ScanResult, 0),
-		resultMap:      make(map[string]*types.ScanResult),
-		selected:       make(map[string]bool),
-		excluded:       make(map[string]map[string]bool),
-		drillDownStack: make([]drillDownState, 0),
-		view:           ViewList,
-		width:          80,
-		height:         24,
-		userConfig:     &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)},
-		recentDeleted:  NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity),
-	}
+	m := &Model{}
+	m.results = make([]*types.ScanResult, 0)
+	m.resultMap = make(map[string]*types.ScanResult)
+	m.selected = make(map[string]bool)
+	m.excluded = make(map[string]map[string]bool)
+	m.drillDownStack = make([]drillDownState, 0)
+	m.view = ViewList
+	m.width = 80
+	m.height = 24
+	m.userConfig = &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)}
+	m.recentDeleted = NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity)
+	return m
 }
 
 func TestNewModel_InvalidBuiltin_ShowsError(t *testing.T) {

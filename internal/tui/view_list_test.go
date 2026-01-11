@@ -10,26 +10,26 @@ import (
 )
 
 func newTestModelWithConfig() *Model {
-	return &Model{
-		config: &types.Config{
-			Groups: []types.Group{
-				{ID: "system", Name: "System", Order: 1},
-				{ID: "browser", Name: "Browsers", Order: 2},
-				{ID: "dev", Name: "Development", Order: 3},
-				{ID: "app", Name: "Applications", Order: 4},
-			},
+	m := &Model{}
+	m.config = &types.Config{
+		Groups: []types.Group{
+			{ID: "system", Name: "System", Order: 1},
+			{ID: "browser", Name: "Browsers", Order: 2},
+			{ID: "dev", Name: "Development", Order: 3},
+			{ID: "app", Name: "Applications", Order: 4},
 		},
-		results:        make([]*types.ScanResult, 0),
-		resultMap:      make(map[string]*types.ScanResult),
-		selected:       make(map[string]bool),
-		excluded:       make(map[string]map[string]bool),
-		drillDownStack: make([]drillDownState, 0),
-		view:           ViewList,
-		width:          80,
-		height:         24,
-		userConfig:     &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)},
-		recentDeleted:  NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity),
 	}
+	m.results = make([]*types.ScanResult, 0)
+	m.resultMap = make(map[string]*types.ScanResult)
+	m.selected = make(map[string]bool)
+	m.excluded = make(map[string]map[string]bool)
+	m.drillDownStack = make([]drillDownState, 0)
+	m.view = ViewList
+	m.width = 80
+	m.height = 24
+	m.userConfig = &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)}
+	m.recentDeleted = NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity)
+	return m
 }
 
 func TestGetGroupStats_EmptyResults(t *testing.T) {
