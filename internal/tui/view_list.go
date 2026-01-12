@@ -166,16 +166,13 @@ func (m *Model) viewList() string {
 			helpLines = countLines(helpContent) + 1
 		}
 	}
-	visible := m.availableLines(header, footer) - helpLines
-	if visible < 3 {
-		visible = 3
-	}
+	visible := m.visibleLines(header, footer, helpLines)
 	if visible < 16 {
 		showSidePanel = false
 		showHelpInFooter = true
 		footer = m.listFooter(showHelpInFooter)
 		helpContent = ""
-		visible = m.availableLines(header, footer)
+		visible = m.visibleLines(header, footer, 0)
 	}
 
 	listContent := m.renderListBody(visible)
@@ -188,25 +185,38 @@ func (m *Model) viewList() string {
 		if sideHeight < 1 {
 			sideHeight = 1
 		}
-		listStyle := lipgloss.NewStyle().Width(bodyWidth)
+		nameWidth, sizeWidth, countWidth := m.listColumnWidths()
+		listContentWidth := listPrefixWidth + nameWidth + sizeWidth + countWidth + 2
+		gapWidth := 8
+		listWidth := listContentWidth
+		if listWidth > bodyWidth {
+			listWidth = bodyWidth
+		}
+		if listWidth < 1 {
+			listWidth = 1
+		}
+		listStyle := lipgloss.NewStyle().Width(listWidth)
 		sideStyle := lipgloss.NewStyle().
 			Width(sideWidth).
 			Height(sideHeight).
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(ColorBorder).
 			Padding(0, 1)
-		listContent = lipgloss.JoinHorizontal(lipgloss.Top, listStyle.Render(listContent), sideStyle.Render(sideContent))
+		spacer := strings.Repeat(" ", gapWidth)
+		listContent = lipgloss.JoinHorizontal(lipgloss.Top, listStyle.Render(listContent), spacer, sideStyle.Render(sideContent))
 	}
 
 	var b strings.Builder
 	b.WriteString(header)
 	b.WriteString(listContent)
-	b.WriteString("\n")
+	if listContent != "" && footer != "" {
+		b.WriteString("\n")
+	}
 	b.WriteString(footer)
 	return b.String()
 }
 
-func (m *Model) renderListItem(idx int, r *types.ScanResult) string {
+func (m *Model) renderListItem(idx int, r *types.ScanResult, nameWidth, sizeWidth, countWidth int) string {
 	isCurrent := idx == m.cursor
 	isManual := r.Category.Method == types.MethodManual
 
@@ -232,15 +242,22 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult) string {
 		name += " [Manual]"
 	}
 	// Truncate and pad using display width for consistent alignment
-	name = padToWidth(truncateToWidth(name, colName, false), colName)
+	name = padToWidth(truncateToWidth(name, nameWidth, false), nameWidth)
 	if isManual {
 		name = MutedStyle.Render(name)
 	} else if isCurrent {
 		name = SelectedStyle.Render(name)
 	}
 
-	size := fmt.Sprintf("%*s", colSize, utils.FormatSize(r.TotalSize))
-	count := fmt.Sprintf("%*d", colNum, r.TotalFileCount)
+	sizeText := utils.FormatSize(r.TotalSize)
+	countText := fmt.Sprintf("%d", r.TotalFileCount)
+	if m.scanning && r.TotalSize == 0 && r.TotalFileCount == 0 && len(r.Items) == 0 {
+		sizeText = "-"
+		countText = "-"
+	}
+
+	size := fmt.Sprintf("%*s", sizeWidth, sizeText)
+	count := fmt.Sprintf("%*s", countWidth, countText)
 
 	if isManual {
 		size = MutedStyle.Render(size)
@@ -257,6 +274,10 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult) string {
 func (m *Model) renderListBody(visible int) string {
 	var b strings.Builder
 
+	if visible < 1 {
+		return ""
+	}
+
 	if len(m.results) == 0 {
 		if m.scanning {
 			b.WriteString(MutedStyle.Render("Scanning..."))
@@ -267,21 +288,36 @@ func (m *Model) renderListBody(visible int) string {
 		return b.String()
 	}
 
-	colHeader := fmt.Sprintf("%*s%-*s %*s %*s",
-		listPrefixWidth, "",
-		colName, "Name", colSize, "Size", colNum, "Count")
-	b.WriteString(MutedStyle.Render(colHeader) + "\n")
-
-	// Adjust scroll
-	m.scroll = m.adjustScrollFor(m.cursor, m.scroll, visible-1, len(m.results))
-
-	for i, r := range m.results {
-		if i < m.scroll || i >= m.scroll+visible {
-			continue
-		}
-		b.WriteString(m.renderListItem(i, r))
+	linesRemaining := visible
+	nameWidth, sizeWidth, countWidth := m.listColumnWidths()
+	if visible >= 2 {
+		colHeader := fmt.Sprintf("%*s%-*s %*s %*s",
+			listPrefixWidth, "",
+			nameWidth, "Name", sizeWidth, "Size", countWidth, "Count")
+		b.WriteString(MutedStyle.Render(colHeader) + "\n")
+		linesRemaining--
 	}
-	if len(m.results) > visible {
+
+	showPager := false
+	itemsVisible := linesRemaining
+	if len(m.results) > itemsVisible && itemsVisible > 0 {
+		showPager = true
+		itemsVisible--
+	}
+
+	if itemsVisible > 0 {
+		// Adjust scroll
+		m.scroll = m.adjustScrollFor(m.cursor, m.scroll, itemsVisible, len(m.results))
+
+		for i, r := range m.results {
+			if i < m.scroll || i >= m.scroll+itemsVisible {
+				continue
+			}
+			b.WriteString(m.renderListItem(i, r, nameWidth, sizeWidth, countWidth))
+		}
+	}
+
+	if showPager {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("\n  [%d/%d]", m.cursor+1, len(m.results))))
 	}
 	return b.String()

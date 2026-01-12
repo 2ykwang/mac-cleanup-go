@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
 )
@@ -31,6 +33,27 @@ func newTestModel() *Model {
 	m.userConfig = &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)}
 	m.recentDeleted = NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity)
 	return m
+}
+
+type testScanner struct {
+	category  types.Category
+	available bool
+}
+
+func (s testScanner) Scan() (*types.ScanResult, error) {
+	return &types.ScanResult{Category: s.category}, nil
+}
+
+func (s testScanner) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
+	return &types.CleanResult{Category: s.category}, nil
+}
+
+func (s testScanner) Category() types.Category {
+	return s.category
+}
+
+func (s testScanner) IsAvailable() bool {
+	return s.available
 }
 
 func TestNewModel_InvalidBuiltin_ShowsError(t *testing.T) {
@@ -609,6 +632,136 @@ func TestViewList_ContainsResults(t *testing.T) {
 	assert.Contains(t, output, "Xcode Archives")
 }
 
+func TestStartScan_NoAvailableScannersStopsScanning(t *testing.T) {
+	m := newTestModel()
+	m.scanning = true
+	m.registry = scanner.NewRegistry()
+	m.config = &types.Config{
+		Categories: []types.Category{{ID: "cat1", Name: "Cat 1", Safety: types.SafetyLevelSafe}},
+	}
+
+	cmd := m.startScan()
+
+	assert.Nil(t, cmd)
+	assert.False(t, m.scanning)
+	assert.Empty(t, m.results)
+}
+
+func TestRenderListItem_ScanningShowsPlaceholderCounts(t *testing.T) {
+	m := newTestModel()
+	m.scanning = true
+	result := &types.ScanResult{
+		Category: types.Category{ID: "cat1", Name: "Test Cat", Safety: types.SafetyLevelSafe},
+	}
+
+	nameWidth, sizeWidth, countWidth := m.listColumnWidths()
+	output := m.renderListItem(0, result, nameWidth, sizeWidth, countWidth)
+
+	assert.Contains(t, output, fmt.Sprintf("%*s", sizeWidth, "-"))
+	assert.Contains(t, output, fmt.Sprintf("%*s", countWidth, "-"))
+}
+
+func TestHandleScanResult_UpdatesExistingEntry(t *testing.T) {
+	cat := types.Category{ID: "cat1", Name: "Cat 1", Safety: types.SafetyLevelSafe}
+	m := newTestModel()
+	m.config = &types.Config{Categories: []types.Category{cat}}
+	m.scanning = true
+	m.scanTotal = 2
+
+	available := []scanner.Scanner{
+		testScanner{category: cat, available: true},
+	}
+	m.initScanResults(available)
+
+	result := &types.ScanResult{
+		Category:       cat,
+		Items:          []types.CleanableItem{{Path: "/tmp/a", Size: 64}},
+		TotalSize:      64,
+		TotalFileCount: 1,
+	}
+	m.handleScanResult(result)
+
+	updated := m.resultMap["cat1"]
+	if assert.NotNil(t, updated) {
+		assert.Equal(t, int64(64), updated.TotalSize)
+		assert.Equal(t, int64(1), updated.TotalFileCount)
+		assert.Len(t, updated.Items, 1)
+	}
+}
+
+func TestHandleScanResult_FinalizeRemovesZeroSize(t *testing.T) {
+	cat := types.Category{ID: "cat1", Name: "Cat 1", Safety: types.SafetyLevelSafe}
+	m := newTestModel()
+	m.config = &types.Config{Categories: []types.Category{cat}}
+	m.scanning = true
+	m.scanTotal = 1
+
+	available := []scanner.Scanner{
+		testScanner{category: cat, available: true},
+	}
+	m.initScanResults(available)
+
+	result := &types.ScanResult{Category: cat}
+	m.handleScanResult(result)
+
+	assert.False(t, m.scanning)
+	assert.Empty(t, m.results)
+	assert.Empty(t, m.resultMap)
+}
+
+func TestHandleListKey_Scanning_DisablesSelection(t *testing.T) {
+	m := newTestModelWithResults()
+	m.scanning = true
+
+	m.handleListKey(tea.KeyMsg{Type: tea.KeySpace})
+
+	assert.False(t, m.selected["cat1"])
+}
+
+func TestListColumnWidths_CappedAtMax(t *testing.T) {
+	m := newTestModel()
+	m.width = 200
+
+	nameWidth, sizeWidth, countWidth := m.listColumnWidths()
+
+	assert.Equal(t, colName, nameWidth)
+	assert.Equal(t, colSize, sizeWidth)
+	assert.Equal(t, colNum, countWidth)
+}
+
+func TestListColumnWidths_ShrinksWithWidth(t *testing.T) {
+	m := newTestModel()
+	m.width = 40
+
+	nameWidth, sizeWidth, countWidth := m.listColumnWidths()
+
+	assert.GreaterOrEqual(t, nameWidth, 1)
+	assert.GreaterOrEqual(t, sizeWidth, 1)
+	assert.GreaterOrEqual(t, countWidth, 1)
+	assert.Less(t, nameWidth+sizeWidth+countWidth, colName+colSize+colNum)
+}
+
+func TestPreviewColumnWidths_PathExpands(t *testing.T) {
+	m := newTestModel()
+	m.width = 120
+
+	pathWidth, sizeWidth, ageWidth := m.previewColumnWidths()
+
+	assert.GreaterOrEqual(t, pathWidth, 1)
+	assert.GreaterOrEqual(t, sizeWidth, 1)
+	assert.GreaterOrEqual(t, ageWidth, 1)
+}
+
+func TestNameSizeColumns_AllowOverflow(t *testing.T) {
+	m := newTestModel()
+	m.width = 140
+
+	nameWidth, sizeWidth := m.nameSizeColumns(2, true)
+
+	assert.Greater(t, nameWidth, colName-1)
+	assert.Greater(t, sizeWidth, colSize-1)
+}
+
 func TestViewList_ContainsFooterShortcuts(t *testing.T) {
 	m := newTestModelWithResults()
 
@@ -838,7 +991,8 @@ func TestRenderListItem_ManualItemMuted(t *testing.T) {
 	manualResult := m.results[2]
 	assert.Equal(t, types.MethodManual, manualResult.Category.Method)
 
-	output := m.renderListItem(2, manualResult)
+	nameWidth, sizeWidth, countWidth := m.listColumnWidths()
+	output := m.renderListItem(2, manualResult, nameWidth, sizeWidth, countWidth)
 
 	assert.Contains(t, output, "[Manual]")
 	assert.Contains(t, output, "Telegram DB")
@@ -847,7 +1001,7 @@ func TestRenderListItem_ManualItemMuted(t *testing.T) {
 	assert.Contains(t, output, mutedCheckbox, "manual item checkbox should be rendered with MutedStyle")
 
 	m.selected[manualResult.Category.ID] = true
-	outputSelected := m.renderListItem(2, manualResult)
+	outputSelected := m.renderListItem(2, manualResult, nameWidth, sizeWidth, countWidth)
 	assert.NotContains(t, outputSelected, "[✓]", "manual item should never show checked indicator")
 }
 

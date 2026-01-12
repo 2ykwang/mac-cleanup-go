@@ -22,7 +22,7 @@ func (m *Model) reportHeader() string {
 	}
 	b.WriteString(fmt.Sprintf("Time:      %s\n\n", m.report.Duration.Round(time.Millisecond)))
 
-	b.WriteString(Divider(50) + "\n")
+	b.WriteString(Divider(m.reportDividerWidth()) + "\n")
 
 	return b.String()
 }
@@ -81,6 +81,7 @@ func (m *Model) viewReport() string {
 
 func (m *Model) buildReportLines() []string {
 	var lines []string
+	nameWidth, sizeWidth := m.reportColumnWidths()
 
 	// Successful items first (no errors at all)
 	hasSuccess := false
@@ -90,8 +91,9 @@ func (m *Model) buildReportLines() []string {
 				lines = append(lines, SuccessStyle.Render("Succeeded:"))
 				hasSuccess = true
 			}
-			size := fmt.Sprintf("%*s", colSize, utils.FormatSize(result.FreedSpace))
-			lines = append(lines, fmt.Sprintf("  %s %-26s %s", SuccessStyle.Render("✓"), result.Category.Name, SizeStyle.Render(size)))
+			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(result.FreedSpace))
+			name := padToWidth(truncateToWidth(result.Category.Name, nameWidth, false), nameWidth)
+			lines = append(lines, fmt.Sprintf("  %s %s %s", SuccessStyle.Render("✓"), name, SizeStyle.Render(size)))
 		}
 	}
 
@@ -102,10 +104,11 @@ func (m *Model) buildReportLines() []string {
 				lines = append(lines, SuccessStyle.Render("Succeeded:"))
 				hasSuccess = true
 			}
-			size := fmt.Sprintf("%*s", colSize, utils.FormatSize(result.FreedSpace))
-			lines = append(lines, fmt.Sprintf("  %s %-26s %s",
+			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(result.FreedSpace))
+			name := padToWidth(truncateToWidth(result.Category.Name, nameWidth, false), nameWidth)
+			lines = append(lines, fmt.Sprintf("  %s %s %s",
 				WarningStyle.Render("△"),
-				result.Category.Name,
+				name,
 				SizeStyle.Render(size)))
 		}
 	}
@@ -148,4 +151,16 @@ func (m *Model) buildReportLines() []string {
 	}
 
 	return lines
+}
+
+func (m *Model) reportDividerWidth() int {
+	width := m.width - 4
+	if width < 30 {
+		width = 30
+	}
+	return width
+}
+
+func (m *Model) reportColumnWidths() (int, int) {
+	return m.nameSizeColumns(4, true)
 }

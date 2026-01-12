@@ -210,11 +210,7 @@ func (m *Model) viewPreview() string {
 	b.WriteString(header)
 
 	if cat != nil {
-		fixedWidth := previewPrefixWidth + colSize + colAge + 2
-		pathWidth := m.width - fixedWidth
-		if pathWidth < 1 {
-			pathWidth = 1
-		}
+		pathWidth, sizeWidth, ageWidth := m.previewColumnWidths()
 
 		// Show search input if in typing mode
 		if m.filterState == FilterTyping {
@@ -231,7 +227,7 @@ func (m *Model) viewPreview() string {
 		}
 
 		colHeader := fmt.Sprintf("%*s%-*s %*s %*s",
-			previewPrefixWidth, "", pathWidth, "Path", colSize, "Size", colAge, "Age")
+			previewPrefixWidth, "", pathWidth, "Path", sizeWidth, "Size", ageWidth, "Age")
 		b.WriteString(MutedStyle.Render(colHeader) + "\n")
 
 		// Handle empty filter results
@@ -275,8 +271,8 @@ func (m *Model) viewPreview() string {
 				paddedPath = SelectedStyle.Render(paddedPath)
 			}
 
-			size := fmt.Sprintf("%*s", colSize, utils.FormatSize(item.Size))
-			age := fmt.Sprintf("%*s", colAge, utils.FormatAge(item.ModifiedAt))
+			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(item.Size))
+			age := fmt.Sprintf("%*s", ageWidth, utils.FormatAge(item.ModifiedAt))
 			if isExcluded {
 				size = MutedStyle.Render(size)
 				age = MutedStyle.Render(age)
@@ -448,7 +444,8 @@ func (m *Model) viewDrillDown() string {
 			endIdx = len(sortedItems)
 		}
 
-		nameWidth := m.width - 20
+		_, sizeWidth, ageWidth := m.previewColumnWidths()
+		nameWidth := m.width - (sizeWidth + ageWidth + 6)
 		if nameWidth < 20 {
 			nameWidth = 20
 		}
@@ -474,8 +471,8 @@ func (m *Model) viewDrillDown() string {
 				paddedName = SelectedStyle.Render(paddedName)
 			}
 
-			size := fmt.Sprintf("%*s", colSize, utils.FormatSize(item.Size))
-			age := fmt.Sprintf("%*s", colAge, utils.FormatAge(item.ModifiedAt))
+			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(item.Size))
+			age := fmt.Sprintf("%*s", ageWidth, utils.FormatAge(item.ModifiedAt))
 			b.WriteString(fmt.Sprintf("%s%s %s %s %s\n", cursor, icon, paddedName, SizeStyle.Render(size), MutedStyle.Render(age)))
 		}
 

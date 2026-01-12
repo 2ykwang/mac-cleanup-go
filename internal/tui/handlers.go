@@ -48,6 +48,10 @@ func (m *Model) handleReportKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if !m.isListKeyAllowed(msg) {
+		return m, nil
+	}
+
 	switch msg.String() {
 	case "?":
 		m.help.ShowAll = !m.help.ShowAll
@@ -120,6 +124,18 @@ func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+func (m *Model) isListKeyAllowed(msg tea.KeyMsg) bool {
+	if !m.scanning {
+		return true
+	}
+	switch msg.String() {
+	case "?", "ctrl+c", "q", "up", "k", "down", "j":
+		return true
+	default:
+		return false
+	}
 }
 
 func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
