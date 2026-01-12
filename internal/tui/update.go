@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
@@ -16,6 +17,12 @@ func (m *Model) startScan() tea.Cmd {
 	scanners := m.registry.Available()
 	m.scanTotal = len(scanners)
 	m.scanCompleted = 0
+
+	m.initScanResults(scanners)
+	if len(scanners) == 0 {
+		m.scanning = false
+		return nil
+	}
 
 	cmds := make([]tea.Cmd, len(scanners))
 	for i, s := range scanners {
@@ -53,6 +60,41 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.handleCleanDone(msg)
 	}
 	return m, nil
+}
+
+func (m *Model) initScanResults(scanners []scanner.Scanner) {
+	m.results = m.results[:0]
+	m.resultMap = make(map[string]*types.ScanResult)
+
+	available := make(map[string]scanner.Scanner, len(scanners))
+	for _, s := range scanners {
+		available[s.Category().ID] = s
+	}
+
+	if m.config != nil {
+		for _, cat := range m.config.Categories {
+			if _, ok := available[cat.ID]; !ok {
+				continue
+			}
+			result := &types.ScanResult{
+				Category: cat,
+				Items:    make([]types.CleanableItem, 0),
+			}
+			m.results = append(m.results, result)
+			m.resultMap[cat.ID] = result
+		}
+		return
+	}
+
+	for _, s := range scanners {
+		cat := s.Category()
+		result := &types.ScanResult{
+			Category: cat,
+			Items:    make([]types.CleanableItem, 0),
+		}
+		m.results = append(m.results, result)
+		m.resultMap[cat.ID] = result
+	}
 }
 
 func (m *Model) handleWindowSize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
@@ -127,20 +169,42 @@ func (m *Model) handleScanResult(result *types.ScanResult) {
 			})
 		}
 
-		// Collect results with items
-		if result.TotalSize > 0 {
+		if len(result.Items) > 0 {
 			sort.Slice(result.Items, func(i, j int) bool {
 				return result.Items[i].Size > result.Items[j].Size
 			})
+		}
+
+		if existing, ok := m.resultMap[result.Category.ID]; ok {
+			existing.Items = result.Items
+			existing.TotalSize = result.TotalSize
+			existing.TotalFileCount = result.TotalFileCount
+			existing.Error = result.Error
+		} else {
 			m.results = append(m.results, result)
 			m.resultMap[result.Category.ID] = result
-			sort.Slice(m.results, func(i, j int) bool {
-				return m.results[i].TotalSize > m.results[j].TotalSize
-			})
 		}
+
+		sort.Slice(m.results, func(i, j int) bool {
+			return m.results[i].TotalSize > m.results[j].TotalSize
+		})
 	}
 	m.scanCompleted++
 	if m.scanCompleted >= m.scanTotal {
 		m.scanning = false
+		m.finalizeScanResults()
 	}
+}
+
+func (m *Model) finalizeScanResults() {
+	filtered := make([]*types.ScanResult, 0, len(m.results))
+	m.resultMap = make(map[string]*types.ScanResult)
+	for _, result := range m.results {
+		if result.TotalSize <= 0 {
+			continue
+		}
+		filtered = append(filtered, result)
+		m.resultMap[result.Category.ID] = result
+	}
+	m.results = filtered
 }

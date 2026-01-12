@@ -238,8 +238,15 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult) string {
 		name = SelectedStyle.Render(name)
 	}
 
-	size := fmt.Sprintf("%*s", colSize, utils.FormatSize(r.TotalSize))
-	count := fmt.Sprintf("%*d", colNum, r.TotalFileCount)
+	sizeText := utils.FormatSize(r.TotalSize)
+	countText := fmt.Sprintf("%d", r.TotalFileCount)
+	if m.scanning && r.TotalSize == 0 && r.TotalFileCount == 0 && len(r.Items) == 0 {
+		sizeText = "-"
+		countText = "-"
+	}
+
+	size := fmt.Sprintf("%*s", colSize, sizeText)
+	count := fmt.Sprintf("%*s", colNum, countText)
 
 	if isManual {
 		size = MutedStyle.Render(size)
