@@ -654,10 +654,11 @@ func TestRenderListItem_ScanningShowsPlaceholderCounts(t *testing.T) {
 		Category: types.Category{ID: "cat1", Name: "Test Cat", Safety: types.SafetyLevelSafe},
 	}
 
-	output := m.renderListItem(0, result)
+	nameWidth, sizeWidth, countWidth := m.listColumnWidths()
+	output := m.renderListItem(0, result, nameWidth, sizeWidth, countWidth)
 
-	assert.Contains(t, output, fmt.Sprintf("%*s", colSize, "-"))
-	assert.Contains(t, output, fmt.Sprintf("%*s", colNum, "-"))
+	assert.Contains(t, output, fmt.Sprintf("%*s", sizeWidth, "-"))
+	assert.Contains(t, output, fmt.Sprintf("%*s", countWidth, "-"))
 }
 
 func TestHandleScanResult_UpdatesExistingEntry(t *testing.T) {
@@ -715,6 +716,50 @@ func TestHandleListKey_Scanning_DisablesSelection(t *testing.T) {
 	m.handleListKey(tea.KeyMsg{Type: tea.KeySpace})
 
 	assert.False(t, m.selected["cat1"])
+}
+
+func TestListColumnWidths_CappedAtMax(t *testing.T) {
+	m := newTestModel()
+	m.width = 200
+
+	nameWidth, sizeWidth, countWidth := m.listColumnWidths()
+
+	assert.Equal(t, colName, nameWidth)
+	assert.Equal(t, colSize, sizeWidth)
+	assert.Equal(t, colNum, countWidth)
+}
+
+func TestListColumnWidths_ShrinksWithWidth(t *testing.T) {
+	m := newTestModel()
+	m.width = 40
+
+	nameWidth, sizeWidth, countWidth := m.listColumnWidths()
+
+	assert.GreaterOrEqual(t, nameWidth, 1)
+	assert.GreaterOrEqual(t, sizeWidth, 1)
+	assert.GreaterOrEqual(t, countWidth, 1)
+	assert.Less(t, nameWidth+sizeWidth+countWidth, colName+colSize+colNum)
+}
+
+func TestPreviewColumnWidths_PathExpands(t *testing.T) {
+	m := newTestModel()
+	m.width = 120
+
+	pathWidth, sizeWidth, ageWidth := m.previewColumnWidths()
+
+	assert.GreaterOrEqual(t, pathWidth, 1)
+	assert.GreaterOrEqual(t, sizeWidth, 1)
+	assert.GreaterOrEqual(t, ageWidth, 1)
+}
+
+func TestNameSizeColumns_AllowOverflow(t *testing.T) {
+	m := newTestModel()
+	m.width = 140
+
+	nameWidth, sizeWidth := m.nameSizeColumns(2, true)
+
+	assert.Greater(t, nameWidth, colName-1)
+	assert.Greater(t, sizeWidth, colSize-1)
 }
 
 func TestViewList_ContainsFooterShortcuts(t *testing.T) {
@@ -946,7 +991,8 @@ func TestRenderListItem_ManualItemMuted(t *testing.T) {
 	manualResult := m.results[2]
 	assert.Equal(t, types.MethodManual, manualResult.Category.Method)
 
-	output := m.renderListItem(2, manualResult)
+	nameWidth, sizeWidth, countWidth := m.listColumnWidths()
+	output := m.renderListItem(2, manualResult, nameWidth, sizeWidth, countWidth)
 
 	assert.Contains(t, output, "[Manual]")
 	assert.Contains(t, output, "Telegram DB")
@@ -955,7 +1001,7 @@ func TestRenderListItem_ManualItemMuted(t *testing.T) {
 	assert.Contains(t, output, mutedCheckbox, "manual item checkbox should be rendered with MutedStyle")
 
 	m.selected[manualResult.Category.ID] = true
-	outputSelected := m.renderListItem(2, manualResult)
+	outputSelected := m.renderListItem(2, manualResult, nameWidth, sizeWidth, countWidth)
 	assert.NotContains(t, outputSelected, "[✓]", "manual item should never show checked indicator")
 }
 

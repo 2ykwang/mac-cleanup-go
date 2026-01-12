@@ -7,36 +7,37 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
-// cleaningRowWidth matches list view width for visual consistency
-const cleaningRowWidth = 60
-
 func (m *Model) viewCleaning() string {
 	var b strings.Builder
 
 	b.WriteString(HeaderStyle.Render("Cleaning..."))
 	b.WriteString("\n\n")
 
+	rowWidth := m.cleaningRowWidth()
+	nameWidth, sizeWidth := m.cleaningColumnWidths(2)
+
 	// Show completed categories
 	for _, cat := range m.cleaningCompleted {
+		displayName := padToWidth(truncateToWidth(cat.name, nameWidth, false), nameWidth)
 		if cat.errors == 0 {
 			// Full success
-			size := fmt.Sprintf("%*s", colSize, utils.FormatSize(cat.freedSpace))
-			b.WriteString(fmt.Sprintf("%s %-30s %s\n",
+			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(cat.freedSpace))
+			b.WriteString(fmt.Sprintf("%s %s %s\n",
 				SuccessStyle.Render("✓"),
-				cat.name,
+				displayName,
 				SizeStyle.Render(size)))
 		} else if cat.cleaned > 0 {
 			// Partial success
-			size := fmt.Sprintf("%*s", colSize, utils.FormatSize(cat.freedSpace))
-			b.WriteString(fmt.Sprintf("%s %-30s %s\n",
+			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(cat.freedSpace))
+			b.WriteString(fmt.Sprintf("%s %s %s\n",
 				WarningStyle.Render("△"),
-				cat.name,
+				displayName,
 				SizeStyle.Render(size)))
 		} else {
 			// All failed
-			b.WriteString(fmt.Sprintf("%s %-30s %s\n",
+			b.WriteString(fmt.Sprintf("%s %s %s\n",
 				DangerStyle.Render("✗"),
-				cat.name,
+				displayName,
 				MutedStyle.Render("failed")))
 		}
 	}
@@ -67,7 +68,7 @@ func (m *Model) viewCleaning() string {
 	b.WriteString("\n")
 
 	if m.cleaningTotal > 0 {
-		m.cleaningProgress.Width = cleaningRowWidth
+		m.cleaningProgress.Width = rowWidth
 		b.WriteString(m.cleaningProgress.View())
 		b.WriteString("\n")
 		percent := 0
@@ -81,10 +82,23 @@ func (m *Model) viewCleaning() string {
 	return b.String()
 }
 
+func (m *Model) cleaningRowWidth() int {
+	width := m.width
+	if width < 40 {
+		width = 40
+	}
+	return width
+}
+
+func (m *Model) cleaningColumnWidths(overhead int) (int, int) {
+	return m.nameSizeColumns(overhead, true)
+}
+
 // renderRecentDeleted renders the recent deletions list with status icons and sizes
 func (m *Model) renderRecentDeleted() string {
 	var b strings.Builder
 	items := m.recentDeleted.Items()
+	nameWidth, sizeWidth := m.cleaningColumnWidths(5)
 
 	for _, entry := range items {
 		// Status icon
@@ -95,10 +109,11 @@ func (m *Model) renderRecentDeleted() string {
 			icon = DangerStyle.Render("✗")
 		}
 
-		displayPath := shortenPath(entry.Path, 40)
+		displayPath := shortenPath(entry.Path, nameWidth)
+		displayPath = padToWidth(displayPath, nameWidth)
 
 		// Format size
-		size := fmt.Sprintf("%*s", colSize, utils.FormatSize(entry.Size))
+		size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(entry.Size))
 
 		// Build line
 		if entry.Success {

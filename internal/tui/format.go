@@ -57,6 +57,137 @@ func Divider(width int) string {
 	return DividerStyle.Render(line)
 }
 
+func splitColumns(available int, weights, caps []int) []int {
+	cols := make([]int, len(weights))
+	if available <= 0 {
+		return cols
+	}
+
+	weightSum := 0
+	for _, w := range weights {
+		weightSum += w
+	}
+	if weightSum == 0 {
+		return cols
+	}
+
+	remaining := available
+	for i, w := range weights {
+		width := int(float64(w) * float64(available) / float64(weightSum))
+		if width < 1 {
+			width = 1
+		}
+		if caps != nil && width > caps[i] {
+			width = caps[i]
+		}
+		cols[i] = width
+		remaining -= width
+	}
+
+	for remaining > 0 {
+		grew := false
+		for i := range cols {
+			if caps == nil || cols[i] < caps[i] {
+				cols[i]++
+				remaining--
+				grew = true
+				if remaining == 0 {
+					break
+				}
+			}
+		}
+		if !grew {
+			break
+		}
+	}
+
+	for remaining < 0 {
+		idx := -1
+		maxWidth := 1
+		for i, w := range cols {
+			if w > maxWidth {
+				maxWidth = w
+				idx = i
+			}
+		}
+		if idx == -1 {
+			break
+		}
+		cols[idx]--
+		remaining++
+	}
+
+	return cols
+}
+
+func capColumns(available int, caps []int) []int {
+	return splitColumns(available, caps, caps)
+}
+
+func columnWidths(totalWidth, prefixWidth, gapCount int, maxCols []int, allowOverflow bool) []int {
+	available := totalWidth - prefixWidth - gapCount
+	if allowOverflow {
+		return splitColumns(available, maxCols, nil)
+	}
+	return capColumns(available, maxCols)
+}
+
+func (m *Model) listColumnWidths() (int, int, int) {
+	cols := columnWidths(m.width, listPrefixWidth, 2, []int{colName, colSize, colNum}, false)
+	return cols[0], cols[1], cols[2]
+}
+
+func (m *Model) previewColumnWidths() (int, int, int) {
+	available := m.width - previewPrefixWidth - 2
+	if available < 1 {
+		return 1, 0, 0
+	}
+
+	sizeAgeMax := colSize + colAge
+	limit := available - 1
+	if limit < 0 {
+		limit = 0
+	}
+	if limit > sizeAgeMax {
+		limit = sizeAgeMax
+	}
+
+	cols := capColumns(limit, []int{colSize, colAge})
+	pathWidth := available - (cols[0] + cols[1])
+	if pathWidth < 1 {
+		pathWidth = 1
+	}
+	return pathWidth, cols[0], cols[1]
+}
+
+func (m *Model) nameSizeColumns(overhead int, allowOverflow bool) (int, int) {
+	cols := columnWidths(m.width, overhead, 1, []int{colName, colSize}, allowOverflow)
+	nameWidth := cols[0]
+	sizeWidth := cols[1]
+
+	minNameWidth := 20
+	minSizeWidth := 8
+	if sizeWidth < minSizeWidth {
+		sizeWidth = minSizeWidth
+	}
+	if nameWidth < minNameWidth {
+		nameWidth = minNameWidth
+	}
+
+	total := m.width - overhead - 1
+	if total < 0 {
+		total = 0
+	}
+	if nameWidth+sizeWidth > total {
+		nameWidth = total - sizeWidth
+		if nameWidth < 1 {
+			nameWidth = 1
+		}
+	}
+
+	return nameWidth, sizeWidth
+}
+
 // Helper functions
 func formatSize(bytes int64) string {
 	return utils.FormatSize(bytes)

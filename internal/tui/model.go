@@ -21,7 +21,10 @@ import (
 const (
 	defaultRecentItemsCapacity = 10
 	maxContentWidth            = 140
-	maxListContentWidth        = 100
+	maxListContentWidth        = 120
+	maxPreviewContentWidth     = 120
+	maxReportContentWidth      = 120
+	maxCleaningContentWidth    = 120
 )
 
 // Model is the main TUI model
@@ -133,13 +136,13 @@ func (m *Model) View() string {
 	case ViewList:
 		return m.renderCentered(m.viewList, maxListContentWidth)
 	case ViewPreview:
-		return m.renderCentered(m.viewPreview, maxContentWidth)
+		return m.renderCentered(m.viewPreview, maxPreviewContentWidth)
 	case ViewConfirm:
 		return m.renderCentered(m.viewConfirm, maxContentWidth)
 	case ViewCleaning:
-		return m.renderCentered(m.viewCleaning, maxContentWidth)
+		return m.renderCentered(m.viewCleaning, maxCleaningContentWidth)
 	case ViewReport:
-		return m.renderCentered(m.viewReport, maxContentWidth)
+		return m.renderCentered(m.viewReport, maxReportContentWidth)
 	case ViewGuide:
 		return m.renderCentered(m.viewGuide, maxContentWidth)
 	default:
