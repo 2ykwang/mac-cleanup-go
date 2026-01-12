@@ -10,7 +10,7 @@
   <a href="https://golangci-lint.run/"><img src="https://img.shields.io/badge/linted%20by-golangci--lint-brightgreen" alt="golangci-lint"></a>
 </p>
 
-![demo](assets/demo2.gif)
+![demo](assets/demo.gif)
 
 ## Features
 
