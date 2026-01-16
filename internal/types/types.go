@@ -19,6 +19,21 @@ const (
 	MethodManual    CleanupMethod = "manual"
 )
 
+// SafetyHint represents the safety level hint for individual items.
+type SafetyHint int
+
+const (
+	SafetyHintSafe    SafetyHint = iota // Safe to delete (e.g., dangling images)
+	SafetyHintWarning                   // Caution needed (e.g., images with containers)
+	SafetyHintDanger                    // Dangerous to delete (e.g., running containers)
+)
+
+// Column represents a dynamic column for builtin items.
+type Column struct {
+	Header string // Column header (e.g., "Status", "Repository")
+	Value  string // Column value (e.g., "dangling", "nginx")
+}
+
 // SortOrder represents the sorting criterion for items
 type SortOrder string
 
@@ -84,6 +99,12 @@ type CleanableItem struct {
 	Name        string
 	IsDirectory bool
 	ModifiedAt  time.Time
+
+	// Fields for builtin items
+	// These are optional; zero values indicate a standard file-based item.
+	Columns    []Column   // Dynamic columns for display (nil for file-based items)
+	SafetyHint SafetyHint // Safety level hint (Safe=0 is default, suitable for files)
+	Selected   bool       // Default selection state for builtin items
 }
 
 type ScanResult struct {
