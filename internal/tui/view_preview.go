@@ -258,6 +258,13 @@ func (m *Model) viewPreview() string {
 				checkbox = MutedStyle.Render("[ ]")
 			}
 
+			// Builtin items with Columns (e.g., Docker images)
+			if len(item.Columns) > 0 {
+				b.WriteString(m.renderBuiltinItem(cursor, checkbox, item, isCurrent, isExcluded, pathWidth, sizeWidth))
+				continue
+			}
+
+			// Standard file-based items
 			icon := " "
 			if item.IsDirectory {
 				icon = ">"
@@ -483,4 +490,42 @@ func (m *Model) viewDrillDown() string {
 
 	b.WriteString(footer)
 	return b.String()
+}
+
+// renderBuiltinItem renders a builtin item (e.g., Docker image) with Columns.
+// Format: cursor checkbox dot name size
+func (m *Model) renderBuiltinItem(cursor, checkbox string, item types.CleanableItem, isCurrent, isExcluded bool, nameWidth, sizeWidth int) string {
+	// Safety hint dot
+	dot := safetyHintDot(item.SafetyHint)
+
+	// Name from item.Name (e.g., "nginx:latest")
+	name := truncateToWidth(item.Name, nameWidth, false)
+	paddedName := padToWidth(name, nameWidth)
+	if isExcluded {
+		paddedName = MutedStyle.Render(paddedName)
+	} else if isCurrent {
+		paddedName = SelectedStyle.Render(paddedName)
+	}
+
+	// Size
+	size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(item.Size))
+	if isExcluded {
+		size = MutedStyle.Render(size)
+	} else {
+		size = SizeStyle.Render(size)
+	}
+
+	// Find status column for display
+	status := ""
+	for _, col := range item.Columns {
+		if col.Header == "Status" {
+			status = col.Value
+			break
+		}
+	}
+	if status != "" {
+		status = " " + MutedStyle.Render("["+status+"]")
+	}
+
+	return fmt.Sprintf("%s%s %s %s %s%s\n", cursor, checkbox, dot, paddedName, size, status)
 }
