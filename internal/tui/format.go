@@ -219,6 +219,23 @@ func safetyBadge(level types.SafetyLevel) string {
 	}
 }
 
+// safetyHintStyle returns the appropriate style for a SafetyHint.
+func safetyHintStyle(hint types.SafetyHint) lipgloss.Style {
+	switch hint {
+	case types.SafetyHintWarning:
+		return WarningStyle
+	case types.SafetyHintDanger:
+		return DangerStyle
+	default: // SafetyHintSafe
+		return MutedStyle
+	}
+}
+
+// safetyHintDot renders a colored dot based on SafetyHint.
+func safetyHintDot(hint types.SafetyHint) string {
+	return safetyHintStyle(hint).Render("●")
+}
+
 func (m *Model) methodBadge(method types.CleanupMethod) string {
 	switch method {
 	case types.MethodManual:
