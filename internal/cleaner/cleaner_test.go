@@ -14,8 +14,8 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
-// mockScanner implements target.Scanner for testing
-type mockScanner struct {
+// mockTarget implements target.Target for testing
+type mockTarget struct {
 	category    types.Category
 	cleanCalled bool
 	cleanItems  []types.CleanableItem
@@ -23,15 +23,15 @@ type mockScanner struct {
 	cleanErr    error
 }
 
-type nilResultScanner struct {
+type nilResultTarget struct {
 	category types.Category
 }
 
-func (m *mockScanner) Scan() (*types.ScanResult, error) {
+func (m *mockTarget) Scan() (*types.ScanResult, error) {
 	return nil, nil
 }
 
-func (m *mockScanner) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
+func (m *mockTarget) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
 	m.cleanCalled = true
 	m.cleanItems = items
 	if m.cleanResult != nil {
@@ -45,27 +45,27 @@ func (m *mockScanner) Clean(items []types.CleanableItem) (*types.CleanResult, er
 	}, m.cleanErr
 }
 
-func (m *mockScanner) Category() types.Category {
+func (m *mockTarget) Category() types.Category {
 	return m.category
 }
 
-func (m *mockScanner) IsAvailable() bool {
+func (m *mockTarget) IsAvailable() bool {
 	return true
 }
 
-func (s *nilResultScanner) Scan() (*types.ScanResult, error) {
+func (s *nilResultTarget) Scan() (*types.ScanResult, error) {
 	return nil, nil
 }
 
-func (s *nilResultScanner) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
+func (s *nilResultTarget) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
 	return nil, errors.New("scanner failed")
 }
 
-func (s *nilResultScanner) Category() types.Category {
+func (s *nilResultTarget) Category() types.Category {
 	return s.category
 }
 
-func (s *nilResultScanner) IsAvailable() bool {
+func (s *nilResultTarget) IsAvailable() bool {
 	return true
 }
 
@@ -185,9 +185,9 @@ func TestClean_Permanent_SkipsSIPProtectedPaths(t *testing.T) {
 	assert.Equal(t, 1, result.SkippedItems)
 }
 
-func TestClean_MethodBuiltin_DelegatesToScanner(t *testing.T) {
+func TestClean_MethodBuiltin_DelegatesToTarget(t *testing.T) {
 	registry := target.NewRegistry()
-	mock := &mockScanner{
+	mock := &mockTarget{
 		category: types.Category{
 			ID:     "docker",
 			Name:   "Docker",
@@ -210,13 +210,13 @@ func TestClean_MethodBuiltin_DelegatesToScanner(t *testing.T) {
 
 	result := c.Clean(cat, items)
 
-	assert.True(t, mock.cleanCalled, "Scanner.Clean should be called for MethodBuiltin")
-	assert.Equal(t, items, mock.cleanItems, "Items should be passed to Scanner.Clean")
+	assert.True(t, mock.cleanCalled, "Target.Clean should be called for MethodBuiltin")
+	assert.Equal(t, items, mock.cleanItems, "Items should be passed to Target.Clean")
 	assert.Equal(t, 2, result.CleanedItems)
 	assert.Equal(t, int64(100), result.FreedSpace)
 }
 
-func TestClean_MethodBuiltin_ScannerNotFound(t *testing.T) {
+func TestClean_MethodBuiltin_TargetNotFound(t *testing.T) {
 	registry := target.NewRegistry()
 	c := New(registry)
 
@@ -236,9 +236,9 @@ func TestClean_MethodBuiltin_ScannerNotFound(t *testing.T) {
 	assert.Equal(t, 0, result.CleanedItems)
 }
 
-func TestClean_MethodBuiltin_ScannerReturnsError(t *testing.T) {
+func TestClean_MethodBuiltin_TargetReturnsError(t *testing.T) {
 	registry := target.NewRegistry()
-	mock := &mockScanner{
+	mock := &mockTarget{
 		category: types.Category{
 			ID:     "docker",
 			Name:   "Docker",
@@ -272,9 +272,9 @@ func TestClean_MethodBuiltin_ScannerReturnsError(t *testing.T) {
 	assert.Contains(t, result.Errors, "partial failure")
 }
 
-func TestClean_MethodBuiltin_ScannerErrorPropagates(t *testing.T) {
+func TestClean_MethodBuiltin_TargetErrorPropagates(t *testing.T) {
 	registry := target.NewRegistry()
-	mock := &mockScanner{
+	mock := &mockTarget{
 		category: types.Category{
 			ID:     "docker",
 			Name:   "Docker",
@@ -298,9 +298,9 @@ func TestClean_MethodBuiltin_ScannerErrorPropagates(t *testing.T) {
 	assert.Contains(t, result.Errors[0], "scanner failed")
 }
 
-func TestClean_MethodBuiltin_ScannerNilResultWithError(t *testing.T) {
+func TestClean_MethodBuiltin_TargetNilResultWithError(t *testing.T) {
 	registry := target.NewRegistry()
-	impl := &nilResultScanner{
+	impl := &nilResultTarget{
 		category: types.Category{
 			ID:     "docker",
 			Name:   "Docker",

@@ -9,22 +9,22 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
-func TestNewDockerScanner_ReturnsNonNil(t *testing.T) {
+func TestNewDockerTarget_ReturnsNonNil(t *testing.T) {
 	cat := types.Category{ID: "docker", Name: "Docker"}
 
-	s := NewDockerScanner(cat)
+	s := NewDockerTarget(cat)
 
 	assert.NotNil(t, s)
 }
 
-func TestDockerScanner_Category_ReturnsConfiguredCategory(t *testing.T) {
+func TestDockerTarget_Category_ReturnsConfiguredCategory(t *testing.T) {
 	cat := types.Category{
 		ID:     "docker",
 		Name:   "Docker",
 		Safety: types.SafetyLevelModerate,
 	}
 
-	s := NewDockerScanner(cat)
+	s := NewDockerTarget(cat)
 	result := s.Category()
 
 	assert.Equal(t, "docker", result.ID)
@@ -122,9 +122,9 @@ func TestDockerTypeName_UnknownType(t *testing.T) {
 	assert.Equal(t, "Docker unknown", result)
 }
 
-func TestDockerScanner_Clean_IncludesCategoryInResult(t *testing.T) {
+func TestDockerTarget_Clean_IncludesCategoryInResult(t *testing.T) {
 	cat := types.Category{ID: "docker", Name: "Docker"}
-	s := NewDockerScanner(cat)
+	s := NewDockerTarget(cat)
 
 	result, err := s.Clean(nil)
 
@@ -132,7 +132,7 @@ func TestDockerScanner_Clean_IncludesCategoryInResult(t *testing.T) {
 	assert.Equal(t, "docker", result.Category.ID)
 }
 
-func TestDockerScanner_Scan_Integration(t *testing.T) {
+func TestDockerTarget_Scan_Integration(t *testing.T) {
 	cat := types.Category{
 		ID:       "docker",
 		Name:     "Docker",
@@ -140,7 +140,7 @@ func TestDockerScanner_Scan_Integration(t *testing.T) {
 		CheckCmd: "docker",
 	}
 
-	s := NewDockerScanner(cat)
+	s := NewDockerTarget(cat)
 	if !s.IsAvailable() {
 		t.Skip("Docker not available")
 	}

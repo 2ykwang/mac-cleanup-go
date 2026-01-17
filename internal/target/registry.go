@@ -6,10 +6,10 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
-var builtinFactories = map[string]func(types.Category) Scanner{
-	"docker":        func(cat types.Category) Scanner { return NewDockerScanner(cat) },
-	"homebrew":      func(cat types.Category) Scanner { return NewBrewScanner(cat) },
-	"old-downloads": func(cat types.Category) Scanner { return NewOldDownloadScanner(cat, defaultDaysOld) },
+var builtinFactories = map[string]func(types.Category) Target{
+	"docker":        func(cat types.Category) Target { return NewDockerTarget(cat) },
+	"homebrew":      func(cat types.Category) Target { return NewBrewTarget(cat) },
+	"old-downloads": func(cat types.Category) Target { return NewOldDownloadTarget(cat, defaultDaysOld) },
 }
 
 func IsBuiltinID(id string) bool {
@@ -21,10 +21,10 @@ func DefaultRegistry(cfg *types.Config) (*Registry, error) {
 	r := NewRegistry()
 
 	for _, cat := range cfg.Categories {
-		var s Scanner
+		var s Target
 		switch {
 		case cat.ID == "system-cache":
-			s = NewSystemCacheScanner(cat, cfg.Categories)
+			s = NewSystemCacheTarget(cat, cfg.Categories)
 		case cat.Method == types.MethodBuiltin:
 			if factory, ok := builtinFactories[cat.ID]; ok {
 				s = factory(cat)
@@ -32,7 +32,7 @@ func DefaultRegistry(cfg *types.Config) (*Registry, error) {
 				return nil, fmt.Errorf("unknown builtin scanner id: %s", cat.ID)
 			}
 		default:
-			s = NewPathScanner(cat)
+			s = NewPathTarget(cat)
 		}
 		r.Register(s)
 	}

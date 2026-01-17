@@ -62,11 +62,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *Model) initScanResults(scanners []target.Scanner) {
+func (m *Model) initScanResults(scanners []target.Target) {
 	m.results = m.results[:0]
 	m.resultMap = make(map[string]*types.ScanResult)
 
-	available := make(map[string]target.Scanner, len(scanners))
+	available := make(map[string]target.Target, len(scanners))
 	for _, s := range scanners {
 		available[s.Category().ID] = s
 	}

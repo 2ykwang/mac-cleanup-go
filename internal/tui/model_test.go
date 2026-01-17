@@ -35,24 +35,24 @@ func newTestModel() *Model {
 	return m
 }
 
-type testScanner struct {
+type testTarget struct {
 	category  types.Category
 	available bool
 }
 
-func (s testScanner) Scan() (*types.ScanResult, error) {
+func (s testTarget) Scan() (*types.ScanResult, error) {
 	return &types.ScanResult{Category: s.category}, nil
 }
 
-func (s testScanner) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
+func (s testTarget) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
 	return &types.CleanResult{Category: s.category}, nil
 }
 
-func (s testScanner) Category() types.Category {
+func (s testTarget) Category() types.Category {
 	return s.category
 }
 
-func (s testScanner) IsAvailable() bool {
+func (s testTarget) IsAvailable() bool {
 	return s.available
 }
 
@@ -632,7 +632,7 @@ func TestViewList_ContainsResults(t *testing.T) {
 	assert.Contains(t, output, "Xcode Archives")
 }
 
-func TestStartScan_NoAvailableScannersStopsScanning(t *testing.T) {
+func TestStartScan_NoAvailableTargetsStopsScanning(t *testing.T) {
 	m := newTestModel()
 	m.scanning = true
 	m.registry = target.NewRegistry()
@@ -668,8 +668,8 @@ func TestHandleScanResult_UpdatesExistingEntry(t *testing.T) {
 	m.scanning = true
 	m.scanTotal = 2
 
-	available := []target.Scanner{
-		testScanner{category: cat, available: true},
+	available := []target.Target{
+		testTarget{category: cat, available: true},
 	}
 	m.initScanResults(available)
 
@@ -696,8 +696,8 @@ func TestHandleScanResult_FinalizeRemovesZeroSize(t *testing.T) {
 	m.scanning = true
 	m.scanTotal = 1
 
-	available := []target.Scanner{
-		testScanner{category: cat, available: true},
+	available := []target.Target{
+		testTarget{category: cat, available: true},
 	}
 	m.initScanResults(available)
 

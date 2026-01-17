@@ -9,25 +9,25 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
-type BrewScanner struct {
+type BrewTarget struct {
 	category  types.Category
 	cachePath string
 }
 
-func NewBrewScanner(cat types.Category) *BrewScanner {
-	return &BrewScanner{category: cat}
+func NewBrewTarget(cat types.Category) *BrewTarget {
+	return &BrewTarget{category: cat}
 }
 
-func (s *BrewScanner) Category() types.Category {
+func (s *BrewTarget) Category() types.Category {
 	return s.category
 }
 
-func (s *BrewScanner) IsAvailable() bool {
+func (s *BrewTarget) IsAvailable() bool {
 	return utils.CommandExists("brew")
 }
 
 // getBrewCachePath returns the brew cache directory path.
-func (s *BrewScanner) getBrewCachePath() string {
+func (s *BrewTarget) getBrewCachePath() string {
 	if s.cachePath != "" {
 		return s.cachePath
 	}
@@ -42,7 +42,7 @@ func (s *BrewScanner) getBrewCachePath() string {
 	return s.cachePath
 }
 
-func (s *BrewScanner) Scan() (*types.ScanResult, error) {
+func (s *BrewTarget) Scan() (*types.ScanResult, error) {
 	result := &types.ScanResult{
 		Category: s.category,
 		Items:    make([]types.CleanableItem, 0),
@@ -82,7 +82,7 @@ func (s *BrewScanner) Scan() (*types.ScanResult, error) {
 	return result, nil
 }
 
-func (s *BrewScanner) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
+func (s *BrewTarget) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
 	result := &types.CleanResult{
 		Category: s.category,
 		Errors:   make([]string, 0),

@@ -9,23 +9,23 @@ import (
 
 const defaultDaysOld = 30
 
-// OldDownloadScanner scans for old files in the Downloads folder.
-type OldDownloadScanner struct {
-	*PathScanner
+// OldDownloadTarget scans for old files in the Downloads folder.
+type OldDownloadTarget struct {
+	*PathTarget
 	daysOld int
 }
 
-func NewOldDownloadScanner(cat types.Category, daysOld int) *OldDownloadScanner {
-	return &OldDownloadScanner{
-		PathScanner: NewPathScanner(cat),
-		daysOld:     daysOld,
+func NewOldDownloadTarget(cat types.Category, daysOld int) *OldDownloadTarget {
+	return &OldDownloadTarget{
+		PathTarget: NewPathTarget(cat),
+		daysOld:    daysOld,
 	}
 }
 
 // Scan returns files older than the configured days' threshold.
-func (s *OldDownloadScanner) Scan() (*types.ScanResult, error) {
-	// Get all items from PathScanner
-	result, err := s.PathScanner.Scan()
+func (s *OldDownloadTarget) Scan() (*types.ScanResult, error) {
+	// Get all items from PathTarget
+	result, err := s.PathTarget.Scan()
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (s *OldDownloadScanner) Scan() (*types.ScanResult, error) {
 }
 
 // Clean moves the selected items to trash.
-func (s *OldDownloadScanner) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
+func (s *OldDownloadTarget) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
 	result := &types.CleanResult{
 		Category: s.category,
 		Errors:   make([]string, 0),

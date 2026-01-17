@@ -7,13 +7,13 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
-// SystemCacheScanner scans system cache excluding paths defined in other categories
-type SystemCacheScanner struct {
-	*PathScanner
+// SystemCacheTarget scans system cache excluding paths defined in other categories
+type SystemCacheTarget struct {
+	*PathTarget
 	excludePaths []string
 }
 
-func NewSystemCacheScanner(cat types.Category, allCategories []types.Category) *SystemCacheScanner {
+func NewSystemCacheTarget(cat types.Category, allCategories []types.Category) *SystemCacheTarget {
 	var excludes []string
 	for _, other := range allCategories {
 		if other.ID == cat.ID {
@@ -33,13 +33,13 @@ func NewSystemCacheScanner(cat types.Category, allCategories []types.Category) *
 		}
 	}
 
-	return &SystemCacheScanner{
-		PathScanner:  NewPathScanner(cat),
+	return &SystemCacheTarget{
+		PathTarget:   NewPathTarget(cat),
 		excludePaths: excludes,
 	}
 }
 
-func (s *SystemCacheScanner) Scan() (*types.ScanResult, error) {
+func (s *SystemCacheTarget) Scan() (*types.ScanResult, error) {
 	result := &types.ScanResult{
 		Category: s.category,
 		Items:    make([]types.CleanableItem, 0),
@@ -74,7 +74,7 @@ func (s *SystemCacheScanner) Scan() (*types.ScanResult, error) {
 	return result, nil
 }
 
-func (s *SystemCacheScanner) isExcluded(path string) bool {
+func (s *SystemCacheTarget) isExcluded(path string) bool {
 	// Normalize path to end with / for consistent matching
 	pathWithSlash := path
 	if !strings.HasSuffix(pathWithSlash, "/") {

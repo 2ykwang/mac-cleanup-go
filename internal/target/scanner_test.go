@@ -8,31 +8,31 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
-type mockScanner struct {
+type mockTarget struct {
 	cat       types.Category
 	available bool
 }
 
-func newMockScanner(id string, available bool) *mockScanner {
-	return &mockScanner{
+func newMockTarget(id string, available bool) *mockTarget {
+	return &mockTarget{
 		cat:       types.Category{ID: id, Name: "Mock " + id},
 		available: available,
 	}
 }
 
-func (m *mockScanner) Scan() (*types.ScanResult, error) {
+func (m *mockTarget) Scan() (*types.ScanResult, error) {
 	return &types.ScanResult{Category: m.cat}, nil
 }
 
-func (m *mockScanner) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
+func (m *mockTarget) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
 	return &types.CleanResult{Category: m.cat}, nil
 }
 
-func (m *mockScanner) Category() types.Category {
+func (m *mockTarget) Category() types.Category {
 	return m.cat
 }
 
-func (m *mockScanner) IsAvailable() bool {
+func (m *mockTarget) IsAvailable() bool {
 	return m.available
 }
 
@@ -44,60 +44,60 @@ func TestNewRegistry_ReturnsNonNil(t *testing.T) {
 	assert.NotNil(t, r)
 }
 
-func TestNewRegistry_HasEmptyScannersMap(t *testing.T) {
+func TestNewRegistry_HasEmptyTargetsMap(t *testing.T) {
 	r := NewRegistry()
 
-	assert.Empty(t, r.scanners)
+	assert.Empty(t, r.targets)
 }
 
 // --- Register Tests ---
 
-func TestRegister_AddsScannerToRegistry(t *testing.T) {
+func TestRegister_AddsTargetToRegistry(t *testing.T) {
 	r := NewRegistry()
-	scanner := newMockScanner("test-id", true)
+	scanner := newMockTarget("test-id", true)
 
 	r.Register(scanner)
 
-	assert.Len(t, r.scanners, 1)
+	assert.Len(t, r.targets, 1)
 }
 
 func TestRegister_UsesCategoryIDAsKey(t *testing.T) {
 	r := NewRegistry()
-	scanner := newMockScanner("my-scanner", true)
+	scanner := newMockTarget("my-scanner", true)
 
 	r.Register(scanner)
 
-	_, exists := r.scanners["my-scanner"]
+	_, exists := r.targets["my-scanner"]
 	assert.True(t, exists)
 }
 
-func TestRegister_OverwritesExistingScanner(t *testing.T) {
+func TestRegister_OverwritesExistingTarget(t *testing.T) {
 	r := NewRegistry()
-	scanner1 := newMockScanner("same-id", true)
-	scanner2 := newMockScanner("same-id", false)
+	scanner1 := newMockTarget("same-id", true)
+	scanner2 := newMockTarget("same-id", false)
 
 	r.Register(scanner1)
 	r.Register(scanner2)
 
-	assert.Len(t, r.scanners, 1)
-	assert.False(t, r.scanners["same-id"].IsAvailable())
+	assert.Len(t, r.targets, 1)
+	assert.False(t, r.targets["same-id"].IsAvailable())
 }
 
-func TestRegister_MultipleScannersWithDifferentIDs(t *testing.T) {
+func TestRegister_MultipleTargetsWithDifferentIDs(t *testing.T) {
 	r := NewRegistry()
 
-	r.Register(newMockScanner("scanner-1", true))
-	r.Register(newMockScanner("scanner-2", true))
-	r.Register(newMockScanner("scanner-3", true))
+	r.Register(newMockTarget("scanner-1", true))
+	r.Register(newMockTarget("scanner-2", true))
+	r.Register(newMockTarget("scanner-3", true))
 
-	assert.Len(t, r.scanners, 3)
+	assert.Len(t, r.targets, 3)
 }
 
 // --- Get Tests ---
 
-func TestGet_ReturnsScanner_WhenExists(t *testing.T) {
+func TestGet_ReturnsTarget_WhenExists(t *testing.T) {
 	r := NewRegistry()
-	scanner := newMockScanner("existing", true)
+	scanner := newMockTarget("existing", true)
 	r.Register(scanner)
 
 	result, ok := r.Get("existing")
@@ -116,11 +116,11 @@ func TestGet_ReturnsNilAndFalse_WhenNotExists(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-func TestGet_ReturnsCorrectScanner_WhenMultipleRegistered(t *testing.T) {
+func TestGet_ReturnsCorrectTarget_WhenMultipleRegistered(t *testing.T) {
 	r := NewRegistry()
-	r.Register(newMockScanner("first", true))
-	r.Register(newMockScanner("second", false))
-	r.Register(newMockScanner("third", true))
+	r.Register(newMockTarget("first", true))
+	r.Register(newMockTarget("second", false))
+	r.Register(newMockTarget("third", true))
 
 	result, ok := r.Get("second")
 
@@ -131,7 +131,7 @@ func TestGet_ReturnsCorrectScanner_WhenMultipleRegistered(t *testing.T) {
 
 // --- All Tests ---
 
-func TestAll_ReturnsEmptySlice_WhenNoScanners(t *testing.T) {
+func TestAll_ReturnsEmptySlice_WhenNoTargets(t *testing.T) {
 	r := NewRegistry()
 
 	result := r.All()
@@ -140,11 +140,11 @@ func TestAll_ReturnsEmptySlice_WhenNoScanners(t *testing.T) {
 	assert.Empty(t, result)
 }
 
-func TestAll_ReturnsAllRegisteredScanners(t *testing.T) {
+func TestAll_ReturnsAllRegisteredTargets(t *testing.T) {
 	r := NewRegistry()
-	r.Register(newMockScanner("a", true))
-	r.Register(newMockScanner("b", false))
-	r.Register(newMockScanner("c", true))
+	r.Register(newMockTarget("a", true))
+	r.Register(newMockTarget("b", false))
+	r.Register(newMockTarget("c", true))
 
 	result := r.All()
 
@@ -153,8 +153,8 @@ func TestAll_ReturnsAllRegisteredScanners(t *testing.T) {
 
 func TestAll_IncludesBothAvailableAndUnavailable(t *testing.T) {
 	r := NewRegistry()
-	r.Register(newMockScanner("available", true))
-	r.Register(newMockScanner("unavailable", false))
+	r.Register(newMockTarget("available", true))
+	r.Register(newMockTarget("unavailable", false))
 
 	result := r.All()
 
@@ -163,7 +163,7 @@ func TestAll_IncludesBothAvailableAndUnavailable(t *testing.T) {
 
 // --- Available Tests ---
 
-func TestAvailable_ReturnsEmptySlice_WhenNoScanners(t *testing.T) {
+func TestAvailable_ReturnsEmptySlice_WhenNoTargets(t *testing.T) {
 	r := NewRegistry()
 
 	result := r.Available()
@@ -172,11 +172,11 @@ func TestAvailable_ReturnsEmptySlice_WhenNoScanners(t *testing.T) {
 	assert.Empty(t, result)
 }
 
-func TestAvailable_ReturnsOnlyAvailableScanners(t *testing.T) {
+func TestAvailable_ReturnsOnlyAvailableTargets(t *testing.T) {
 	r := NewRegistry()
-	r.Register(newMockScanner("available-1", true))
-	r.Register(newMockScanner("unavailable", false))
-	r.Register(newMockScanner("available-2", true))
+	r.Register(newMockTarget("available-1", true))
+	r.Register(newMockTarget("unavailable", false))
+	r.Register(newMockTarget("available-2", true))
 
 	result := r.Available()
 
@@ -188,18 +188,18 @@ func TestAvailable_ReturnsOnlyAvailableScanners(t *testing.T) {
 
 func TestAvailable_ReturnsEmptySlice_WhenAllUnavailable(t *testing.T) {
 	r := NewRegistry()
-	r.Register(newMockScanner("unavailable-1", false))
-	r.Register(newMockScanner("unavailable-2", false))
+	r.Register(newMockTarget("unavailable-1", false))
+	r.Register(newMockTarget("unavailable-2", false))
 
 	result := r.Available()
 
 	assert.Empty(t, result)
 }
 
-func TestAvailable_ReturnsAllScanners_WhenAllAvailable(t *testing.T) {
+func TestAvailable_ReturnsAllTargets_WhenAllAvailable(t *testing.T) {
 	r := NewRegistry()
-	r.Register(newMockScanner("available-1", true))
-	r.Register(newMockScanner("available-2", true))
+	r.Register(newMockTarget("available-1", true))
+	r.Register(newMockTarget("available-2", true))
 
 	result := r.Available()
 

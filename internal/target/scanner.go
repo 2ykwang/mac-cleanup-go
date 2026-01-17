@@ -2,7 +2,7 @@ package target
 
 import "github.com/2ykwang/mac-cleanup-go/internal/types"
 
-type Scanner interface {
+type Target interface {
 	Scan() (*types.ScanResult, error)
 	Clean(items []types.CleanableItem) (*types.CleanResult, error)
 	Category() types.Category
@@ -10,33 +10,33 @@ type Scanner interface {
 }
 
 type Registry struct {
-	scanners map[string]Scanner
+	targets map[string]Target
 }
 
 func NewRegistry() *Registry {
-	return &Registry{scanners: make(map[string]Scanner)}
+	return &Registry{targets: make(map[string]Target)}
 }
 
-func (r *Registry) Register(s Scanner) {
-	r.scanners[s.Category().ID] = s
+func (r *Registry) Register(s Target) {
+	r.targets[s.Category().ID] = s
 }
 
-func (r *Registry) Get(id string) (Scanner, bool) {
-	s, ok := r.scanners[id]
+func (r *Registry) Get(id string) (Target, bool) {
+	s, ok := r.targets[id]
 	return s, ok
 }
 
-func (r *Registry) All() []Scanner {
-	result := make([]Scanner, 0, len(r.scanners))
-	for _, s := range r.scanners {
+func (r *Registry) All() []Target {
+	result := make([]Target, 0, len(r.targets))
+	for _, s := range r.targets {
 		result = append(result, s)
 	}
 	return result
 }
 
-func (r *Registry) Available() []Scanner {
-	result := make([]Scanner, 0)
-	for _, s := range r.scanners {
+func (r *Registry) Available() []Target {
+	result := make([]Target, 0)
+	for _, s := range r.targets {
 		if s.IsAvailable() {
 			result = append(result, s)
 		}
