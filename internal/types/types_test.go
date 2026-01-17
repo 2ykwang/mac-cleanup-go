@@ -41,3 +41,11 @@ func TestSortOrder_Label_Age(t *testing.T) {
 
 	assert.Equal(t, "Age", result)
 }
+
+func TestSortOrder_Label_Unknown(t *testing.T) {
+	unknown := SortOrder("unknown")
+
+	result := unknown.Label()
+
+	assert.Equal(t, "Size ↓", result)
+}

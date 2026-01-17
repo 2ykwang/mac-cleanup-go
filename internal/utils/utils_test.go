@@ -115,7 +115,7 @@ func TestGetDirSizeWithCount(t *testing.T) {
 	assert.Equal(t, int64(3), count)
 }
 
-func TestGetFileSize(t *testing.T) {
+func TestGetFileSize_File(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "test-file-size")
 	require.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
@@ -128,6 +128,28 @@ func TestGetFileSize(t *testing.T) {
 	size, err := GetFileSize(tmpFile.Name())
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1024), size)
+}
+
+func TestGetFileSize_Directory(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "test-file-size-dir")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	// 디렉토리에 파일 생성
+	file1 := filepath.Join(tmpDir, "file1.txt")
+	file2 := filepath.Join(tmpDir, "file2.txt")
+	require.NoError(t, os.WriteFile(file1, make([]byte, 100), 0o644))
+	require.NoError(t, os.WriteFile(file2, make([]byte, 200), 0o644))
+
+	size, err := GetFileSize(tmpDir)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(300), size)
+}
+
+func TestGetFileSize_NonExistent(t *testing.T) {
+	_, err := GetFileSize("/nonexistent/path/12345")
+
+	assert.Error(t, err)
 }
 
 func TestGlobPaths(t *testing.T) {
