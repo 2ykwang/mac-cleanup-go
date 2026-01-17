@@ -63,7 +63,7 @@ func TestNewModel_InvalidBuiltin_ShowsError(t *testing.T) {
 		},
 	}
 
-	m := NewModel(cfg)
+	m := NewModel(cfg, "test")
 
 	require.Error(t, m.err)
 	assert.True(t, strings.HasPrefix(m.View(), "Error:"), "expected error view")
@@ -148,6 +148,68 @@ func TestUpdate_WindowSizeMsg_UpdatesLayout(t *testing.T) {
 	assert.Equal(t, 120, m.width)
 	assert.Equal(t, 40, m.height)
 	assert.Equal(t, 120, m.help.Width)
+}
+
+func TestUpdate_VersionCheckMsg_UpdatesVersionState(t *testing.T) {
+	m := newTestModel()
+	m.currentVersion = "1.0.0"
+
+	m.Update(versionCheckMsg{
+		latestVersion:   "1.2.0",
+		updateAvailable: true,
+	})
+
+	assert.Equal(t, "1.2.0", m.latestVersion)
+	assert.True(t, m.updateAvailable)
+}
+
+func TestUpdate_VersionCheckMsg_NoUpdate(t *testing.T) {
+	m := newTestModel()
+	m.currentVersion = "1.2.0"
+
+	m.Update(versionCheckMsg{
+		latestVersion:   "1.2.0",
+		updateAvailable: false,
+	})
+
+	assert.Equal(t, "1.2.0", m.latestVersion)
+	assert.False(t, m.updateAvailable)
+}
+
+func TestViewList_ShowsUpdateNotification(t *testing.T) {
+	m := newTestModelWithResults()
+	m.currentVersion = "1.0.0"
+	m.latestVersion = "1.2.0"
+	m.updateAvailable = true
+
+	output := m.viewList()
+
+	assert.Contains(t, output, "Update available")
+	assert.Contains(t, output, "1.0.0")
+	assert.Contains(t, output, "1.2.0")
+	assert.Contains(t, output, "--update")
+}
+
+func TestViewList_HidesUpdateNotification_WhenNoUpdate(t *testing.T) {
+	m := newTestModelWithResults()
+	m.currentVersion = "1.2.0"
+	m.latestVersion = "1.2.0"
+	m.updateAvailable = false
+
+	output := m.viewList()
+
+	assert.NotContains(t, output, "Update available")
+}
+
+func TestViewList_HidesUpdateNotification_WhenLatestVersionEmpty(t *testing.T) {
+	m := newTestModelWithResults()
+	m.currentVersion = "1.0.0"
+	m.latestVersion = ""
+	m.updateAvailable = true // even if true, should hide when latestVersion empty
+
+	output := m.viewList()
+
+	assert.NotContains(t, output, "Update available")
 }
 
 func newTestModelWithResults() *Model {

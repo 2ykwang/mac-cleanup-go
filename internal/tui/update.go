@@ -58,6 +58,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleCleanCategoryDone(msg)
 	case cleanDoneMsg:
 		m.handleCleanDone(msg)
+	case versionCheckMsg:
+		m.latestVersion = msg.latestVersion
+		m.updateAvailable = msg.updateAvailable
 	}
 	return m, nil
 }

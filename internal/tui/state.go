@@ -89,3 +89,9 @@ type reportState struct {
 	reportScroll int
 	reportLines  []string
 }
+
+type versionState struct {
+	currentVersion  string
+	latestVersion   string
+	updateAvailable bool
+}
