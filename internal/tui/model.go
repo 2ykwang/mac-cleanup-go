@@ -80,7 +80,7 @@ func NewModel(cfg *types.Config) *Model {
 		configState: configState{
 			config:            cfg,
 			registry:          registry,
-			cleaner:           cleaner.NewExecutor(registry),
+			cleanService:      cleaner.NewCleanService(registry),
 			hasFullDiskAccess: utils.CheckFullDiskAccess(),
 			userConfig:        userCfg,
 			err:               err,
