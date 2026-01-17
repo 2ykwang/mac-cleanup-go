@@ -13,6 +13,12 @@ type SystemCacheTarget struct {
 	excludePaths []string
 }
 
+func init() {
+	RegisterBuiltin("system-cache", func(cat types.Category, categories []types.Category) Target {
+		return NewSystemCacheTarget(cat, categories)
+	})
+}
+
 func NewSystemCacheTarget(cat types.Category, allCategories []types.Category) *SystemCacheTarget {
 	var excludes []string
 	for _, other := range allCategories {

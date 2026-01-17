@@ -6,10 +6,14 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
-var builtinFactories = map[string]func(types.Category) Target{
-	"docker":        func(cat types.Category) Target { return NewDockerTarget(cat) },
-	"homebrew":      func(cat types.Category) Target { return NewBrewTarget(cat) },
-	"old-downloads": func(cat types.Category) Target { return NewOldDownloadTarget(cat, defaultDaysOld) },
+// BuiltinFactory is a function that creates a Target from a category and optional categories list.
+type BuiltinFactory func(cat types.Category, categories []types.Category) Target
+
+var builtinFactories = map[string]BuiltinFactory{}
+
+// RegisterBuiltin registers a builtin target factory.
+func RegisterBuiltin(id string, factory BuiltinFactory) {
+	builtinFactories[id] = factory
 }
 
 func IsBuiltinID(id string) bool {
@@ -22,14 +26,12 @@ func DefaultRegistry(cfg *types.Config) (*Registry, error) {
 
 	for _, cat := range cfg.Categories {
 		var s Target
-		switch {
-		case cat.ID == "system-cache":
-			s = NewSystemCacheTarget(cat, cfg.Categories)
-		case cat.Method == types.MethodBuiltin:
+		switch cat.Method {
+		case types.MethodBuiltin:
 			if factory, ok := builtinFactories[cat.ID]; ok {
-				s = factory(cat)
+				s = factory(cat, cfg.Categories)
 			} else {
-				return nil, fmt.Errorf("unknown builtin scanner id: %s", cat.ID)
+				return nil, fmt.Errorf("unknown builtin target id: %s", cat.ID)
 			}
 		default:
 			s = NewPathTarget(cat)

@@ -14,6 +14,12 @@ type BrewTarget struct {
 	cachePath string
 }
 
+func init() {
+	RegisterBuiltin("homebrew", func(cat types.Category, _ []types.Category) Target {
+		return NewBrewTarget(cat)
+	})
+}
+
 func NewBrewTarget(cat types.Category) *BrewTarget {
 	return &BrewTarget{category: cat}
 }

@@ -15,6 +15,12 @@ type OldDownloadTarget struct {
 	daysOld int
 }
 
+func init() {
+	RegisterBuiltin("old-downloads", func(cat types.Category, _ []types.Category) Target {
+		return NewOldDownloadTarget(cat, defaultDaysOld)
+	})
+}
+
 func NewOldDownloadTarget(cat types.Category, daysOld int) *OldDownloadTarget {
 	return &OldDownloadTarget{
 		PathTarget: NewPathTarget(cat),
