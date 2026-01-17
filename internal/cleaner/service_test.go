@@ -4,47 +4,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/mocks"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
-
-// mockTargetForService implements target.Target for testing CleanService
-type mockTargetForService struct {
-	category    types.Category
-	cleanResult *types.CleanResult
-	cleanErr    error
-	cleanCalls  int
-	cleanItems  [][]types.CleanableItem // track items for each call
-}
-
-func (m *mockTargetForService) Scan() (*types.ScanResult, error) {
-	return nil, nil
-}
-
-func (m *mockTargetForService) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
-	m.cleanCalls++
-	m.cleanItems = append(m.cleanItems, items)
-	if m.cleanResult != nil {
-		return m.cleanResult, m.cleanErr
-	}
-	return &types.CleanResult{
-		Category:     m.category,
-		CleanedItems: len(items),
-		FreedSpace:   int64(len(items) * 100),
-		Errors:       []string{},
-	}, m.cleanErr
-}
-
-func (m *mockTargetForService) Category() types.Category {
-	return m.category
-}
-
-func (m *mockTargetForService) IsAvailable() bool {
-	return true
-}
 
 // Helper function to create a test ScanResult
 func newTestScanResult(id, name string, method types.CleanupMethod, items []types.CleanableItem) *types.ScanResult {
@@ -69,6 +36,15 @@ func newTestItems(paths ...string) []types.CleanableItem {
 		}
 	}
 	return items
+}
+
+// newMockTargetForService creates a MockTarget with default behavior for service tests.
+func newMockTargetForService(cat types.Category) *mocks.MockTarget {
+	m := new(mocks.MockTarget)
+	m.On("Category").Return(cat)
+	m.On("IsAvailable").Return(true)
+	m.On("Scan").Return((*types.ScanResult)(nil), nil)
+	return m
 }
 
 func TestNewCleanService(t *testing.T) {
@@ -490,25 +466,27 @@ func TestClean_CallsOnProgress_NonBuiltin(t *testing.T) {
 
 func TestClean_CallsOnProgress_Builtin(t *testing.T) {
 	registry := target.NewRegistry()
-	mock := &mockTargetForService{
-		category: types.Category{
-			ID:     "docker",
-			Name:   "Docker",
-			Method: types.MethodBuiltin,
-		},
+	cat := types.Category{
+		ID:     "docker",
+		Name:   "Docker",
+		Method: types.MethodBuiltin,
 	}
-	registry.Register(mock)
+
+	mockTarget := newMockTargetForService(cat)
+	mockTarget.On("Clean", mock.Anything).Return(&types.CleanResult{
+		Category:     cat,
+		CleanedItems: 3,
+		FreedSpace:   300,
+		Errors:       []string{},
+	}, nil)
+	registry.Register(mockTarget)
 
 	service := NewCleanService(registry)
 
 	jobs := []CleanJob{
 		{
-			Category: types.Category{
-				ID:     "docker",
-				Name:   "Docker",
-				Method: types.MethodBuiltin,
-			},
-			Items: newTestItems("/path1", "/path2", "/path3"),
+			Category: cat,
+			Items:    newTestItems("/path1", "/path2", "/path3"),
 		},
 	}
 
@@ -669,25 +647,27 @@ func TestClean_CallsOnCategoryDone(t *testing.T) {
 
 func TestClean_BuiltinBatchProcessing(t *testing.T) {
 	registry := target.NewRegistry()
-	mock := &mockTargetForService{
-		category: types.Category{
-			ID:     "docker",
-			Name:   "Docker",
-			Method: types.MethodBuiltin,
-		},
+	cat := types.Category{
+		ID:     "docker",
+		Name:   "Docker",
+		Method: types.MethodBuiltin,
 	}
-	registry.Register(mock)
+
+	mockTarget := newMockTargetForService(cat)
+	mockTarget.On("Clean", mock.Anything).Return(&types.CleanResult{
+		Category:     cat,
+		CleanedItems: 3,
+		FreedSpace:   300,
+		Errors:       []string{},
+	}, nil)
+	registry.Register(mockTarget)
 
 	service := NewCleanService(registry)
 
 	jobs := []CleanJob{
 		{
-			Category: types.Category{
-				ID:     "docker",
-				Name:   "Docker",
-				Method: types.MethodBuiltin,
-			},
-			Items: newTestItems("/path1", "/path2", "/path3"),
+			Category: cat,
+			Items:    newTestItems("/path1", "/path2", "/path3"),
 		},
 	}
 
@@ -701,8 +681,12 @@ func TestClean_BuiltinBatchProcessing(t *testing.T) {
 	report := service.Clean(jobs, callbacks)
 
 	// Builtin processes all items in one batch
-	assert.Equal(t, 1, mock.cleanCalls, "Builtin should call Clean once for all items")
-	assert.Len(t, mock.cleanItems[0], 3, "All items should be passed in single call")
+	mockTarget.AssertNumberOfCalls(t, "Clean", 1)
+
+	// Verify items passed to Clean
+	cleanCall := mockTarget.Calls[len(mockTarget.Calls)-1]
+	items := cleanCall.Arguments.Get(0).([]types.CleanableItem)
+	assert.Len(t, items, 3, "All items should be passed in single call")
 
 	// OnItemDone is NOT called for builtin (batch processing)
 	assert.Equal(t, 0, itemDoneCalls, "OnItemDone should not be called for builtin")
@@ -795,14 +779,20 @@ func TestClean_MultipleCategories(t *testing.T) {
 	utils.MoveToTrash = func(_ string) error { return nil }
 
 	registry := target.NewRegistry()
-	mock := &mockTargetForService{
-		category: types.Category{
-			ID:     "docker",
-			Name:   "Docker",
-			Method: types.MethodBuiltin,
-		},
+	cat := types.Category{
+		ID:     "docker",
+		Name:   "Docker",
+		Method: types.MethodBuiltin,
 	}
-	registry.Register(mock)
+
+	mockTarget := newMockTargetForService(cat)
+	mockTarget.On("Clean", mock.Anything).Return(&types.CleanResult{
+		Category:     cat,
+		CleanedItems: 1,
+		FreedSpace:   100,
+		Errors:       []string{},
+	}, nil)
+	registry.Register(mockTarget)
 
 	service := NewCleanService(registry)
 
@@ -812,7 +802,7 @@ func TestClean_MultipleCategories(t *testing.T) {
 			Items:    newTestItems("/trash1", "/trash2"),
 		},
 		{
-			Category: types.Category{ID: "docker", Name: "Docker", Method: types.MethodBuiltin},
+			Category: cat,
 			Items:    newTestItems("/docker1"),
 		},
 	}

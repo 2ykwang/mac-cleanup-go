@@ -4,36 +4,21 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/mocks"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
-type mockTarget struct {
-	cat       types.Category
-	available bool
-}
-
-func newMockTarget(id string, available bool) *mockTarget {
-	return &mockTarget{
-		cat:       types.Category{ID: id, Name: "Mock " + id},
-		available: available,
-	}
-}
-
-func (m *mockTarget) Scan() (*types.ScanResult, error) {
-	return &types.ScanResult{Category: m.cat}, nil
-}
-
-func (m *mockTarget) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
-	return &types.CleanResult{Category: m.cat}, nil
-}
-
-func (m *mockTarget) Category() types.Category {
-	return m.cat
-}
-
-func (m *mockTarget) IsAvailable() bool {
-	return m.available
+// newMockTarget creates a MockTarget with common setup.
+func newMockTarget(id string, available bool) *mocks.MockTarget {
+	m := new(mocks.MockTarget)
+	cat := types.Category{ID: id, Name: "Mock " + id}
+	m.On("Category").Return(cat)
+	m.On("IsAvailable").Return(available)
+	m.On("Scan").Return(&types.ScanResult{Category: cat}, nil)
+	m.On("Clean", mock.Anything).Return(&types.CleanResult{Category: cat}, nil)
+	return m
 }
 
 // --- NewRegistry Tests ---
@@ -54,18 +39,18 @@ func TestNewRegistry_HasEmptyTargetsMap(t *testing.T) {
 
 func TestRegister_AddsTargetToRegistry(t *testing.T) {
 	r := NewRegistry()
-	scanner := newMockTarget("test-id", true)
+	target := newMockTarget("test-id", true)
 
-	r.Register(scanner)
+	r.Register(target)
 
 	assert.Len(t, r.targets, 1)
 }
 
 func TestRegister_UsesCategoryIDAsKey(t *testing.T) {
 	r := NewRegistry()
-	scanner := newMockTarget("my-scanner", true)
+	target := newMockTarget("my-scanner", true)
 
-	r.Register(scanner)
+	r.Register(target)
 
 	_, exists := r.targets["my-scanner"]
 	assert.True(t, exists)
@@ -73,11 +58,11 @@ func TestRegister_UsesCategoryIDAsKey(t *testing.T) {
 
 func TestRegister_OverwritesExistingTarget(t *testing.T) {
 	r := NewRegistry()
-	scanner1 := newMockTarget("same-id", true)
-	scanner2 := newMockTarget("same-id", false)
+	target1 := newMockTarget("same-id", true)
+	target2 := newMockTarget("same-id", false)
 
-	r.Register(scanner1)
-	r.Register(scanner2)
+	r.Register(target1)
+	r.Register(target2)
 
 	assert.Len(t, r.targets, 1)
 	assert.False(t, r.targets["same-id"].IsAvailable())
@@ -97,8 +82,8 @@ func TestRegister_MultipleTargetsWithDifferentIDs(t *testing.T) {
 
 func TestGet_ReturnsTarget_WhenExists(t *testing.T) {
 	r := NewRegistry()
-	scanner := newMockTarget("existing", true)
-	r.Register(scanner)
+	target := newMockTarget("existing", true)
+	r.Register(target)
 
 	result, ok := r.Get("existing")
 
