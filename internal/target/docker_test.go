@@ -2,11 +2,13 @@ package target
 
 import (
 	"math"
+	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
+	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
 func TestNewDockerTarget_ReturnsNonNil(t *testing.T) {
@@ -164,4 +166,278 @@ func assertWithinMargin(t *testing.T, input string, result, expected int64, marg
 	assert.LessOrEqual(t, diff, marginPercent,
 		"parseDockerSize(%q) = %d, expected ~%d (within %.0f%%)",
 		input, result, expected, marginPercent*100)
+}
+
+func TestDockerTarget_IsAvailable_ReturnsFalse_WhenDockerNotExists(t *testing.T) {
+	originalCommandExists := utils.CommandExists
+	defer func() { utils.CommandExists = originalCommandExists }()
+	utils.CommandExists = func(_ string) bool {
+		return false
+	}
+
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	assert.False(t, s.IsAvailable())
+}
+
+func TestDockerTarget_IsAvailable_ReturnsFalse_WhenDockerInfoFails(t *testing.T) {
+	originalCommandExists := utils.CommandExists
+	original := execCommand
+	defer func() {
+		utils.CommandExists = originalCommandExists
+		execCommand = original
+	}()
+
+	utils.CommandExists = func(_ string) bool {
+		return true
+	}
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("false")
+	}
+
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	assert.False(t, s.IsAvailable())
+}
+
+func TestDockerTarget_IsAvailable_ReturnsTrue_WhenDockerWorks(t *testing.T) {
+	originalCommandExists := utils.CommandExists
+	original := execCommand
+	defer func() {
+		utils.CommandExists = originalCommandExists
+		execCommand = original
+	}()
+
+	utils.CommandExists = func(_ string) bool {
+		return true
+	}
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("true")
+	}
+
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	assert.True(t, s.IsAvailable())
+}
+
+func TestDockerTarget_Scan_ReturnsEmpty_WhenNotAvailable(t *testing.T) {
+	originalCommandExists := utils.CommandExists
+	defer func() { utils.CommandExists = originalCommandExists }()
+	utils.CommandExists = func(_ string) bool {
+		return false
+	}
+
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	result, err := s.Scan()
+
+	assert.NoError(t, err)
+	assert.Empty(t, result.Items)
+}
+
+func TestDockerTarget_Scan_ReturnsError_WhenCommandFails(t *testing.T) {
+	originalCommandExists := utils.CommandExists
+	original := execCommand
+	defer func() {
+		utils.CommandExists = originalCommandExists
+		execCommand = original
+	}()
+
+	callCount := 0
+	utils.CommandExists = func(_ string) bool {
+		return true
+	}
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		callCount++
+		if callCount == 1 {
+			// docker info succeeds
+			return exec.Command("true")
+		}
+		// docker system df fails
+		return exec.Command("false")
+	}
+
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	result, err := s.Scan()
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result.Error)
+}
+
+func TestDockerTarget_Scan_ParsesOutput(t *testing.T) {
+	originalCommandExists := utils.CommandExists
+	original := execCommand
+	defer func() {
+		utils.CommandExists = originalCommandExists
+		execCommand = original
+	}()
+
+	utils.CommandExists = func(_ string) bool {
+		return true
+	}
+	callCount := 0
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		callCount++
+		if callCount == 1 {
+			// docker info
+			return exec.Command("true")
+		}
+		// docker system df
+		output := `{"Type":"Images","TotalCount":"5","Active":"2","Size":"2.371GB","Reclaimable":"1.5GB (63%)"}
+{"Type":"Containers","TotalCount":"3","Active":"1","Size":"100MB","Reclaimable":"50MB (50%)"}
+{"Type":"Local Volumes","TotalCount":"2","Active":"0","Size":"500MB","Reclaimable":"500MB (100%)"}
+{"Type":"Build Cache","TotalCount":"10","Active":"0","Size":"1GB","Reclaimable":"1GB (100%)"}`
+		return exec.Command("echo", output)
+	}
+
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	result, err := s.Scan()
+
+	assert.NoError(t, err)
+	assert.Nil(t, result.Error)
+	assert.Len(t, result.Items, 4)
+	assert.Equal(t, "docker:images", result.Items[0].Path)
+	assert.Equal(t, "Docker Images", result.Items[0].Name)
+}
+
+func TestDockerTarget_Scan_SkipsEmptyLines(t *testing.T) {
+	originalCommandExists := utils.CommandExists
+	original := execCommand
+	defer func() {
+		utils.CommandExists = originalCommandExists
+		execCommand = original
+	}()
+
+	utils.CommandExists = func(_ string) bool {
+		return true
+	}
+	callCount := 0
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		callCount++
+		if callCount == 1 {
+			return exec.Command("true")
+		}
+		output := `{"Type":"Images","TotalCount":"5","Active":"2","Size":"2GB","Reclaimable":"1GB"}
+
+{"Type":"Build Cache","TotalCount":"10","Active":"0","Size":"1GB","Reclaimable":"1GB"}`
+		return exec.Command("echo", output)
+	}
+
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	result, err := s.Scan()
+
+	assert.NoError(t, err)
+	assert.Len(t, result.Items, 2)
+}
+
+func TestDockerTarget_Scan_SkipsZeroReclaimable(t *testing.T) {
+	originalCommandExists := utils.CommandExists
+	original := execCommand
+	defer func() {
+		utils.CommandExists = originalCommandExists
+		execCommand = original
+	}()
+
+	utils.CommandExists = func(_ string) bool {
+		return true
+	}
+	callCount := 0
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		callCount++
+		if callCount == 1 {
+			return exec.Command("true")
+		}
+		output := `{"Type":"Images","TotalCount":"5","Active":"2","Size":"2GB","Reclaimable":"0B"}`
+		return exec.Command("echo", output)
+	}
+
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	result, err := s.Scan()
+
+	assert.NoError(t, err)
+	assert.Empty(t, result.Items)
+}
+
+func TestDockerTarget_Clean_AllTypes(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("true")
+	}
+
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	items := []types.CleanableItem{
+		{Path: "docker:images", Size: 1000},
+		{Path: "docker:containers", Size: 2000},
+		{Path: "docker:local volumes", Size: 3000},
+		{Path: "docker:build cache", Size: 4000},
+	}
+
+	result, err := s.Clean(items)
+
+	assert.NoError(t, err)
+	assert.Empty(t, result.Errors)
+	assert.Equal(t, int64(10000), result.FreedSpace)
+	assert.Equal(t, 4, result.CleanedItems)
+}
+
+func TestDockerTarget_Clean_RecordsErrors(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("false")
+	}
+
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	items := []types.CleanableItem{
+		{Path: "docker:images", Size: 1000},
+	}
+
+	result, err := s.Clean(items)
+
+	assert.NoError(t, err)
+	assert.NotEmpty(t, result.Errors)
+	assert.Equal(t, int64(0), result.FreedSpace)
+	assert.Equal(t, 0, result.CleanedItems)
+}
+
+func TestDockerTarget_Clean_SkipsUnknownPath(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("true")
+	}
+
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	items := []types.CleanableItem{
+		{Path: "docker:unknown", Size: 1000},
+	}
+
+	result, err := s.Clean(items)
+
+	assert.NoError(t, err)
+	assert.Empty(t, result.Errors)
+	assert.Equal(t, int64(0), result.FreedSpace)
+	assert.Equal(t, 0, result.CleanedItems)
 }

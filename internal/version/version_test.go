@@ -1,6 +1,8 @@
 package version
 
 import (
+	"errors"
+	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -65,4 +67,109 @@ func TestCheckForUpdate_DevVersion(t *testing.T) {
 func TestCheckForUpdate_EmptyVersion(t *testing.T) {
 	result := CheckForUpdate("")
 	assert.False(t, result.UpdateAvailable)
+}
+
+func TestCheckForUpdate_BrewNotFound(t *testing.T) {
+	original := execLookPath
+	defer func() { execLookPath = original }()
+	execLookPath = func(_ string) (string, error) {
+		return "", errors.New("executable not found")
+	}
+
+	result := CheckForUpdate("1.0.0")
+
+	assert.Equal(t, "1.0.0", result.CurrentVersion)
+	assert.False(t, result.UpdateAvailable)
+	assert.Empty(t, result.LatestVersion)
+}
+
+func TestCheckForUpdate_BrewCommandSuccess(t *testing.T) {
+	originalLookPath := execLookPath
+	originalCommand := execCommand
+	defer func() {
+		execLookPath = originalLookPath
+		execCommand = originalCommand
+	}()
+
+	execLookPath = func(_ string) (string, error) {
+		return "/opt/homebrew/bin/brew", nil
+	}
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		// Return a command that outputs valid brew info
+		return exec.Command("echo", "mac-cleanup-go: stable 2.0.0")
+	}
+
+	result := CheckForUpdate("1.0.0")
+
+	assert.Equal(t, "1.0.0", result.CurrentVersion)
+	assert.Equal(t, "2.0.0", result.LatestVersion)
+	assert.True(t, result.UpdateAvailable)
+	assert.NoError(t, result.Error)
+}
+
+func TestCheckForUpdate_BrewCommandError(t *testing.T) {
+	originalLookPath := execLookPath
+	originalCommand := execCommand
+	defer func() {
+		execLookPath = originalLookPath
+		execCommand = originalCommand
+	}()
+
+	execLookPath = func(_ string) (string, error) {
+		return "/opt/homebrew/bin/brew", nil
+	}
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("false") // always fails
+	}
+
+	result := CheckForUpdate("1.0.0")
+
+	assert.Equal(t, "1.0.0", result.CurrentVersion)
+	assert.Error(t, result.Error)
+}
+
+func TestCheckForUpdate_NoUpdateAvailable(t *testing.T) {
+	originalLookPath := execLookPath
+	originalCommand := execCommand
+	defer func() {
+		execLookPath = originalLookPath
+		execCommand = originalCommand
+	}()
+
+	execLookPath = func(_ string) (string, error) {
+		return "/opt/homebrew/bin/brew", nil
+	}
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("echo", "mac-cleanup-go: stable 1.0.0")
+	}
+
+	result := CheckForUpdate("1.0.0")
+
+	assert.Equal(t, "1.0.0", result.CurrentVersion)
+	assert.Equal(t, "1.0.0", result.LatestVersion)
+	assert.False(t, result.UpdateAvailable)
+}
+
+func TestRunUpdate_Success(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("true")
+	}
+
+	err := RunUpdate()
+
+	assert.NoError(t, err)
+}
+
+func TestRunUpdate_Error(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("false")
+	}
+
+	err := RunUpdate()
+
+	assert.Error(t, err)
 }

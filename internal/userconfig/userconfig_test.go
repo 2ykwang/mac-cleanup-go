@@ -1,6 +1,8 @@
 package userconfig
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -48,13 +50,8 @@ func TestUserConfig_SetExcludedPaths_Empty(t *testing.T) {
 }
 
 func TestUserConfig_SaveAndLoad(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "userconfig-test-*")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
-
-	originalHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", originalHome)
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
 
 	cfg := &UserConfig{
 		ExcludedPaths: map[string][]string{
@@ -65,7 +62,7 @@ func TestUserConfig_SaveAndLoad(t *testing.T) {
 	require.NoError(t, cfg.Save())
 
 	configPath := filepath.Join(tmpDir, ".config", "mac-cleanup-go", "config.yaml")
-	_, err = os.Stat(configPath)
+	_, err := os.Stat(configPath)
 	assert.NoError(t, err, "config file should be created")
 
 	loaded, err := Load()
@@ -74,13 +71,8 @@ func TestUserConfig_SaveAndLoad(t *testing.T) {
 }
 
 func TestLoad_InvalidYAML(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "userconfig-test-*")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
-
-	originalHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", originalHome)
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
 
 	configDir := filepath.Join(tmpDir, ".config", "mac-cleanup-go")
 	require.NoError(t, os.MkdirAll(configDir, 0o755))
@@ -95,13 +87,8 @@ func TestLoad_InvalidYAML(t *testing.T) {
 }
 
 func TestLoad_EmptyFile(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "userconfig-test-*")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
-
-	originalHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", originalHome)
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
 
 	configDir := filepath.Join(tmpDir, ".config", "mac-cleanup-go")
 	require.NoError(t, os.MkdirAll(configDir, 0o755))
@@ -123,4 +110,58 @@ func TestUserConfig_IsExcluded_EmptyCategory(t *testing.T) {
 	result := cfg.IsExcluded("nonexistent", "/some/path")
 
 	assert.False(t, result)
+}
+
+func TestLoad_ReadPermissionError(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+
+	configDir := filepath.Join(tmpDir, ".config", "mac-cleanup-go")
+	require.NoError(t, os.MkdirAll(configDir, 0o755))
+
+	configFile := filepath.Join(configDir, "config.yaml")
+	require.NoError(t, os.WriteFile(configFile, []byte("test: data"), 0o644))
+
+	original := osReadFile
+	defer func() { osReadFile = original }()
+	osReadFile = func(_ string) ([]byte, error) {
+		return nil, fs.ErrPermission
+	}
+
+	cfg, err := Load()
+
+	assert.Error(t, err)
+	assert.Nil(t, cfg)
+}
+
+func TestSave_MkdirAllError(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	original := osMkdirAll
+	defer func() { osMkdirAll = original }()
+	osMkdirAll = func(_ string, _ fs.FileMode) error {
+		return errors.New("permission denied")
+	}
+
+	cfg := &UserConfig{ExcludedPaths: make(map[string][]string)}
+
+	err := cfg.Save()
+
+	assert.Error(t, err)
+}
+
+func TestSave_WriteFileError(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	original := osWriteFile
+	defer func() { osWriteFile = original }()
+	osWriteFile = func(_ string, _ []byte, _ fs.FileMode) error {
+		return errors.New("permission denied")
+	}
+
+	cfg := &UserConfig{ExcludedPaths: make(map[string][]string)}
+
+	err := cfg.Save()
+
+	assert.Error(t, err)
 }

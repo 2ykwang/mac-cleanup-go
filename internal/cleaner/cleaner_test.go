@@ -7,66 +7,22 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/mocks"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
-// mockTarget implements target.Target for testing
-type mockTarget struct {
-	category    types.Category
-	cleanCalled bool
-	cleanItems  []types.CleanableItem
-	cleanResult *types.CleanResult
-	cleanErr    error
-}
-
-type nilResultTarget struct {
-	category types.Category
-}
-
-func (m *mockTarget) Scan() (*types.ScanResult, error) {
-	return nil, nil
-}
-
-func (m *mockTarget) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
-	m.cleanCalled = true
-	m.cleanItems = items
-	if m.cleanResult != nil {
-		return m.cleanResult, m.cleanErr
-	}
-	return &types.CleanResult{
-		Category:     m.category,
-		CleanedItems: len(items),
-		FreedSpace:   100,
-		Errors:       []string{},
-	}, m.cleanErr
-}
-
-func (m *mockTarget) Category() types.Category {
-	return m.category
-}
-
-func (m *mockTarget) IsAvailable() bool {
-	return true
-}
-
-func (s *nilResultTarget) Scan() (*types.ScanResult, error) {
-	return nil, nil
-}
-
-func (s *nilResultTarget) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
-	return nil, errors.New("scanner failed")
-}
-
-func (s *nilResultTarget) Category() types.Category {
-	return s.category
-}
-
-func (s *nilResultTarget) IsAvailable() bool {
-	return true
+// newMockTargetWithCategory creates a MockTarget with basic setup.
+func newMockTargetWithCategory(cat types.Category) *mocks.MockTarget {
+	m := new(mocks.MockTarget)
+	m.On("Category").Return(cat)
+	m.On("IsAvailable").Return(true)
+	m.On("Scan").Return((*types.ScanResult)(nil), nil)
+	return m
 }
 
 func TestNew(t *testing.T) {
@@ -187,22 +143,22 @@ func TestClean_Permanent_SkipsSIPProtectedPaths(t *testing.T) {
 
 func TestClean_MethodBuiltin_DelegatesToTarget(t *testing.T) {
 	registry := target.NewRegistry()
-	mock := &mockTarget{
-		category: types.Category{
-			ID:     "docker",
-			Name:   "Docker",
-			Method: types.MethodBuiltin,
-		},
-	}
-	registry.Register(mock)
-
-	c := NewExecutor(registry)
-
 	cat := types.Category{
 		ID:     "docker",
 		Name:   "Docker",
 		Method: types.MethodBuiltin,
 	}
+
+	mockTarget := newMockTargetWithCategory(cat)
+	mockTarget.On("Clean", mock.Anything).Return(&types.CleanResult{
+		Category:     cat,
+		CleanedItems: 2,
+		FreedSpace:   100,
+		Errors:       []string{},
+	}, nil)
+	registry.Register(mockTarget)
+
+	c := NewExecutor(registry)
 	items := []types.CleanableItem{
 		{Path: "/tmp/test1", Name: "test1", Size: 100},
 		{Path: "/tmp/test2", Name: "test2", Size: 200},
@@ -210,8 +166,7 @@ func TestClean_MethodBuiltin_DelegatesToTarget(t *testing.T) {
 
 	result := c.Clean(cat, items)
 
-	assert.True(t, mock.cleanCalled, "Target.Clean should be called for MethodBuiltin")
-	assert.Equal(t, items, mock.cleanItems, "Items should be passed to Target.Clean")
+	mockTarget.AssertCalled(t, "Clean", items)
 	assert.Equal(t, 2, result.CleanedItems)
 	assert.Equal(t, int64(100), result.FreedSpace)
 }
@@ -238,35 +193,29 @@ func TestClean_MethodBuiltin_TargetNotFound(t *testing.T) {
 
 func TestClean_MethodBuiltin_TargetReturnsError(t *testing.T) {
 	registry := target.NewRegistry()
-	mock := &mockTarget{
-		category: types.Category{
-			ID:     "docker",
-			Name:   "Docker",
-			Method: types.MethodBuiltin,
-		},
-		cleanResult: &types.CleanResult{
-			Category:     types.Category{ID: "docker"},
-			CleanedItems: 1,
-			FreedSpace:   50,
-			Errors:       []string{"partial failure"},
-		},
-	}
-	registry.Register(mock)
-
-	c := NewExecutor(registry)
-
 	cat := types.Category{
 		ID:     "docker",
 		Name:   "Docker",
 		Method: types.MethodBuiltin,
 	}
+
+	mockTarget := newMockTargetWithCategory(cat)
+	mockTarget.On("Clean", mock.Anything).Return(&types.CleanResult{
+		Category:     cat,
+		CleanedItems: 1,
+		FreedSpace:   50,
+		Errors:       []string{"partial failure"},
+	}, nil)
+	registry.Register(mockTarget)
+
+	c := NewExecutor(registry)
 	items := []types.CleanableItem{
 		{Path: "/tmp/test", Name: "test", Size: 100},
 	}
 
 	result := c.Clean(cat, items)
 
-	assert.True(t, mock.cleanCalled)
+	mockTarget.AssertCalled(t, "Clean", mock.Anything)
 	assert.Equal(t, 1, result.CleanedItems)
 	assert.Equal(t, int64(50), result.FreedSpace)
 	assert.Contains(t, result.Errors, "partial failure")
@@ -274,23 +223,22 @@ func TestClean_MethodBuiltin_TargetReturnsError(t *testing.T) {
 
 func TestClean_MethodBuiltin_TargetErrorPropagates(t *testing.T) {
 	registry := target.NewRegistry()
-	mock := &mockTarget{
-		category: types.Category{
-			ID:     "docker",
-			Name:   "Docker",
-			Method: types.MethodBuiltin,
-		},
-		cleanErr: fmt.Errorf("scanner failed"),
-	}
-	registry.Register(mock)
-
-	c := NewExecutor(registry)
-
 	cat := types.Category{
 		ID:     "docker",
 		Name:   "Docker",
 		Method: types.MethodBuiltin,
 	}
+
+	mockTarget := newMockTargetWithCategory(cat)
+	mockTarget.On("Clean", mock.Anything).Return(&types.CleanResult{
+		Category:     cat,
+		CleanedItems: 0,
+		FreedSpace:   0,
+		Errors:       []string{},
+	}, fmt.Errorf("scanner failed"))
+	registry.Register(mockTarget)
+
+	c := NewExecutor(registry)
 
 	result := c.Clean(cat, []types.CleanableItem{})
 
@@ -300,22 +248,17 @@ func TestClean_MethodBuiltin_TargetErrorPropagates(t *testing.T) {
 
 func TestClean_MethodBuiltin_TargetNilResultWithError(t *testing.T) {
 	registry := target.NewRegistry()
-	impl := &nilResultTarget{
-		category: types.Category{
-			ID:     "docker",
-			Name:   "Docker",
-			Method: types.MethodBuiltin,
-		},
-	}
-	registry.Register(impl)
-
-	c := NewExecutor(registry)
-
 	cat := types.Category{
 		ID:     "docker",
 		Name:   "Docker",
 		Method: types.MethodBuiltin,
 	}
+
+	mockTarget := newMockTargetWithCategory(cat)
+	mockTarget.On("Clean", mock.Anything).Return(nil, errors.New("scanner failed"))
+	registry.Register(mockTarget)
+
+	c := NewExecutor(registry)
 
 	result := c.Clean(cat, []types.CleanableItem{{Path: "/tmp/test", Name: "test"}})
 

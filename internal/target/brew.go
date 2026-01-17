@@ -2,7 +2,6 @@ package target
 
 import (
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
@@ -38,7 +37,7 @@ func (s *BrewTarget) getBrewCachePath() string {
 		return s.cachePath
 	}
 
-	cmd := exec.Command("brew", "--cache")
+	cmd := execCommand("brew", "--cache")
 	output, err := cmd.Output()
 	if err != nil {
 		return ""
@@ -98,7 +97,7 @@ func (s *BrewTarget) Clean(items []types.CleanableItem) (*types.CleanResult, err
 		return result, nil
 	}
 
-	cmd := exec.Command("brew", "cleanup", "--prune=all", "-s")
+	cmd := execCommand("brew", "cleanup", "--prune=all", "-s")
 	_ = cmd.Run()
 
 	// Move selected items to trash

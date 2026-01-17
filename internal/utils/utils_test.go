@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"errors"
+	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -115,7 +118,7 @@ func TestGetDirSizeWithCount(t *testing.T) {
 	assert.Equal(t, int64(3), count)
 }
 
-func TestGetFileSize(t *testing.T) {
+func TestGetFileSize_File(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "test-file-size")
 	require.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
@@ -128,6 +131,28 @@ func TestGetFileSize(t *testing.T) {
 	size, err := GetFileSize(tmpFile.Name())
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1024), size)
+}
+
+func TestGetFileSize_Directory(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "test-file-size-dir")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	// 디렉토리에 파일 생성
+	file1 := filepath.Join(tmpDir, "file1.txt")
+	file2 := filepath.Join(tmpDir, "file2.txt")
+	require.NoError(t, os.WriteFile(file1, make([]byte, 100), 0o644))
+	require.NoError(t, os.WriteFile(file2, make([]byte, 200), 0o644))
+
+	size, err := GetFileSize(tmpDir)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(300), size)
+}
+
+func TestGetFileSize_NonExistent(t *testing.T) {
+	_, err := GetFileSize("/nonexistent/path/12345")
+
+	assert.Error(t, err)
 }
 
 func TestGlobPaths(t *testing.T) {
@@ -259,4 +284,92 @@ func TestStripGlobPattern_NonExistentPath(t *testing.T) {
 	result := StripGlobPattern(pattern)
 
 	assert.Equal(t, "/nonexistent/path", result)
+}
+
+func TestExpandPath_UserHomeDirError(t *testing.T) {
+	original := osUserHomeDir
+	defer func() { osUserHomeDir = original }()
+	osUserHomeDir = func() (string, error) {
+		return "", errors.New("no home directory")
+	}
+
+	result := ExpandPath("~/test/path")
+
+	assert.Equal(t, "~/test/path", result, "should return original path on error")
+}
+
+func TestCheckFullDiskAccess_HasAccess(t *testing.T) {
+	original := osReadDir
+	defer func() { osReadDir = original }()
+	osReadDir = func(_ string) ([]fs.DirEntry, error) {
+		return []fs.DirEntry{}, nil
+	}
+
+	result := CheckFullDiskAccess()
+
+	assert.True(t, result)
+}
+
+func TestCheckFullDiskAccess_NoAccess(t *testing.T) {
+	original := osReadDir
+	defer func() { osReadDir = original }()
+	osReadDir = func(_ string) ([]fs.DirEntry, error) {
+		return nil, fs.ErrPermission
+	}
+
+	result := CheckFullDiskAccess()
+
+	assert.False(t, result)
+}
+
+func TestOpenInFinder_Directory(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	original := execCommand
+	defer func() { execCommand = original }()
+
+	var capturedArgs []string
+	execCommand = func(name string, args ...string) *exec.Cmd {
+		capturedArgs = append([]string{name}, args...)
+		return exec.Command("true") // "true" always succeeds
+	}
+
+	err := OpenInFinder(tmpDir)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"open", tmpDir}, capturedArgs)
+}
+
+func TestOpenInFinder_File(t *testing.T) {
+	tmpDir := t.TempDir()
+	tmpFile := filepath.Join(tmpDir, "test.txt")
+	require.NoError(t, os.WriteFile(tmpFile, []byte("test"), 0o644))
+
+	original := execCommand
+	defer func() { execCommand = original }()
+
+	var capturedArgs []string
+	execCommand = func(name string, args ...string) *exec.Cmd {
+		capturedArgs = append([]string{name}, args...)
+		return exec.Command("true")
+	}
+
+	err := OpenInFinder(tmpFile)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"open", "-R", tmpFile}, capturedArgs)
+}
+
+func TestOpenInFinder_CommandError(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	original := execCommand
+	defer func() { execCommand = original }()
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("false") // "false" always fails
+	}
+
+	err := OpenInFinder(tmpDir)
+
+	assert.Error(t, err)
 }

@@ -8,6 +8,11 @@ import (
 	"strings"
 )
 
+var (
+	execLookPath = exec.LookPath
+	execCommand  = exec.Command
+)
+
 const (
 	// BrewFormula is the Homebrew formula name for mac-cleanup-go
 	BrewFormula = "2ykwang/2ykwang/mac-cleanup-go"
@@ -31,12 +36,12 @@ func CheckForUpdate(currentVersion string) CheckResult {
 	}
 
 	// Check if brew is available
-	if _, err := exec.LookPath("brew"); err != nil {
+	if _, err := execLookPath("brew"); err != nil {
 		return result
 	}
 
 	// Run: brew info 2ykwang/2ykwang/mac-cleanup-go
-	cmd := exec.Command("brew", "info", BrewFormula)
+	cmd := execCommand("brew", "info", BrewFormula)
 	output, err := cmd.Output()
 	if err != nil {
 		result.Error = err
@@ -54,7 +59,7 @@ func CheckForUpdate(currentVersion string) CheckResult {
 
 // RunUpdate executes brew upgrade command
 func RunUpdate() error {
-	cmd := exec.Command("brew", "upgrade", BrewFormula)
+	cmd := execCommand("brew", "upgrade", BrewFormula)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
