@@ -101,10 +101,10 @@ func (s *PathTarget) scanPathsParallel(paths []string) ([]types.CleanableItem, i
 	sem := make(chan struct{}, getMaxWorkers(runtime.NumCPU()))
 
 	for _, path := range paths {
+		sem <- struct{}{}
 		wg.Add(1)
 		go func(p string) {
 			defer wg.Done()
-			sem <- struct{}{}
 			defer func() { <-sem }()
 
 			item, err := s.scanPath(p)
