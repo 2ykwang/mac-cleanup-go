@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
+	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
 )
@@ -635,7 +635,7 @@ func TestViewList_ContainsResults(t *testing.T) {
 func TestStartScan_NoAvailableScannersStopsScanning(t *testing.T) {
 	m := newTestModel()
 	m.scanning = true
-	m.registry = scanner.NewRegistry()
+	m.registry = target.NewRegistry()
 	m.config = &types.Config{
 		Categories: []types.Category{{ID: "cat1", Name: "Cat 1", Safety: types.SafetyLevelSafe}},
 	}
@@ -668,7 +668,7 @@ func TestHandleScanResult_UpdatesExistingEntry(t *testing.T) {
 	m.scanning = true
 	m.scanTotal = 2
 
-	available := []scanner.Scanner{
+	available := []target.Scanner{
 		testScanner{category: cat, available: true},
 	}
 	m.initScanResults(available)
@@ -696,7 +696,7 @@ func TestHandleScanResult_FinalizeRemovesZeroSize(t *testing.T) {
 	m.scanning = true
 	m.scanTotal = 1
 
-	available := []scanner.Scanner{
+	available := []target.Scanner{
 		testScanner{category: cat, available: true},
 	}
 	m.initScanResults(available)

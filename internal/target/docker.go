@@ -1,4 +1,4 @@
-package scanner
+package target
 
 import (
 	"encoding/json"

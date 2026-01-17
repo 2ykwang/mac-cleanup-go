@@ -6,7 +6,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
+	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
@@ -55,7 +55,7 @@ func validateConfig(cfg *types.Config) error {
 		}
 
 		// Method-specific validations
-		if cat.Method == types.MethodBuiltin && !scanner.IsBuiltinID(cat.ID) {
+		if cat.Method == types.MethodBuiltin && !target.IsBuiltinID(cat.ID) {
 			return fmt.Errorf("category '%s': unknown builtin ID", cat.ID)
 		}
 	}

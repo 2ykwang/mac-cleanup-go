@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
+	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
 type Cleaner struct {
-	registry *scanner.Registry
+	registry *target.Registry
 }
 
-func New(registry *scanner.Registry) *Cleaner {
+func New(registry *target.Registry) *Cleaner {
 	return &Cleaner{registry: registry}
 }
 

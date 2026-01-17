@@ -1,4 +1,4 @@
-package scanner
+package target
 
 import "github.com/2ykwang/mac-cleanup-go/internal/types"
 

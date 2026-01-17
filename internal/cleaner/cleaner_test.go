@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
+	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
-// mockScanner implements scanner.Scanner for testing
+// mockScanner implements target.Scanner for testing
 type mockScanner struct {
 	category    types.Category
 	cleanCalled bool
@@ -70,7 +70,7 @@ func (s *nilResultScanner) IsAvailable() bool {
 }
 
 func TestNew(t *testing.T) {
-	registry := scanner.NewRegistry()
+	registry := target.NewRegistry()
 	c := New(registry)
 	require.NotNil(t, c)
 }
@@ -186,7 +186,7 @@ func TestClean_Permanent_SkipsSIPProtectedPaths(t *testing.T) {
 }
 
 func TestClean_MethodBuiltin_DelegatesToScanner(t *testing.T) {
-	registry := scanner.NewRegistry()
+	registry := target.NewRegistry()
 	mock := &mockScanner{
 		category: types.Category{
 			ID:     "docker",
@@ -217,7 +217,7 @@ func TestClean_MethodBuiltin_DelegatesToScanner(t *testing.T) {
 }
 
 func TestClean_MethodBuiltin_ScannerNotFound(t *testing.T) {
-	registry := scanner.NewRegistry()
+	registry := target.NewRegistry()
 	c := New(registry)
 
 	cat := types.Category{
@@ -237,7 +237,7 @@ func TestClean_MethodBuiltin_ScannerNotFound(t *testing.T) {
 }
 
 func TestClean_MethodBuiltin_ScannerReturnsError(t *testing.T) {
-	registry := scanner.NewRegistry()
+	registry := target.NewRegistry()
 	mock := &mockScanner{
 		category: types.Category{
 			ID:     "docker",
@@ -273,7 +273,7 @@ func TestClean_MethodBuiltin_ScannerReturnsError(t *testing.T) {
 }
 
 func TestClean_MethodBuiltin_ScannerErrorPropagates(t *testing.T) {
-	registry := scanner.NewRegistry()
+	registry := target.NewRegistry()
 	mock := &mockScanner{
 		category: types.Category{
 			ID:     "docker",
@@ -299,7 +299,7 @@ func TestClean_MethodBuiltin_ScannerErrorPropagates(t *testing.T) {
 }
 
 func TestClean_MethodBuiltin_ScannerNilResultWithError(t *testing.T) {
-	registry := scanner.NewRegistry()
+	registry := target.NewRegistry()
 	impl := &nilResultScanner{
 		category: types.Category{
 			ID:     "docker",

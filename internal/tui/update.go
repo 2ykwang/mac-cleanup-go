@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
+	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
@@ -62,11 +62,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *Model) initScanResults(scanners []scanner.Scanner) {
+func (m *Model) initScanResults(scanners []target.Scanner) {
 	m.results = m.results[:0]
 	m.resultMap = make(map[string]*types.ScanResult)
 
-	available := make(map[string]scanner.Scanner, len(scanners))
+	available := make(map[string]target.Scanner, len(scanners))
 	for _, s := range scanners {
 		available[s.Category().ID] = s
 	}
