@@ -9,15 +9,15 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
-type Cleaner struct {
+type Executor struct {
 	registry *target.Registry
 }
 
-func New(registry *target.Registry) *Cleaner {
-	return &Cleaner{registry: registry}
+func NewExecutor(registry *target.Registry) *Executor {
+	return &Executor{registry: registry}
 }
 
-func (c *Cleaner) Clean(cat types.Category, items []types.CleanableItem) *types.CleanResult {
+func (c *Executor) Clean(cat types.Category, items []types.CleanableItem) *types.CleanResult {
 	result := &types.CleanResult{
 		Category: cat,
 		Errors:   make([]string, 0),
@@ -52,7 +52,7 @@ func (c *Cleaner) Clean(cat types.Category, items []types.CleanableItem) *types.
 	return result
 }
 
-func (c *Cleaner) moveToTrash(items []types.CleanableItem, result *types.CleanResult) {
+func (c *Executor) moveToTrash(items []types.CleanableItem, result *types.CleanResult) {
 	for _, item := range items {
 		if utils.IsSIPProtected(item.Path) {
 			result.SkippedItems++
@@ -68,7 +68,7 @@ func (c *Cleaner) moveToTrash(items []types.CleanableItem, result *types.CleanRe
 	}
 }
 
-func (c *Cleaner) removePermanent(items []types.CleanableItem, result *types.CleanResult) {
+func (c *Executor) removePermanent(items []types.CleanableItem, result *types.CleanResult) {
 	for _, item := range items {
 		// Skip SIP protected paths
 		if utils.IsSIPProtected(item.Path) {

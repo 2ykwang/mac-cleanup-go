@@ -17,7 +17,7 @@ import (
 type configState struct {
 	config            *types.Config
 	registry          *target.Registry
-	cleaner           *cleaner.Cleaner
+	cleaner           *cleaner.Executor
 	hasFullDiskAccess bool
 	userConfig        *userconfig.UserConfig
 	err               error

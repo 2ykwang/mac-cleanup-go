@@ -71,12 +71,12 @@ func (s *nilResultTarget) IsAvailable() bool {
 
 func TestNew(t *testing.T) {
 	registry := target.NewRegistry()
-	c := New(registry)
+	c := NewExecutor(registry)
 	require.NotNil(t, c)
 }
 
 func TestClean_CategoryInResult(t *testing.T) {
-	c := New(nil)
+	c := NewExecutor(nil)
 
 	cat := types.Category{
 		ID:     "test-id",
@@ -92,7 +92,7 @@ func TestClean_CategoryInResult(t *testing.T) {
 }
 
 func TestClean_SkipsSIPProtectedPaths(t *testing.T) {
-	c := New(nil)
+	c := NewExecutor(nil)
 
 	items := []types.CleanableItem{
 		{Path: "/System/Library/Caches/test", Name: "sip-protected", Size: 1000},
@@ -112,7 +112,7 @@ func TestClean_SkipsSIPProtectedPaths(t *testing.T) {
 }
 
 func TestClean_Permanent_RemovesFiles(t *testing.T) {
-	c := New(nil)
+	c := NewExecutor(nil)
 
 	tmpFile, err := os.CreateTemp("", "cleanup-test-*")
 	require.NoError(t, err)
@@ -140,7 +140,7 @@ func TestClean_Permanent_RemovesFiles(t *testing.T) {
 }
 
 func TestClean_Permanent_RemovesDirectories(t *testing.T) {
-	c := New(nil)
+	c := NewExecutor(nil)
 
 	tmpDir, err := os.MkdirTemp("", "cleanup-test-dir-*")
 	require.NoError(t, err)
@@ -168,7 +168,7 @@ func TestClean_Permanent_RemovesDirectories(t *testing.T) {
 }
 
 func TestClean_Permanent_SkipsSIPProtectedPaths(t *testing.T) {
-	c := New(nil)
+	c := NewExecutor(nil)
 
 	items := []types.CleanableItem{
 		{Path: "/System/Library/Caches/test", Name: "sip-protected", Size: 1000},
@@ -196,7 +196,7 @@ func TestClean_MethodBuiltin_DelegatesToTarget(t *testing.T) {
 	}
 	registry.Register(mock)
 
-	c := New(registry)
+	c := NewExecutor(registry)
 
 	cat := types.Category{
 		ID:     "docker",
@@ -218,7 +218,7 @@ func TestClean_MethodBuiltin_DelegatesToTarget(t *testing.T) {
 
 func TestClean_MethodBuiltin_TargetNotFound(t *testing.T) {
 	registry := target.NewRegistry()
-	c := New(registry)
+	c := NewExecutor(registry)
 
 	cat := types.Category{
 		ID:     "nonexistent",
@@ -253,7 +253,7 @@ func TestClean_MethodBuiltin_TargetReturnsError(t *testing.T) {
 	}
 	registry.Register(mock)
 
-	c := New(registry)
+	c := NewExecutor(registry)
 
 	cat := types.Category{
 		ID:     "docker",
@@ -284,7 +284,7 @@ func TestClean_MethodBuiltin_TargetErrorPropagates(t *testing.T) {
 	}
 	registry.Register(mock)
 
-	c := New(registry)
+	c := NewExecutor(registry)
 
 	cat := types.Category{
 		ID:     "docker",
@@ -309,7 +309,7 @@ func TestClean_MethodBuiltin_TargetNilResultWithError(t *testing.T) {
 	}
 	registry.Register(impl)
 
-	c := New(registry)
+	c := NewExecutor(registry)
 
 	cat := types.Category{
 		ID:     "docker",
@@ -324,7 +324,7 @@ func TestClean_MethodBuiltin_TargetNilResultWithError(t *testing.T) {
 }
 
 func TestClean_Manual_SkipsWithGuide(t *testing.T) {
-	c := New(nil)
+	c := NewExecutor(nil)
 
 	cat := types.Category{
 		ID:     "test-manual",
@@ -353,7 +353,7 @@ func TestClean_Trash_MovesToTrash(t *testing.T) {
 		return nil
 	}
 
-	c := New(nil)
+	c := NewExecutor(nil)
 	cat := types.Category{
 		ID:     "test-trash",
 		Name:   "Test Trash",
@@ -383,7 +383,7 @@ func TestClean_Trash_PartialFailure(t *testing.T) {
 		return nil
 	}
 
-	c := New(nil)
+	c := NewExecutor(nil)
 	cat := types.Category{
 		ID:     "test-trash",
 		Name:   "Test Trash",
