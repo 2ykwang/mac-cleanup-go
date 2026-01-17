@@ -423,7 +423,7 @@ func TestClean_NilCallbacks(t *testing.T) {
 	// Setup: use MoveToTrash mock to avoid actual file operations
 	original := utils.MoveToTrash
 	defer func() { utils.MoveToTrash = original }()
-	utils.MoveToTrash = func(path string) error { return nil }
+	utils.MoveToTrash = func(_ string) error { return nil }
 
 	service := NewCleanService(target.NewRegistry())
 
@@ -448,7 +448,7 @@ func TestClean_NilCallbacks(t *testing.T) {
 func TestClean_CallsOnProgress_NonBuiltin(t *testing.T) {
 	original := utils.MoveToTrash
 	defer func() { utils.MoveToTrash = original }()
-	utils.MoveToTrash = func(path string) error { return nil }
+	utils.MoveToTrash = func(_ string) error { return nil }
 
 	service := NewCleanService(target.NewRegistry())
 
@@ -532,7 +532,7 @@ func TestClean_CallsOnProgress_Builtin(t *testing.T) {
 func TestClean_CallsOnItemDone(t *testing.T) {
 	original := utils.MoveToTrash
 	defer func() { utils.MoveToTrash = original }()
-	utils.MoveToTrash = func(path string) error { return nil }
+	utils.MoveToTrash = func(_ string) error { return nil }
 
 	service := NewCleanService(target.NewRegistry())
 
@@ -622,7 +622,7 @@ func TestClean_CallsOnItemDone_WithError(t *testing.T) {
 func TestClean_CallsOnCategoryDone(t *testing.T) {
 	original := utils.MoveToTrash
 	defer func() { utils.MoveToTrash = original }()
-	utils.MoveToTrash = func(path string) error { return nil }
+	utils.MoveToTrash = func(_ string) error { return nil }
 
 	service := NewCleanService(target.NewRegistry())
 
@@ -693,7 +693,7 @@ func TestClean_BuiltinBatchProcessing(t *testing.T) {
 
 	var itemDoneCalls int
 	callbacks := Callbacks{
-		OnItemDone: func(r ItemResult) {
+		OnItemDone: func(_ ItemResult) {
 			itemDoneCalls++
 		},
 	}
@@ -735,7 +735,7 @@ func TestClean_NonBuiltinItemByItem(t *testing.T) {
 
 	var itemDoneCalls int
 	callbacks := Callbacks{
-		OnItemDone: func(r ItemResult) {
+		OnItemDone: func(_ ItemResult) {
 			itemDoneCalls++
 		},
 	}
@@ -792,7 +792,7 @@ func TestClean_AggregatesResults(t *testing.T) {
 func TestClean_MultipleCategories(t *testing.T) {
 	original := utils.MoveToTrash
 	defer func() { utils.MoveToTrash = original }()
-	utils.MoveToTrash = func(path string) error { return nil }
+	utils.MoveToTrash = func(_ string) error { return nil }
 
 	registry := target.NewRegistry()
 	mock := &mockTargetForService{
@@ -845,7 +845,7 @@ func TestClean_MultipleCategories(t *testing.T) {
 func TestClean_ReturnsCorrectReport(t *testing.T) {
 	original := utils.MoveToTrash
 	defer func() { utils.MoveToTrash = original }()
-	utils.MoveToTrash = func(path string) error { return nil }
+	utils.MoveToTrash = func(_ string) error { return nil }
 
 	service := NewCleanService(target.NewRegistry())
 

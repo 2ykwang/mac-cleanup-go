@@ -26,14 +26,13 @@ func DefaultRegistry(cfg *types.Config) (*Registry, error) {
 
 	for _, cat := range cfg.Categories {
 		var s Target
-		switch cat.Method {
-		case types.MethodBuiltin:
-			if factory, ok := builtinFactories[cat.ID]; ok {
-				s = factory(cat, cfg.Categories)
-			} else {
-				return nil, fmt.Errorf("unknown builtin target id: %s", cat.ID)
-			}
-		default:
+		if factory, ok := builtinFactories[cat.ID]; ok {
+			// Use registered factory regardless of method type
+			s = factory(cat, cfg.Categories)
+		} else if cat.Method == types.MethodBuiltin {
+			// method: builtin but no factory registered
+			return nil, fmt.Errorf("unknown builtin target id: %s", cat.ID)
+		} else {
 			s = NewPathTarget(cat)
 		}
 		r.Register(s)
