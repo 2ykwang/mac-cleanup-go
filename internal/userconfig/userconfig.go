@@ -12,6 +12,13 @@ const (
 	configFile = "config.yaml"
 )
 
+// Function variables for testing
+var (
+	osReadFile  = os.ReadFile
+	osMkdirAll  = os.MkdirAll
+	osWriteFile = os.WriteFile
+)
+
 // UserConfig stores user preferences
 type UserConfig struct {
 	// ExcludedPaths maps category ID to list of excluded paths
@@ -34,7 +41,7 @@ func Load() (*UserConfig, error) {
 		return &UserConfig{ExcludedPaths: make(map[string][]string)}, nil
 	}
 
-	data, err := os.ReadFile(path)
+	data, err := osReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return &UserConfig{ExcludedPaths: make(map[string][]string)}, nil
@@ -63,7 +70,7 @@ func (c *UserConfig) Save() error {
 
 	// Create config directory if not exists
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := osMkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 
@@ -72,7 +79,7 @@ func (c *UserConfig) Save() error {
 		return err
 	}
 
-	return os.WriteFile(path, data, 0o644)
+	return osWriteFile(path, data, 0o644)
 }
 
 // SetExcludedPaths sets excluded paths for a category
