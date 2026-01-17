@@ -3,10 +3,24 @@ package target
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"sort"
+	"sync"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
+
+// getMaxWorkers returns the optimal number of workers based on CPU cores
+func getMaxWorkers(numCPU int) int {
+	if numCPU > 16 {
+		return 16
+	}
+	if numCPU < 4 {
+		return 4
+	}
+	return numCPU
+}
 
 type PathTarget struct {
 	category types.Category
@@ -48,30 +62,71 @@ func (s *PathTarget) Scan() (*types.ScanResult, error) {
 		return result, nil
 	}
 
+	paths := s.collectPaths()
+	if len(paths) == 0 {
+		return result, nil
+	}
+
+	result.Items, result.TotalSize, result.TotalFileCount = s.scanPathsParallel(paths)
+	return result, nil
+}
+
+// collectPaths gathers all paths from glob patterns, filtering out SIP protected paths
+func (s *PathTarget) collectPaths() []string {
+	var paths []string
 	for _, pattern := range s.category.Paths {
-		paths, err := utils.GlobPaths(pattern)
+		matched, err := utils.GlobPaths(pattern)
 		if err != nil {
 			continue
 		}
-
-		for _, path := range paths {
-			// Skip SIP protected paths
-			if utils.IsSIPProtected(path) {
-				continue
+		for _, p := range matched {
+			if !utils.IsSIPProtected(p) {
+				paths = append(paths, p)
 			}
-
-			item, err := s.scanPath(path)
-			if err != nil {
-				continue
-			}
-
-			result.Items = append(result.Items, item)
-			result.TotalSize += item.Size
-			result.TotalFileCount += item.FileCount
 		}
 	}
+	return paths
+}
 
-	return result, nil
+// scanPathsParallel scans multiple paths concurrently using a worker pool
+func (s *PathTarget) scanPathsParallel(paths []string) ([]types.CleanableItem, int64, int64) {
+	var (
+		wg         sync.WaitGroup
+		mu         sync.Mutex
+		items      []types.CleanableItem
+		totalSize  int64
+		totalCount int64
+	)
+
+	sem := make(chan struct{}, getMaxWorkers(runtime.NumCPU()))
+
+	for _, path := range paths {
+		wg.Add(1)
+		go func(p string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			item, err := s.scanPath(p)
+			if err != nil {
+				return
+			}
+
+			mu.Lock()
+			items = append(items, item)
+			totalSize += item.Size
+			totalCount += item.FileCount
+			mu.Unlock()
+		}(path)
+	}
+	wg.Wait()
+
+	// Sort for consistent ordering
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Path < items[j].Path
+	})
+
+	return items, totalSize, totalCount
 }
 
 func (s *PathTarget) scanPath(path string) (types.CleanableItem, error) {

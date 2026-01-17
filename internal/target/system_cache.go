@@ -55,29 +55,29 @@ func (s *SystemCacheTarget) Scan() (*types.ScanResult, error) {
 		return result, nil
 	}
 
+	paths := s.collectFilteredPaths()
+	if len(paths) == 0 {
+		return result, nil
+	}
+	result.Items, result.TotalSize, result.TotalFileCount = s.scanPathsParallel(paths)
+	return result, nil
+}
+
+// collectFilteredPaths gathers paths excluding those defined in other categories
+func (s *SystemCacheTarget) collectFilteredPaths() []string {
+	var paths []string
 	for _, pattern := range s.category.Paths {
-		paths, err := utils.GlobPaths(pattern)
+		matched, err := utils.GlobPaths(pattern)
 		if err != nil {
 			continue
 		}
-
-		for _, path := range paths {
-			if s.isExcluded(path) {
-				continue
+		for _, p := range matched {
+			if !s.isExcluded(p) {
+				paths = append(paths, p)
 			}
-
-			item, err := s.scanPath(path)
-			if err != nil {
-				continue
-			}
-
-			result.Items = append(result.Items, item)
-			result.TotalSize += item.Size
-			result.TotalFileCount += item.FileCount
 		}
 	}
-
-	return result, nil
+	return paths
 }
 
 func (s *SystemCacheTarget) isExcluded(path string) bool {
