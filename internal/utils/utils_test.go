@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"errors"
+	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -281,4 +284,92 @@ func TestStripGlobPattern_NonExistentPath(t *testing.T) {
 	result := StripGlobPattern(pattern)
 
 	assert.Equal(t, "/nonexistent/path", result)
+}
+
+func TestExpandPath_UserHomeDirError(t *testing.T) {
+	original := osUserHomeDir
+	defer func() { osUserHomeDir = original }()
+	osUserHomeDir = func() (string, error) {
+		return "", errors.New("no home directory")
+	}
+
+	result := ExpandPath("~/test/path")
+
+	assert.Equal(t, "~/test/path", result, "should return original path on error")
+}
+
+func TestCheckFullDiskAccess_HasAccess(t *testing.T) {
+	original := osReadDir
+	defer func() { osReadDir = original }()
+	osReadDir = func(name string) ([]fs.DirEntry, error) {
+		return []fs.DirEntry{}, nil
+	}
+
+	result := CheckFullDiskAccess()
+
+	assert.True(t, result)
+}
+
+func TestCheckFullDiskAccess_NoAccess(t *testing.T) {
+	original := osReadDir
+	defer func() { osReadDir = original }()
+	osReadDir = func(name string) ([]fs.DirEntry, error) {
+		return nil, fs.ErrPermission
+	}
+
+	result := CheckFullDiskAccess()
+
+	assert.False(t, result)
+}
+
+func TestOpenInFinder_Directory(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	original := execCommand
+	defer func() { execCommand = original }()
+
+	var capturedArgs []string
+	execCommand = func(name string, args ...string) *exec.Cmd {
+		capturedArgs = append([]string{name}, args...)
+		return exec.Command("true") // "true" always succeeds
+	}
+
+	err := OpenInFinder(tmpDir)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"open", tmpDir}, capturedArgs)
+}
+
+func TestOpenInFinder_File(t *testing.T) {
+	tmpDir := t.TempDir()
+	tmpFile := filepath.Join(tmpDir, "test.txt")
+	require.NoError(t, os.WriteFile(tmpFile, []byte("test"), 0o644))
+
+	original := execCommand
+	defer func() { execCommand = original }()
+
+	var capturedArgs []string
+	execCommand = func(name string, args ...string) *exec.Cmd {
+		capturedArgs = append([]string{name}, args...)
+		return exec.Command("true")
+	}
+
+	err := OpenInFinder(tmpFile)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"open", "-R", tmpFile}, capturedArgs)
+}
+
+func TestOpenInFinder_CommandError(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	original := execCommand
+	defer func() { execCommand = original }()
+	execCommand = func(name string, args ...string) *exec.Cmd {
+		return exec.Command("false") // "false" always fails
+	}
+
+	err := OpenInFinder(tmpDir)
+
+	assert.Error(t, err)
 }

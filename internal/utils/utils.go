@@ -9,9 +9,15 @@ import (
 	"time"
 )
 
+var (
+	osUserHomeDir = os.UserHomeDir
+	osReadDir     = os.ReadDir
+	execCommand   = exec.Command
+)
+
 func ExpandPath(path string) string {
 	if strings.HasPrefix(path, "~/") {
-		home, err := os.UserHomeDir()
+		home, err := osUserHomeDir()
 		if err != nil {
 			return path
 		}
@@ -125,7 +131,7 @@ func GlobPaths(pattern string) ([]string, error) {
 // by attempting to read the Trash directory
 func CheckFullDiskAccess() bool {
 	trashPath := ExpandPath("~/.Trash")
-	_, err := os.ReadDir(trashPath)
+	_, err := osReadDir(trashPath)
 	return err == nil
 }
 
@@ -170,7 +176,7 @@ func OpenInFinder(path string) error {
 	}
 
 	if info.IsDir() {
-		return exec.Command("open", expanded).Run()
+		return execCommand("open", expanded).Run()
 	}
-	return exec.Command("open", "-R", expanded).Run()
+	return execCommand("open", "-R", expanded).Run()
 }
