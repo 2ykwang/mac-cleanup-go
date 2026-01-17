@@ -9,6 +9,7 @@ import (
 
 	"github.com/2ykwang/mac-cleanup-go/internal/config"
 	"github.com/2ykwang/mac-cleanup-go/internal/tui"
+	pkgversion "github.com/2ykwang/mac-cleanup-go/internal/version"
 )
 
 // version is set via ldflags: go build -ldflags "-X main.version=1.0.0"
@@ -18,10 +19,21 @@ func main() {
 	// Flags
 	showVersion := flag.Bool("version", false, "Show version")
 	shortVersion := flag.Bool("v", false, "Show version (short)")
+	doUpdate := flag.Bool("update", false, "Update to latest version via Homebrew")
 	flag.Parse()
 
 	if *showVersion || *shortVersion {
 		fmt.Printf("mac-cleanup %s\n", version)
+		return
+	}
+
+	if *doUpdate {
+		fmt.Println("Updating mac-cleanup-go via Homebrew...")
+		if err := pkgversion.RunUpdate(); err != nil {
+			fmt.Fprintf(os.Stderr, "Update failed: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Update complete!")
 		return
 	}
 
@@ -32,7 +44,7 @@ func main() {
 	}
 
 	p := tea.NewProgram(
-		tui.NewModel(cfg),
+		tui.NewModel(cfg, version),
 		tea.WithAltScreen(),
 	)
 
