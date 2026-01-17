@@ -9,15 +9,15 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/cleaner"
-	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
+	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
 )
 
 type configState struct {
 	config            *types.Config
-	registry          *scanner.Registry
-	cleaner           *cleaner.Cleaner
+	registry          *target.Registry
+	cleanService      *cleaner.CleanService
 	hasFullDiskAccess bool
 	userConfig        *userconfig.UserConfig
 	err               error

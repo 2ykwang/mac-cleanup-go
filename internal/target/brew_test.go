@@ -1,4 +1,4 @@
-package scanner
+package target
 
 import (
 	"os"
@@ -12,34 +12,34 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
-func TestNewBrewScanner_ReturnsNonNil(t *testing.T) {
+func TestNewBrewTarget_ReturnsNonNil(t *testing.T) {
 	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
 
-	s := NewBrewScanner(cat)
+	s := NewBrewTarget(cat)
 
 	assert.NotNil(t, s)
 }
 
-func TestNewBrewScanner_StoresCategory(t *testing.T) {
+func TestNewBrewTarget_StoresCategory(t *testing.T) {
 	cat := types.Category{
 		ID:     "homebrew",
 		Name:   "Homebrew Cache",
 		Safety: types.SafetyLevelSafe,
 	}
 
-	s := NewBrewScanner(cat)
+	s := NewBrewTarget(cat)
 
 	assert.Equal(t, "homebrew", s.category.ID)
 	assert.Equal(t, "Homebrew Cache", s.category.Name)
 }
 
-func TestBrewScanner_Category_ReturnsConfiguredCategory(t *testing.T) {
+func TestBrewTarget_Category_ReturnsConfiguredCategory(t *testing.T) {
 	cat := types.Category{
 		ID:     "homebrew",
 		Name:   "Homebrew",
 		Safety: types.SafetyLevelModerate,
 	}
-	s := NewBrewScanner(cat)
+	s := NewBrewTarget(cat)
 
 	result := s.Category()
 
@@ -48,9 +48,9 @@ func TestBrewScanner_Category_ReturnsConfiguredCategory(t *testing.T) {
 	assert.Equal(t, types.SafetyLevelModerate, result.Safety)
 }
 
-func TestBrewScanner_Scan_ReturnsEmptyWhenNotAvailable(t *testing.T) {
+func TestBrewTarget_Scan_ReturnsEmptyWhenNotAvailable(t *testing.T) {
 	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
-	s := NewBrewScanner(cat)
+	s := NewBrewTarget(cat)
 
 	result, err := s.Scan()
 
@@ -59,9 +59,9 @@ func TestBrewScanner_Scan_ReturnsEmptyWhenNotAvailable(t *testing.T) {
 	assert.Equal(t, "homebrew", result.Category.ID)
 }
 
-func TestBrewScanner_GetBrewCachePath_CachesResult(t *testing.T) {
+func TestBrewTarget_GetBrewCachePath_CachesResult(t *testing.T) {
 	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
-	s := NewBrewScanner(cat)
+	s := NewBrewTarget(cat)
 
 	// First call
 	path1 := s.getBrewCachePath()
@@ -71,9 +71,9 @@ func TestBrewScanner_GetBrewCachePath_CachesResult(t *testing.T) {
 	assert.Equal(t, path1, path2)
 }
 
-func TestBrewScanner_Clean_ReturnsResult(t *testing.T) {
+func TestBrewTarget_Clean_ReturnsResult(t *testing.T) {
 	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
-	s := NewBrewScanner(cat)
+	s := NewBrewTarget(cat)
 	s.cachePath = "/nonexistent/path"
 
 	items := []types.CleanableItem{
@@ -88,7 +88,7 @@ func TestBrewScanner_Clean_ReturnsResult(t *testing.T) {
 	assert.NotEmpty(t, result.Errors)
 }
 
-func TestBrewScanner_Scan_WithMockCachePath(t *testing.T) {
+func TestBrewTarget_Scan_WithMockCachePath(t *testing.T) {
 	if !utils.CommandExists("brew") {
 		t.Skip("brew not installed")
 	}
@@ -101,7 +101,7 @@ func TestBrewScanner_Scan_WithMockCachePath(t *testing.T) {
 	require.NoError(t, os.WriteFile(testFile, []byte("test content for brew cache"), 0o644))
 
 	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
-	s := NewBrewScanner(cat)
+	s := NewBrewTarget(cat)
 	s.cachePath = cacheDir
 
 	result, err := s.Scan()
@@ -114,13 +114,13 @@ func TestBrewScanner_Scan_WithMockCachePath(t *testing.T) {
 	assert.Greater(t, result.TotalSize, int64(0))
 }
 
-func TestBrewScanner_Scan_NonexistentCachePath(t *testing.T) {
+func TestBrewTarget_Scan_NonexistentCachePath(t *testing.T) {
 	if !utils.CommandExists("brew") {
 		t.Skip("brew not installed")
 	}
 
 	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
-	s := NewBrewScanner(cat)
+	s := NewBrewTarget(cat)
 	s.cachePath = "/nonexistent/path/that/does/not/exist"
 
 	result, err := s.Scan()

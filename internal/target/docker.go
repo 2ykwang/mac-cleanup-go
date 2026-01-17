@@ -1,4 +1,4 @@
-package scanner
+package target
 
 import (
 	"encoding/json"
@@ -10,19 +10,25 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
-type DockerScanner struct {
+type DockerTarget struct {
 	category types.Category
 }
 
-func NewDockerScanner(cat types.Category) *DockerScanner {
-	return &DockerScanner{category: cat}
+func init() {
+	RegisterBuiltin("docker", func(cat types.Category, _ []types.Category) Target {
+		return NewDockerTarget(cat)
+	})
 }
 
-func (s *DockerScanner) Category() types.Category {
+func NewDockerTarget(cat types.Category) *DockerTarget {
+	return &DockerTarget{category: cat}
+}
+
+func (s *DockerTarget) Category() types.Category {
 	return s.category
 }
 
-func (s *DockerScanner) IsAvailable() bool {
+func (s *DockerTarget) IsAvailable() bool {
 	if !utils.CommandExists("docker") {
 		return false
 	}
@@ -38,7 +44,7 @@ type dockerDfOutput struct {
 	Reclaimable string `json:"Reclaimable"`
 }
 
-func (s *DockerScanner) Scan() (*types.ScanResult, error) {
+func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 	result := &types.ScanResult{
 		Category: s.category,
 		Items:    make([]types.CleanableItem, 0),
@@ -88,7 +94,7 @@ func (s *DockerScanner) Scan() (*types.ScanResult, error) {
 	return result, nil
 }
 
-func (s *DockerScanner) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
+func (s *DockerTarget) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
 	result := &types.CleanResult{
 		Category: s.category,
 		Errors:   make([]string, 0),

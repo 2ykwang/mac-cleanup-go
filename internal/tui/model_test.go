@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
+	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
 )
@@ -35,24 +35,24 @@ func newTestModel() *Model {
 	return m
 }
 
-type testScanner struct {
+type testTarget struct {
 	category  types.Category
 	available bool
 }
 
-func (s testScanner) Scan() (*types.ScanResult, error) {
+func (s testTarget) Scan() (*types.ScanResult, error) {
 	return &types.ScanResult{Category: s.category}, nil
 }
 
-func (s testScanner) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
+func (s testTarget) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
 	return &types.CleanResult{Category: s.category}, nil
 }
 
-func (s testScanner) Category() types.Category {
+func (s testTarget) Category() types.Category {
 	return s.category
 }
 
-func (s testScanner) IsAvailable() bool {
+func (s testTarget) IsAvailable() bool {
 	return s.available
 }
 
@@ -632,10 +632,10 @@ func TestViewList_ContainsResults(t *testing.T) {
 	assert.Contains(t, output, "Xcode Archives")
 }
 
-func TestStartScan_NoAvailableScannersStopsScanning(t *testing.T) {
+func TestStartScan_NoAvailableTargetsStopsScanning(t *testing.T) {
 	m := newTestModel()
 	m.scanning = true
-	m.registry = scanner.NewRegistry()
+	m.registry = target.NewRegistry()
 	m.config = &types.Config{
 		Categories: []types.Category{{ID: "cat1", Name: "Cat 1", Safety: types.SafetyLevelSafe}},
 	}
@@ -668,8 +668,8 @@ func TestHandleScanResult_UpdatesExistingEntry(t *testing.T) {
 	m.scanning = true
 	m.scanTotal = 2
 
-	available := []scanner.Scanner{
-		testScanner{category: cat, available: true},
+	available := []target.Target{
+		testTarget{category: cat, available: true},
 	}
 	m.initScanResults(available)
 
@@ -696,8 +696,8 @@ func TestHandleScanResult_FinalizeRemovesZeroSize(t *testing.T) {
 	m.scanning = true
 	m.scanTotal = 1
 
-	available := []scanner.Scanner{
-		testScanner{category: cat, available: true},
+	available := []target.Target{
+		testTarget{category: cat, available: true},
 	}
 	m.initScanResults(available)
 

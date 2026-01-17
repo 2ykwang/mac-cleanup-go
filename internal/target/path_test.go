@@ -1,4 +1,4 @@
-package scanner
+package target
 
 import (
 	"os"
@@ -19,7 +19,7 @@ func TestCategory_ReturnsConfiguredCategory(t *testing.T) {
 		Safety: types.SafetyLevelSafe,
 	}
 
-	s := NewPathScanner(cat)
+	s := NewPathTarget(cat)
 	result := s.Category()
 
 	assert.Equal(t, "test-id", result.ID)
@@ -35,7 +35,7 @@ func TestIsAvailable_ReturnsTrue_WhenCheckCmdExists(t *testing.T) {
 		CheckCmd: "ls",
 	}
 
-	s := NewPathScanner(cat)
+	s := NewPathTarget(cat)
 
 	assert.True(t, s.IsAvailable())
 }
@@ -46,7 +46,7 @@ func TestIsAvailable_ReturnsFalse_WhenCheckCmdNotExists(t *testing.T) {
 		CheckCmd: "nonexistent-command-xyz-123",
 	}
 
-	s := NewPathScanner(cat)
+	s := NewPathTarget(cat)
 
 	assert.False(t, s.IsAvailable())
 }
@@ -63,7 +63,7 @@ func TestIsAvailable_ReturnsTrue_WhenCheckPathExists(t *testing.T) {
 	// Create a file so glob matches
 	os.WriteFile(filepath.Join(tmpDir, "test.txt"), []byte("test"), 0o644)
 
-	s := NewPathScanner(cat)
+	s := NewPathTarget(cat)
 
 	assert.True(t, s.IsAvailable())
 }
@@ -74,7 +74,7 @@ func TestIsAvailable_ReturnsFalse_WhenPathsNotExists(t *testing.T) {
 		Paths: []string{"/nonexistent/path/xyz/*"},
 	}
 
-	s := NewPathScanner(cat)
+	s := NewPathTarget(cat)
 
 	assert.False(t, s.IsAvailable())
 }
@@ -91,7 +91,7 @@ func TestIsAvailable_ReturnsTrue_WhenPathsHaveMatchingFiles(t *testing.T) {
 		Paths: []string{filepath.Join(tmpDir, "*")},
 	}
 
-	s := NewPathScanner(cat)
+	s := NewPathTarget(cat)
 
 	assert.True(t, s.IsAvailable())
 }
@@ -104,7 +104,7 @@ func TestScan_ReturnsEmptyResult_WhenNotAvailable(t *testing.T) {
 		CheckCmd: "nonexistent-command-xyz",
 	}
 
-	s := NewPathScanner(cat)
+	s := NewPathTarget(cat)
 	result, err := s.Scan()
 
 	assert.NoError(t, err)
@@ -123,7 +123,7 @@ func TestScan_ReturnsItems_ForMatchingPaths(t *testing.T) {
 		Paths: []string{filepath.Join(tmpDir, "*.txt")},
 	}
 
-	s := NewPathScanner(cat)
+	s := NewPathTarget(cat)
 	result, err := s.Scan()
 
 	assert.NoError(t, err)
@@ -142,7 +142,7 @@ func TestScan_CalculatesTotalSizeCorrectly(t *testing.T) {
 		Paths: []string{filepath.Join(tmpDir, "*.txt")},
 	}
 
-	s := NewPathScanner(cat)
+	s := NewPathTarget(cat)
 	result, err := s.Scan()
 
 	assert.NoError(t, err)
@@ -155,7 +155,7 @@ func TestScan_HandlesGlobErrors_Gracefully(t *testing.T) {
 		Paths: []string{"[invalid-glob"},
 	}
 
-	s := NewPathScanner(cat)
+	s := NewPathTarget(cat)
 	result, err := s.Scan()
 
 	assert.NoError(t, err)
@@ -168,7 +168,7 @@ func TestScan_IncludesCategoryInResult(t *testing.T) {
 		Name: "My Category",
 	}
 
-	s := NewPathScanner(cat)
+	s := NewPathTarget(cat)
 	result, err := s.Scan()
 
 	assert.NoError(t, err)
@@ -188,7 +188,7 @@ func TestScan_HandlesDirectories(t *testing.T) {
 		Paths: []string{filepath.Join(tmpDir, "*")},
 	}
 
-	s := NewPathScanner(cat)
+	s := NewPathTarget(cat)
 	result, err := s.Scan()
 
 	assert.NoError(t, err)
@@ -212,7 +212,7 @@ func TestScan_HandlesMultiplePathPatterns(t *testing.T) {
 		},
 	}
 
-	s := NewPathScanner(cat)
+	s := NewPathTarget(cat)
 	result, err := s.Scan()
 
 	assert.NoError(t, err)
@@ -231,7 +231,7 @@ func TestScan_HandlesScanPathError_Gracefully(t *testing.T) {
 		Paths: []string{filepath.Join(tmpDir, "*.txt")},
 	}
 
-	s := NewPathScanner(cat)
+	s := NewPathTarget(cat)
 	result, err := s.Scan()
 
 	assert.NoError(t, err)
@@ -242,7 +242,7 @@ func TestScan_HandlesScanPathError_Gracefully(t *testing.T) {
 
 func TestClean_ReturnsEmptyResult(t *testing.T) {
 	cat := types.Category{ID: "test"}
-	s := NewPathScanner(cat)
+	s := NewPathTarget(cat)
 
 	items := []types.CleanableItem{
 		{Path: "/fake/1", Size: 100},
@@ -256,7 +256,7 @@ func TestClean_ReturnsEmptyResult(t *testing.T) {
 
 func TestClean_IncludesCategoryInResult(t *testing.T) {
 	cat := types.Category{ID: "my-cat", Name: "My Category"}
-	s := NewPathScanner(cat)
+	s := NewPathTarget(cat)
 
 	result, err := s.Clean(nil)
 
@@ -276,7 +276,7 @@ func TestScan_ExcludesSIPProtectedPaths(t *testing.T) {
 		Paths: []string{filepath.Join(tmpDir, "*")},
 	}
 
-	s := NewPathScanner(cat)
+	s := NewPathTarget(cat)
 	result, err := s.Scan()
 
 	assert.NoError(t, err)

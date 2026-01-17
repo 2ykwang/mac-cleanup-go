@@ -1,4 +1,4 @@
-package scanner
+package target
 
 import (
 	"os"
@@ -13,7 +13,7 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
-func TestOldDownloadScanner_FiltersOldFiles(t *testing.T) {
+func TestOldDownloadTarget_FiltersOldFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create old file (40 days ago)
@@ -37,7 +37,7 @@ func TestOldDownloadScanner_FiltersOldFiles(t *testing.T) {
 		Paths:  []string{filepath.Join(tmpDir, "*")},
 	}
 
-	scanner := NewOldDownloadScanner(cat, 30)
+	scanner := NewOldDownloadTarget(cat, 30)
 
 	result, err := scanner.Scan()
 
@@ -46,7 +46,7 @@ func TestOldDownloadScanner_FiltersOldFiles(t *testing.T) {
 	assert.Equal(t, "old_file.txt", result.Items[0].Name)
 }
 
-func TestOldDownloadScanner_NoOldFiles(t *testing.T) {
+func TestOldDownloadTarget_NoOldFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create only recent file
@@ -60,7 +60,7 @@ func TestOldDownloadScanner_NoOldFiles(t *testing.T) {
 		Paths:  []string{filepath.Join(tmpDir, "*")},
 	}
 
-	scanner := NewOldDownloadScanner(cat, 30)
+	scanner := NewOldDownloadTarget(cat, 30)
 
 	result, err := scanner.Scan()
 
@@ -68,7 +68,7 @@ func TestOldDownloadScanner_NoOldFiles(t *testing.T) {
 	assert.Empty(t, result.Items, "should not include recent files")
 }
 
-func TestOldDownloadScanner_EmptyDirectory(t *testing.T) {
+func TestOldDownloadTarget_EmptyDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	cat := types.Category{
@@ -78,7 +78,7 @@ func TestOldDownloadScanner_EmptyDirectory(t *testing.T) {
 		Paths:  []string{filepath.Join(tmpDir, "*")},
 	}
 
-	scanner := NewOldDownloadScanner(cat, 30)
+	scanner := NewOldDownloadTarget(cat, 30)
 
 	result, err := scanner.Scan()
 
@@ -86,7 +86,7 @@ func TestOldDownloadScanner_EmptyDirectory(t *testing.T) {
 	assert.Empty(t, result.Items)
 }
 
-func TestOldDownloadScanner_ExactlyAtCutoff(t *testing.T) {
+func TestOldDownloadTarget_ExactlyAtCutoff(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create file slightly newer than 30 days (29 days, 23 hours ago)
@@ -104,7 +104,7 @@ func TestOldDownloadScanner_ExactlyAtCutoff(t *testing.T) {
 		Paths:  []string{filepath.Join(tmpDir, "*")},
 	}
 
-	scanner := NewOldDownloadScanner(cat, 30)
+	scanner := NewOldDownloadTarget(cat, 30)
 
 	result, err := scanner.Scan()
 
@@ -113,18 +113,18 @@ func TestOldDownloadScanner_ExactlyAtCutoff(t *testing.T) {
 	assert.Empty(t, result.Items, "files newer than 30 days should not be included")
 }
 
-func TestOldDownloadScanner_Category(t *testing.T) {
+func TestOldDownloadTarget_Category(t *testing.T) {
 	cat := types.Category{
 		ID:   "old-downloads",
 		Name: "Old Downloads",
 	}
 
-	scanner := NewOldDownloadScanner(cat, 30)
+	scanner := NewOldDownloadTarget(cat, 30)
 
 	assert.Equal(t, "old-downloads", scanner.Category().ID)
 }
 
-func TestOldDownloadScanner_IsAvailable(t *testing.T) {
+func TestOldDownloadTarget_IsAvailable(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create a file so glob matches
@@ -135,12 +135,12 @@ func TestOldDownloadScanner_IsAvailable(t *testing.T) {
 		Paths: []string{tmpDir + "/*"},
 	}
 
-	scanner := NewOldDownloadScanner(cat, 30)
+	scanner := NewOldDownloadTarget(cat, 30)
 
 	assert.True(t, scanner.IsAvailable())
 }
 
-func TestOldDownloadScanner_Clean_MovesToTrash(t *testing.T) {
+func TestOldDownloadTarget_Clean_MovesToTrash(t *testing.T) {
 	if runtime.GOOS != "darwin" {
 		t.Skip("MoveToTrash requires macOS")
 	}
@@ -155,7 +155,7 @@ func TestOldDownloadScanner_Clean_MovesToTrash(t *testing.T) {
 		Name: "Old Downloads",
 	}
 
-	scanner := NewOldDownloadScanner(cat, 30)
+	scanner := NewOldDownloadTarget(cat, 30)
 	items := []types.CleanableItem{
 		{Path: testFile, Size: 9, Name: "to_delete.txt"},
 	}
@@ -172,7 +172,7 @@ func TestOldDownloadScanner_Clean_MovesToTrash(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 }
 
-func TestOldDownloadScanner_Clean_NonexistentFile(t *testing.T) {
+func TestOldDownloadTarget_Clean_NonexistentFile(t *testing.T) {
 	if runtime.GOOS != "darwin" {
 		t.Skip("MoveToTrash requires macOS")
 	}
@@ -182,7 +182,7 @@ func TestOldDownloadScanner_Clean_NonexistentFile(t *testing.T) {
 		Name: "Old Downloads",
 	}
 
-	scanner := NewOldDownloadScanner(cat, 30)
+	scanner := NewOldDownloadTarget(cat, 30)
 	items := []types.CleanableItem{
 		{Path: "/nonexistent/file.txt", Size: 100, Name: "file.txt"},
 	}

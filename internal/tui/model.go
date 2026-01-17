@@ -11,7 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/cleaner"
-	"github.com/2ykwang/mac-cleanup-go/internal/scanner"
+	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
@@ -64,10 +64,10 @@ func NewModel(cfg *types.Config) *Model {
 		}
 	}
 
-	registry, err := scanner.DefaultRegistry(cfg)
+	registry, err := target.DefaultRegistry(cfg)
 	if err != nil {
 		// Prevent nil registry when we surface a fatal config error.
-		registry = scanner.NewRegistry()
+		registry = target.NewRegistry()
 	}
 
 	// Initialize progress bar
@@ -80,7 +80,7 @@ func NewModel(cfg *types.Config) *Model {
 		configState: configState{
 			config:            cfg,
 			registry:          registry,
-			cleaner:           cleaner.New(registry),
+			cleanService:      cleaner.NewCleanService(registry),
 			hasFullDiskAccess: utils.CheckFullDiskAccess(),
 			userConfig:        userCfg,
 			err:               err,

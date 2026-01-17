@@ -1,4 +1,4 @@
-package scanner
+package target
 
 import (
 	"os"
@@ -11,7 +11,7 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
-func newSystemCacheScannerWithArcCategory() *SystemCacheScanner {
+func newSystemCacheTargetWithArcCategory() *SystemCacheTarget {
 	systemCache := types.Category{
 		ID:    "system-cache",
 		Paths: []string{"/tmp/test/Caches/*"},
@@ -20,28 +20,28 @@ func newSystemCacheScannerWithArcCategory() *SystemCacheScanner {
 		{ID: "browser-arc", Paths: []string{"/tmp/test/Caches/Arc/*"}},
 	}
 	allCategories := append([]types.Category{systemCache}, otherCategories...)
-	return NewSystemCacheScanner(systemCache, allCategories)
+	return NewSystemCacheTarget(systemCache, allCategories)
 }
 
 func TestIsExcluded_WhenPathMatchesOtherCategory_ReturnsTrue(t *testing.T) {
-	s := newSystemCacheScannerWithArcCategory()
+	s := newSystemCacheTargetWithArcCategory()
 
 	assert.True(t, s.isExcluded("/tmp/test/Caches/Arc/cache.db"))
 }
 
 func TestIsExcluded_WhenPathNotInAnyCategory_ReturnsFalse(t *testing.T) {
-	s := newSystemCacheScannerWithArcCategory()
+	s := newSystemCacheTargetWithArcCategory()
 
 	assert.False(t, s.isExcluded("/tmp/test/Caches/RandomApp/data"))
 }
 
 func TestIsExcluded_WhenEmptyPath_ReturnsFalse(t *testing.T) {
-	s := newSystemCacheScannerWithArcCategory()
+	s := newSystemCacheTargetWithArcCategory()
 
 	assert.False(t, s.isExcluded(""))
 }
 
-func TestNewSystemCacheScanner_CollectsPathsFromOtherCategories(t *testing.T) {
+func TestNewSystemCacheTarget_CollectsPathsFromOtherCategories(t *testing.T) {
 	systemCache := types.Category{
 		ID:    "system-cache",
 		Paths: []string{"/tmp/test/Caches/*"},
@@ -51,28 +51,28 @@ func TestNewSystemCacheScanner_CollectsPathsFromOtherCategories(t *testing.T) {
 		{ID: "homebrew", Paths: []string{"/tmp/test/Caches/Homebrew/*"}},
 	}
 	allCategories := append([]types.Category{systemCache}, otherCategories...)
-	s := NewSystemCacheScanner(systemCache, allCategories)
+	s := NewSystemCacheTarget(systemCache, allCategories)
 
 	assert.Len(t, s.excludePaths, 3)
 }
 
-func TestNewSystemCacheScanner_DoesNotIncludeOwnPaths(t *testing.T) {
+func TestNewSystemCacheTarget_DoesNotIncludeOwnPaths(t *testing.T) {
 	systemCache := types.Category{
 		ID:    "system-cache",
 		Paths: []string{"/tmp/test/Caches/*"},
 	}
 	allCategories := []types.Category{systemCache}
-	s := NewSystemCacheScanner(systemCache, allCategories)
+	s := NewSystemCacheTarget(systemCache, allCategories)
 
 	assert.Empty(t, s.excludePaths, "should not include own paths")
 }
 
-func TestNewSystemCacheScanner_WhenNoCategoriesProvided_CreatesEmptyExcludes(t *testing.T) {
+func TestNewSystemCacheTarget_WhenNoCategoriesProvided_CreatesEmptyExcludes(t *testing.T) {
 	systemCache := types.Category{
 		ID:    "system-cache",
 		Paths: []string{"/tmp/test/Caches/*"},
 	}
-	s := NewSystemCacheScanner(systemCache, nil)
+	s := NewSystemCacheTarget(systemCache, nil)
 
 	assert.False(t, s.isExcluded("/tmp/test/Caches/AnyApp/file"), "no exclusions when no categories provided")
 }
@@ -86,7 +86,7 @@ func TestIsExcluded_WhenNestedPath_ReturnsTrue(t *testing.T) {
 		{ID: "app", Paths: []string{"/tmp/test/Caches/App/*"}},
 	}
 	allCategories := append([]types.Category{systemCache}, otherCategories...)
-	s := NewSystemCacheScanner(systemCache, allCategories)
+	s := NewSystemCacheTarget(systemCache, allCategories)
 
 	assert.True(t, s.isExcluded("/tmp/test/Caches/App/sub/deep/file"), "deeply nested path should be excluded")
 }
@@ -100,7 +100,7 @@ func TestIsExcluded_WhenSimilarPrefix_ReturnsFalse(t *testing.T) {
 		{ID: "app", Paths: []string{"/tmp/test/Caches/App/*"}},
 	}
 	allCategories := append([]types.Category{systemCache}, otherCategories...)
-	s := NewSystemCacheScanner(systemCache, allCategories)
+	s := NewSystemCacheTarget(systemCache, allCategories)
 
 	assert.False(t, s.isExcluded("/tmp/test/Caches/AppOther/data"), "path with similar prefix but different directory should not be excluded")
 }
@@ -129,7 +129,7 @@ func TestScan_ExcludesPathsFromOtherCategories(t *testing.T) {
 		{ID: "jetbrains", Paths: []string{filepath.Join(cachesDir, "JetBrains", "*")}},
 	}
 	allCategories := append([]types.Category{systemCache}, otherCategories...)
-	s := NewSystemCacheScanner(systemCache, allCategories)
+	s := NewSystemCacheTarget(systemCache, allCategories)
 
 	result, err := s.Scan()
 	require.NoError(t, err)
@@ -146,14 +146,14 @@ func TestScan_WhenNoMatchingPaths_ReturnsEmptyResult(t *testing.T) {
 		ID:    "system-cache",
 		Paths: []string{filepath.Join(tmpDir, "NonExistent", "*")},
 	}
-	s := NewSystemCacheScanner(systemCache, []types.Category{systemCache})
+	s := NewSystemCacheTarget(systemCache, []types.Category{systemCache})
 
 	result, err := s.Scan()
 	require.NoError(t, err)
 	assert.Empty(t, result.Items)
 }
 
-func newSystemCacheScannerForExclusionTest() *SystemCacheScanner {
+func newSystemCacheTargetForExclusionTest() *SystemCacheTarget {
 	systemCache := types.Category{
 		ID:    "system-cache",
 		Paths: []string{"/tmp/test/Caches/*"},
@@ -164,11 +164,11 @@ func newSystemCacheScannerForExclusionTest() *SystemCacheScanner {
 		{ID: "no-trailing", Paths: []string{"/tmp/test/Caches/App3"}},
 	}
 	allCategories := append([]types.Category{systemCache}, otherCategories...)
-	return NewSystemCacheScanner(systemCache, allCategories)
+	return NewSystemCacheTarget(systemCache, allCategories)
 }
 
 func TestIsExcluded_PathWithStarPattern(t *testing.T) {
-	s := newSystemCacheScannerForExclusionTest()
+	s := newSystemCacheTargetForExclusionTest()
 
 	result := s.isExcluded("/tmp/test/Caches/App1/file")
 
@@ -176,7 +176,7 @@ func TestIsExcluded_PathWithStarPattern(t *testing.T) {
 }
 
 func TestIsExcluded_PathWithDoubleStarPattern(t *testing.T) {
-	s := newSystemCacheScannerForExclusionTest()
+	s := newSystemCacheTargetForExclusionTest()
 
 	result := s.isExcluded("/tmp/test/Caches/App2/file")
 
@@ -184,7 +184,7 @@ func TestIsExcluded_PathWithDoubleStarPattern(t *testing.T) {
 }
 
 func TestIsExcluded_PathWithNoTrailingPattern(t *testing.T) {
-	s := newSystemCacheScannerForExclusionTest()
+	s := newSystemCacheTargetForExclusionTest()
 
 	result := s.isExcluded("/tmp/test/Caches/App3/file")
 
@@ -192,7 +192,7 @@ func TestIsExcluded_PathWithNoTrailingPattern(t *testing.T) {
 }
 
 func TestIsExcluded_PathNotInAnyCategory(t *testing.T) {
-	s := newSystemCacheScannerForExclusionTest()
+	s := newSystemCacheTargetForExclusionTest()
 
 	result := s.isExcluded("/tmp/test/Caches/App4/file")
 
@@ -214,7 +214,7 @@ func TestSystemCacheScan_CalculatesTotalFileCount(t *testing.T) {
 		ID:    "system-cache",
 		Paths: []string{filepath.Join(cachesDir, "*")},
 	}
-	s := NewSystemCacheScanner(systemCache, []types.Category{systemCache})
+	s := NewSystemCacheTarget(systemCache, []types.Category{systemCache})
 
 	result, err := s.Scan()
 
