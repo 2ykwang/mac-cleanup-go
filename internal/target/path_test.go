@@ -10,6 +10,27 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
+// --- getMaxWorkers Tests ---
+
+func TestGetMaxWorkers_ReturnsInput_WhenWithinBounds(t *testing.T) {
+	assert.Equal(t, 4, getMaxWorkers(4))
+	assert.Equal(t, 8, getMaxWorkers(8))
+	assert.Equal(t, 10, getMaxWorkers(10))
+	assert.Equal(t, 16, getMaxWorkers(16))
+}
+
+func TestGetMaxWorkers_ReturnsMax16_WhenInputExceeds16(t *testing.T) {
+	assert.Equal(t, 16, getMaxWorkers(17))
+	assert.Equal(t, 16, getMaxWorkers(32))
+	assert.Equal(t, 16, getMaxWorkers(64))
+}
+
+func TestGetMaxWorkers_ReturnsMin4_WhenInputBelow4(t *testing.T) {
+	assert.Equal(t, 4, getMaxWorkers(1))
+	assert.Equal(t, 4, getMaxWorkers(2))
+	assert.Equal(t, 4, getMaxWorkers(3))
+}
+
 // --- Category Tests ---
 
 func TestCategory_ReturnsConfiguredCategory(t *testing.T) {
