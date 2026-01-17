@@ -124,7 +124,7 @@ func TestLoad_ReadPermissionError(t *testing.T) {
 
 	original := osReadFile
 	defer func() { osReadFile = original }()
-	osReadFile = func(name string) ([]byte, error) {
+	osReadFile = func(_ string) ([]byte, error) {
 		return nil, fs.ErrPermission
 	}
 
@@ -139,7 +139,7 @@ func TestSave_MkdirAllError(t *testing.T) {
 
 	original := osMkdirAll
 	defer func() { osMkdirAll = original }()
-	osMkdirAll = func(path string, perm fs.FileMode) error {
+	osMkdirAll = func(_ string, _ fs.FileMode) error {
 		return errors.New("permission denied")
 	}
 
@@ -155,7 +155,7 @@ func TestSave_WriteFileError(t *testing.T) {
 
 	original := osWriteFile
 	defer func() { osWriteFile = original }()
-	osWriteFile = func(name string, data []byte, perm fs.FileMode) error {
+	osWriteFile = func(_ string, _ []byte, _ fs.FileMode) error {
 		return errors.New("permission denied")
 	}
 

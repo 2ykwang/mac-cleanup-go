@@ -13,6 +13,7 @@ var (
 	osUserHomeDir = os.UserHomeDir
 	osReadDir     = os.ReadDir
 	execCommand   = exec.Command
+	execLookPath  = exec.LookPath
 )
 
 func ExpandPath(path string) string {
@@ -86,8 +87,8 @@ func PathExists(path string) bool {
 	return err == nil
 }
 
-func CommandExists(cmd string) bool {
-	_, err := exec.LookPath(cmd)
+var CommandExists = func(cmd string) bool {
+	_, err := execLookPath(cmd)
 	return err == nil
 }
 

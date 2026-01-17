@@ -72,7 +72,7 @@ func TestCheckForUpdate_EmptyVersion(t *testing.T) {
 func TestCheckForUpdate_BrewNotFound(t *testing.T) {
 	original := execLookPath
 	defer func() { execLookPath = original }()
-	execLookPath = func(file string) (string, error) {
+	execLookPath = func(_ string) (string, error) {
 		return "", errors.New("executable not found")
 	}
 
@@ -91,10 +91,10 @@ func TestCheckForUpdate_BrewCommandSuccess(t *testing.T) {
 		execCommand = originalCommand
 	}()
 
-	execLookPath = func(file string) (string, error) {
+	execLookPath = func(_ string) (string, error) {
 		return "/opt/homebrew/bin/brew", nil
 	}
-	execCommand = func(name string, args ...string) *exec.Cmd {
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
 		// Return a command that outputs valid brew info
 		return exec.Command("echo", "mac-cleanup-go: stable 2.0.0")
 	}
@@ -115,10 +115,10 @@ func TestCheckForUpdate_BrewCommandError(t *testing.T) {
 		execCommand = originalCommand
 	}()
 
-	execLookPath = func(file string) (string, error) {
+	execLookPath = func(_ string) (string, error) {
 		return "/opt/homebrew/bin/brew", nil
 	}
-	execCommand = func(name string, args ...string) *exec.Cmd {
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
 		return exec.Command("false") // always fails
 	}
 
@@ -136,10 +136,10 @@ func TestCheckForUpdate_NoUpdateAvailable(t *testing.T) {
 		execCommand = originalCommand
 	}()
 
-	execLookPath = func(file string) (string, error) {
+	execLookPath = func(_ string) (string, error) {
 		return "/opt/homebrew/bin/brew", nil
 	}
-	execCommand = func(name string, args ...string) *exec.Cmd {
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
 		return exec.Command("echo", "mac-cleanup-go: stable 1.0.0")
 	}
 
@@ -153,7 +153,7 @@ func TestCheckForUpdate_NoUpdateAvailable(t *testing.T) {
 func TestRunUpdate_Success(t *testing.T) {
 	original := execCommand
 	defer func() { execCommand = original }()
-	execCommand = func(name string, args ...string) *exec.Cmd {
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
 		return exec.Command("true")
 	}
 
@@ -165,7 +165,7 @@ func TestRunUpdate_Success(t *testing.T) {
 func TestRunUpdate_Error(t *testing.T) {
 	original := execCommand
 	defer func() { execCommand = original }()
-	execCommand = func(name string, args ...string) *exec.Cmd {
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
 		return exec.Command("false")
 	}
 

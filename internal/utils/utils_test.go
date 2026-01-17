@@ -301,7 +301,7 @@ func TestExpandPath_UserHomeDirError(t *testing.T) {
 func TestCheckFullDiskAccess_HasAccess(t *testing.T) {
 	original := osReadDir
 	defer func() { osReadDir = original }()
-	osReadDir = func(name string) ([]fs.DirEntry, error) {
+	osReadDir = func(_ string) ([]fs.DirEntry, error) {
 		return []fs.DirEntry{}, nil
 	}
 
@@ -313,7 +313,7 @@ func TestCheckFullDiskAccess_HasAccess(t *testing.T) {
 func TestCheckFullDiskAccess_NoAccess(t *testing.T) {
 	original := osReadDir
 	defer func() { osReadDir = original }()
-	osReadDir = func(name string) ([]fs.DirEntry, error) {
+	osReadDir = func(_ string) ([]fs.DirEntry, error) {
 		return nil, fs.ErrPermission
 	}
 
@@ -365,7 +365,7 @@ func TestOpenInFinder_CommandError(t *testing.T) {
 
 	original := execCommand
 	defer func() { execCommand = original }()
-	execCommand = func(name string, args ...string) *exec.Cmd {
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
 		return exec.Command("false") // "false" always fails
 	}
 

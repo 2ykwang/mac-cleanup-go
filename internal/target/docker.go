@@ -32,7 +32,7 @@ func (s *DockerTarget) IsAvailable() bool {
 	if !utils.CommandExists("docker") {
 		return false
 	}
-	cmd := exec.Command("docker", "info")
+	cmd := execCommand("docker", "info")
 	return cmd.Run() == nil
 }
 
@@ -54,7 +54,7 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 		return result, nil
 	}
 
-	cmd := exec.Command("docker", "system", "df", "--format", "{{json .}}")
+	cmd := execCommand("docker", "system", "df", "--format", "{{json .}}")
 	output, err := cmd.Output()
 	if err != nil {
 		result.Error = err
@@ -104,13 +104,13 @@ func (s *DockerTarget) Clean(items []types.CleanableItem) (*types.CleanResult, e
 		var cmd *exec.Cmd
 		switch item.Path {
 		case "docker:images":
-			cmd = exec.Command("docker", "image", "prune", "-af")
+			cmd = execCommand("docker", "image", "prune", "-af")
 		case "docker:containers":
-			cmd = exec.Command("docker", "container", "prune", "-f")
+			cmd = execCommand("docker", "container", "prune", "-f")
 		case "docker:local volumes":
-			cmd = exec.Command("docker", "volume", "prune", "-af")
+			cmd = execCommand("docker", "volume", "prune", "-af")
 		case "docker:build cache":
-			cmd = exec.Command("docker", "builder", "prune", "-af")
+			cmd = execCommand("docker", "builder", "prune", "-af")
 		}
 
 		if cmd != nil {
