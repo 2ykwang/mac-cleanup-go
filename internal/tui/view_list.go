@@ -80,6 +80,14 @@ func (m *Model) listHeader(showSummary bool) string {
 	}
 	b.WriteString("\n")
 
+	// Update available notification
+	if m.updateAvailable && m.latestVersion != "" {
+		updateMsg := fmt.Sprintf("[↑] Update available: %s → %s (run with --update)",
+			m.currentVersion, m.latestVersion)
+		b.WriteString(SuccessStyle.Render(updateMsg))
+		b.WriteString("\n")
+	}
+
 	// Permission warning
 	if !m.hasFullDiskAccess {
 		b.WriteString(WarningStyle.Render("[!] Limited access: Grant Full Disk Access in System Settings for complete scan"))

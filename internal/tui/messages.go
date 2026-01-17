@@ -80,3 +80,9 @@ type cleanItemDoneMsg struct {
 	success bool
 	errMsg  string
 }
+
+// versionCheckMsg contains the result of async version check
+type versionCheckMsg struct {
+	latestVersion   string
+	updateAvailable bool
+}

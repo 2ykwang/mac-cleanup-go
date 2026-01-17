@@ -38,10 +38,11 @@ type Model struct {
 	filterStateData
 	cleaningState
 	reportState
+	versionState
 }
 
 // NewModel creates a new model
-func NewModel(cfg *types.Config) *Model {
+func NewModel(cfg *types.Config, currentVersion string) *Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(ColorPrimary)
@@ -116,12 +117,15 @@ func NewModel(cfg *types.Config) *Model {
 			recentDeleted:    NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity),
 		},
 		reportState: reportState{},
+		versionState: versionState{
+			currentVersion: currentVersion,
+		},
 	}
 }
 
 // Init initializes the model
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(m.spinner.Tick, m.startScan())
+	return tea.Batch(m.spinner.Tick, m.startScan(), m.checkVersion())
 }
 
 // View renders the UI
