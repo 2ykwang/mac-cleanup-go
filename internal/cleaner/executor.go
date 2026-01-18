@@ -83,7 +83,7 @@ func (c *Executor) moveToTrash(items []types.CleanableItem, result *types.CleanR
 	// Process failed items
 	for p, err := range batchResult.Failed {
 		item := pathToItem[p]
-		result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Name, err))
+		result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Path, err))
 	}
 }
 
@@ -103,7 +103,7 @@ func (c *Executor) removePermanent(items []types.CleanableItem, result *types.Cl
 		}
 
 		if err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Name, err))
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Path, err))
 		} else {
 			result.FreedSpace += item.Size
 			result.CleanedItems++

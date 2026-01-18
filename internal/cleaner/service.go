@@ -145,6 +145,16 @@ func (s *CleanService) cleanTrashBatch(job CleanJob, callbacks Callbacks, curren
 
 		s.sendBatchItemCallbacks(batch, batchResult, callbacks)
 		*currentItem += len(batch)
+
+		// Send progress after batch completion to update UI
+		if callbacks.OnProgress != nil {
+			callbacks.OnProgress(Progress{
+				CategoryName: job.Category.Name,
+				CurrentItem:  batch[len(batch)-1].Name,
+				Current:      *currentItem,
+				Total:        totalItems,
+			})
+		}
 	}
 
 	return result
@@ -156,11 +166,11 @@ func (s *CleanService) sendBatchItemCallbacks(batch []types.CleanableItem, batch
 		return
 	}
 
-	// Build error map from batch result errors (format: "itemName: error")
+	// Build error map from batch result errors (format: "itemPath: error")
 	errorMap := make(map[string]string)
 	for _, errStr := range batchResult.Errors {
 		for _, item := range batch {
-			prefix := item.Name + ": "
+			prefix := item.Path + ": "
 			if len(errStr) >= len(prefix) && errStr[:len(prefix)] == prefix {
 				errorMap[item.Path] = errStr[len(prefix):]
 				break

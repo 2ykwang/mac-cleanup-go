@@ -452,15 +452,20 @@ func TestClean_CallsOnProgress_TrashMethod(t *testing.T) {
 
 	service.Clean(jobs, callbacks)
 
-	// For trash method, OnProgress is called per batch (not per item)
-	// 3 items < batch size 50, so only 1 progress call
-	assert.Len(t, progressCalls, 1)
+	// For trash method, OnProgress is called before and after each batch
+	// 3 items < batch size 50, so 2 progress calls (start + end)
+	assert.Len(t, progressCalls, 2)
 
 	// Verify progress at batch start
 	assert.Equal(t, 0, progressCalls[0].Current)
 	assert.Equal(t, 3, progressCalls[0].Total)
 	assert.Equal(t, "Test Category", progressCalls[0].CategoryName)
 	assert.Equal(t, "/path1", progressCalls[0].CurrentItem) // First item in batch
+
+	// Verify progress at batch end
+	assert.Equal(t, 3, progressCalls[1].Current)
+	assert.Equal(t, 3, progressCalls[1].Total)
+	assert.Equal(t, "/path3", progressCalls[1].CurrentItem) // Last item in batch
 }
 
 func TestClean_CallsOnProgress_PermanentMethod(t *testing.T) {
@@ -893,8 +898,8 @@ func TestClean_MultipleCategories(t *testing.T) {
 
 	report := service.Clean(jobs, callbacks)
 
-	// Total items = 3, progress calls = 1 (trash batch) + 1 (docker batch) = 2
-	assert.Len(t, progressCalls, 2)
+	// Total items = 3, progress calls = 2 (trash batch start+end) + 1 (docker batch) = 3
+	assert.Len(t, progressCalls, 3)
 
 	// Category done called for each category
 	assert.Len(t, categoryDoneCalls, 2)

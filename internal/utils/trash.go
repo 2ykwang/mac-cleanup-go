@@ -75,7 +75,7 @@ func moveToTrashBatchImpl(paths []string) TrashBatchResult {
 		if err := executeBatch(batch); err != nil {
 			// Batch failed, check each file and fallback to individual deletion if needed
 			for _, p := range batch {
-				if _, statErr := os.Stat(p); os.IsNotExist(statErr) {
+				if _, statErr := os.Lstat(p); os.IsNotExist(statErr) {
 					// File already deleted by batch before error occurred
 					result.Succeeded = append(result.Succeeded, p)
 				} else if statErr == nil {
