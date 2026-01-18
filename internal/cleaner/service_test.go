@@ -15,14 +15,13 @@ import (
 
 // Helper function to create a test ScanResult
 func newTestScanResult(id, name string, method types.CleanupMethod, items []types.CleanableItem) *types.ScanResult {
-	return &types.ScanResult{
-		Category: types.Category{
-			ID:     id,
-			Name:   name,
-			Method: method,
-		},
-		Items: items,
-	}
+	result := types.NewScanResult(types.Category{
+		ID:     id,
+		Name:   name,
+		Method: method,
+	})
+	result.Items = items
+	return result
 }
 
 // Helper function to create test CleanableItems
@@ -527,12 +526,11 @@ func TestClean_CallsOnProgress_Builtin(t *testing.T) {
 	}
 
 	mockTarget := newMockTargetForService(cat)
-	mockTarget.On("Clean", mock.Anything).Return(&types.CleanResult{
-		Category:     cat,
-		CleanedItems: 3,
-		FreedSpace:   300,
-		Errors:       []string{},
-	}, nil)
+	cleanResult := types.NewCleanResult(cat)
+	cleanResult.CleanedItems = 3
+	cleanResult.FreedSpace = 300
+	cleanResult.Errors = []string{}
+	mockTarget.On("Clean", mock.Anything).Return(cleanResult, nil)
 	registry.Register(mockTarget)
 
 	service := NewCleanService(registry)
@@ -720,12 +718,11 @@ func TestClean_BuiltinBatchProcessing(t *testing.T) {
 	}
 
 	mockTarget := newMockTargetForService(cat)
-	mockTarget.On("Clean", mock.Anything).Return(&types.CleanResult{
-		Category:     cat,
-		CleanedItems: 3,
-		FreedSpace:   300,
-		Errors:       []string{},
-	}, nil)
+	cleanResult := types.NewCleanResult(cat)
+	cleanResult.CleanedItems = 3
+	cleanResult.FreedSpace = 300
+	cleanResult.Errors = []string{}
+	mockTarget.On("Clean", mock.Anything).Return(cleanResult, nil)
 	registry.Register(mockTarget)
 
 	service := NewCleanService(registry)
@@ -863,12 +860,11 @@ func TestClean_MultipleCategories(t *testing.T) {
 	}
 
 	mockTarget := newMockTargetForService(cat)
-	mockTarget.On("Clean", mock.Anything).Return(&types.CleanResult{
-		Category:     cat,
-		CleanedItems: 1,
-		FreedSpace:   100,
-		Errors:       []string{},
-	}, nil)
+	cleanResult := types.NewCleanResult(cat)
+	cleanResult.CleanedItems = 3
+	cleanResult.FreedSpace = 300
+	cleanResult.Errors = []string{}
+	mockTarget.On("Clean", mock.Anything).Return(cleanResult, nil)
 	registry.Register(mockTarget)
 
 	service := NewCleanService(registry)
@@ -905,7 +901,7 @@ func TestClean_MultipleCategories(t *testing.T) {
 	assert.Len(t, categoryDoneCalls, 2)
 
 	// Report aggregates all
-	assert.Equal(t, 3, report.CleanedItems)
+	assert.Equal(t, 5, report.CleanedItems)
 	assert.Len(t, report.Results, 2)
 }
 

@@ -59,10 +59,7 @@ func (s *OldDownloadTarget) Scan() (*types.ScanResult, error) {
 
 // Clean moves the selected items to trash.
 func (s *OldDownloadTarget) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
-	result := &types.CleanResult{
-		Category: s.category,
-		Errors:   make([]string, 0),
-	}
+	result := types.NewCleanResult(s.category)
 
 	if len(items) == 0 {
 		return result, nil

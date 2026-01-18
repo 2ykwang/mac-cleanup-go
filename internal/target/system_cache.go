@@ -46,10 +46,7 @@ func NewSystemCacheTarget(cat types.Category, allCategories []types.Category) *S
 }
 
 func (s *SystemCacheTarget) Scan() (*types.ScanResult, error) {
-	result := &types.ScanResult{
-		Category: s.category,
-		Items:    make([]types.CleanableItem, 0),
-	}
+	result := types.NewScanResult(s.category)
 
 	if !s.IsAvailable() {
 		return result, nil

@@ -53,10 +53,7 @@ func (s *PathTarget) IsAvailable() bool {
 }
 
 func (s *PathTarget) Scan() (*types.ScanResult, error) {
-	result := &types.ScanResult{
-		Category: s.category,
-		Items:    make([]types.CleanableItem, 0),
-	}
+	result := types.NewScanResult(s.category)
 
 	if !s.IsAvailable() {
 		return result, nil
@@ -154,10 +151,7 @@ func (s *PathTarget) scanPath(path string) (types.CleanableItem, error) {
 }
 
 func (s *PathTarget) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
-	result := &types.CleanResult{
-		Category: s.category,
-		Errors:   make([]string, 0),
-	}
+	result := types.NewCleanResult(s.category)
 
 	return result, nil
 }

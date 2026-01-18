@@ -18,10 +18,7 @@ func NewExecutor(registry *target.Registry) *Executor {
 }
 
 func (c *Executor) Clean(cat types.Category, items []types.CleanableItem) *types.CleanResult {
-	result := &types.CleanResult{
-		Category: cat,
-		Errors:   make([]string, 0),
-	}
+	result := types.NewCleanResult(cat)
 
 	switch cat.Method {
 	case types.MethodTrash:
