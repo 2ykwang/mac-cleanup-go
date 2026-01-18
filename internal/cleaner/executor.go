@@ -53,18 +53,37 @@ func (c *Executor) Clean(cat types.Category, items []types.CleanableItem) *types
 }
 
 func (c *Executor) moveToTrash(items []types.CleanableItem, result *types.CleanResult) {
+	// SIP filtering and path collection
+	paths := make([]string, 0, len(items))
+	pathToItem := make(map[string]types.CleanableItem, len(items))
+
 	for _, item := range items {
 		if utils.IsSIPProtected(item.Path) {
 			result.SkippedItems++
 			continue
 		}
+		paths = append(paths, item.Path)
+		pathToItem[item.Path] = item
+	}
 
-		if err := utils.MoveToTrash(item.Path); err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Name, err))
-		} else {
-			result.FreedSpace += item.Size
-			result.CleanedItems++
-		}
+	if len(paths) == 0 {
+		return
+	}
+
+	// Batch delete
+	batchResult := utils.MoveToTrashBatch(paths)
+
+	// Process succeeded items
+	for _, p := range batchResult.Succeeded {
+		item := pathToItem[p]
+		result.FreedSpace += item.Size
+		result.CleanedItems++
+	}
+
+	// Process failed items
+	for p, err := range batchResult.Failed {
+		item := pathToItem[p]
+		result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Path, err))
 	}
 }
 
@@ -84,7 +103,7 @@ func (c *Executor) removePermanent(items []types.CleanableItem, result *types.Cl
 		}
 
 		if err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Name, err))
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Path, err))
 		} else {
 			result.FreedSpace += item.Size
 			result.CleanedItems++

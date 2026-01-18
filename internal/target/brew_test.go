@@ -85,8 +85,10 @@ func TestBrewTarget_Clean_ReturnsResult(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "homebrew", result.Category.ID)
-	// MoveToTrash will fail for nonexistent path, but Clean should not return error
-	assert.NotEmpty(t, result.Errors)
+	// Nonexistent paths are treated as "already deleted" (success)
+	assert.Empty(t, result.Errors)
+	assert.Equal(t, 1, result.CleanedItems)
+	assert.Equal(t, int64(1000), result.FreedSpace)
 }
 
 func TestBrewTarget_Scan_WithMockCachePath(t *testing.T) {
@@ -218,17 +220,17 @@ func TestBrewTarget_Clean_ReturnsError_WhenCachePathEmpty(t *testing.T) {
 
 func TestBrewTarget_Clean_Success_WithMock(t *testing.T) {
 	original := execCommand
-	originalMoveToTrash := utils.MoveToTrash
+	originalMoveToTrashBatch := utils.MoveToTrashBatch
 	defer func() {
 		execCommand = original
-		utils.MoveToTrash = originalMoveToTrash
+		utils.MoveToTrashBatch = originalMoveToTrashBatch
 	}()
 
 	execCommand = func(_ string, _ ...string) *exec.Cmd {
 		return exec.Command("true")
 	}
-	utils.MoveToTrash = func(_ string) error {
-		return nil
+	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
+		return utils.TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
 	}
 
 	tmpDir := t.TempDir()

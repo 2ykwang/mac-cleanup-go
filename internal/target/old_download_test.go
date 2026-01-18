@@ -140,6 +140,21 @@ func TestOldDownloadTarget_IsAvailable(t *testing.T) {
 	assert.True(t, scanner.IsAvailable())
 }
 
+func TestOldDownloadTarget_Clean_EmptyItems(t *testing.T) {
+	cat := types.Category{
+		ID:   "old-downloads",
+		Name: "Old Downloads",
+	}
+
+	scanner := NewOldDownloadTarget(cat, 30)
+	result, err := scanner.Clean([]types.CleanableItem{})
+
+	require.NoError(t, err)
+	assert.Equal(t, 0, result.CleanedItems)
+	assert.Equal(t, int64(0), result.FreedSpace)
+	assert.Empty(t, result.Errors)
+}
+
 func TestOldDownloadTarget_Clean_MovesToTrash(t *testing.T) {
 	if runtime.GOOS != "darwin" {
 		t.Skip("MoveToTrash requires macOS")
@@ -190,6 +205,8 @@ func TestOldDownloadTarget_Clean_NonexistentFile(t *testing.T) {
 	result, err := scanner.Clean(items)
 
 	require.NoError(t, err)
-	assert.Equal(t, 0, result.CleanedItems)
-	assert.NotEmpty(t, result.Errors)
+	// Nonexistent paths are treated as "already deleted" (success)
+	assert.Equal(t, 1, result.CleanedItems)
+	assert.Equal(t, int64(100), result.FreedSpace)
+	assert.Empty(t, result.Errors)
 }
