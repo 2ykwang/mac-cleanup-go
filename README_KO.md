@@ -22,6 +22,8 @@
 - risky 항목은 기본 제외, manual은 가이드만 표시합니다.
 - 범위: 캐시/로그/임시 파일과 일부 앱 데이터. 시스템 최적화/앱 제거는 하지 않습니다.
 
+![demo](assets/result_view.png)
+
 ## 빠른 시작
 
 Homebrew로 설치:

@@ -22,6 +22,8 @@
 - Risky items start excluded; manual categories show guides only.
 - Scope: caches/logs/temp and selected app data (no system optimization or uninstaller).
 
+![demo](assets/result_view.png)
+
 
 ## Quick Start
 
