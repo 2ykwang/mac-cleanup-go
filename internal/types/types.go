@@ -102,6 +102,20 @@ type CleanResult struct {
 	Errors       []string
 }
 
+func NewScanResult(category Category) *ScanResult {
+	return &ScanResult{
+		Category: category,
+		Items:    make([]CleanableItem, 0),
+	}
+}
+
+func NewCleanResult(category Category) *CleanResult {
+	return &CleanResult{
+		Category: category,
+		Errors:   make([]string, 0),
+	}
+}
+
 type Report struct {
 	BeforeSize   int64
 	AfterSize    int64
