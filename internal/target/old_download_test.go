@@ -205,6 +205,8 @@ func TestOldDownloadTarget_Clean_NonexistentFile(t *testing.T) {
 	result, err := scanner.Clean(items)
 
 	require.NoError(t, err)
-	assert.Equal(t, 0, result.CleanedItems)
-	assert.NotEmpty(t, result.Errors)
+	// Nonexistent paths are treated as "already deleted" (success)
+	assert.Equal(t, 1, result.CleanedItems)
+	assert.Equal(t, int64(100), result.FreedSpace)
+	assert.Empty(t, result.Errors)
 }

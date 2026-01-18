@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -72,12 +73,21 @@ func moveToTrashBatchImpl(paths []string) TrashBatchResult {
 		batch := paths[i:end]
 
 		if err := executeBatch(batch); err != nil {
-			// Batch failed, fallback to individual deletion
+			// Batch failed, check each file and fallback to individual deletion if needed
 			for _, p := range batch {
-				if individualErr := MoveToTrash(p); individualErr != nil {
-					result.Failed[p] = individualErr
-				} else {
+				if _, statErr := os.Stat(p); os.IsNotExist(statErr) {
+					// File already deleted by batch before error occurred
 					result.Succeeded = append(result.Succeeded, p)
+				} else if statErr == nil {
+					// File still exists, try individual deletion
+					if individualErr := MoveToTrash(p); individualErr != nil {
+						result.Failed[p] = individualErr
+					} else {
+						result.Succeeded = append(result.Succeeded, p)
+					}
+				} else {
+					// os.Stat returned unexpected error
+					result.Failed[p] = statErr
 				}
 			}
 		} else {

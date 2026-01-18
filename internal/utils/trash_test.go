@@ -3,12 +3,14 @@ package utils
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"runtime"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMoveToTrash_CanBeMocked(t *testing.T) {
@@ -83,8 +85,24 @@ func TestMoveToTrashBatch_EmptyPaths(t *testing.T) {
 }
 
 func TestMoveToTrashBatch_FallbackOnBatchFailure(t *testing.T) {
-	original := MoveToTrash
-	defer func() { MoveToTrash = original }()
+	originalCmd := execCommandContext
+	originalMoveToTrash := MoveToTrash
+	defer func() {
+		execCommandContext = originalCmd
+		MoveToTrash = originalMoveToTrash
+	}()
+
+	// Create actual temp files
+	tmpDir := t.TempDir()
+	path1 := tmpDir + "/file1.txt"
+	path2 := tmpDir + "/file2.txt"
+	require.NoError(t, os.WriteFile(path1, []byte("test1"), 0o644))
+	require.NoError(t, os.WriteFile(path2, []byte("test2"), 0o644))
+
+	// Make batch fail
+	execCommandContext = func(_ context.Context, _ string, _ ...string) *exec.Cmd {
+		return exec.Command("false")
+	}
 
 	// Mock individual MoveToTrash to always succeed
 	var calledPaths []string
@@ -93,36 +111,48 @@ func TestMoveToTrashBatch_FallbackOnBatchFailure(t *testing.T) {
 		return nil
 	}
 
-	// Test with non-existent paths which should fail in executeBatch
-	// and trigger fallback to individual deletion
-	paths := []string{"/non/existent/path1", "/non/existent/path2"}
-
-	// Call the real implementation
+	paths := []string{path1, path2}
 	result := moveToTrashBatchImpl(paths)
 
-	// Should have fallen back to individual calls
+	// Should have fallen back to individual calls since files exist
 	assert.Equal(t, paths, calledPaths)
 	assert.Equal(t, 2, len(result.Succeeded))
 	assert.Empty(t, result.Failed)
 }
 
 func TestMoveToTrashBatch_PartialFailure(t *testing.T) {
-	original := MoveToTrash
-	defer func() { MoveToTrash = original }()
+	originalCmd := execCommandContext
+	originalMoveToTrash := MoveToTrash
+	defer func() {
+		execCommandContext = originalCmd
+		MoveToTrash = originalMoveToTrash
+	}()
+
+	// Create actual temp files
+	tmpDir := t.TempDir()
+	successPath := tmpDir + "/success.txt"
+	failPath := tmpDir + "/fail.txt"
+	require.NoError(t, os.WriteFile(successPath, []byte("success"), 0o644))
+	require.NoError(t, os.WriteFile(failPath, []byte("fail"), 0o644))
+
+	// Make batch fail
+	execCommandContext = func(_ context.Context, _ string, _ ...string) *exec.Cmd {
+		return exec.Command("false")
+	}
 
 	// Mock individual MoveToTrash to fail for specific path
 	MoveToTrash = func(path string) error {
-		if path == "/fail/this/path" {
+		if path == failPath {
 			return fmt.Errorf("mock error: %s", path)
 		}
 		return nil
 	}
 
-	paths := []string{"/success/path", "/fail/this/path"}
+	paths := []string{successPath, failPath}
 	result := moveToTrashBatchImpl(paths)
 
-	assert.Contains(t, result.Succeeded, "/success/path")
-	assert.Contains(t, result.Failed, "/fail/this/path")
+	assert.Contains(t, result.Succeeded, successPath)
+	assert.Contains(t, result.Failed, failPath)
 }
 
 func TestExecuteBatch_EmptyPaths(t *testing.T) {
@@ -137,21 +167,36 @@ func TestExecuteBatch_InvalidPathWithNewline(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid path")
 }
 
-func TestMoveToTrashBatch_PathWithNewline_FailsGracefully(t *testing.T) {
-	original := MoveToTrash
-	defer func() { MoveToTrash = original }()
+func TestMoveToTrashBatch_PathWithNewline_FailsInBatch(t *testing.T) {
+	originalCmd := execCommandContext
+	originalMoveToTrash := MoveToTrash
+	defer func() {
+		execCommandContext = originalCmd
+		MoveToTrash = originalMoveToTrash
+	}()
 
-	// Mock MoveToTrash to also fail for newline paths
-	MoveToTrash = func(_ string) error {
+	// Create a temp file with a normal name
+	tmpDir := t.TempDir()
+	normalPath := tmpDir + "/normal.txt"
+	require.NoError(t, os.WriteFile(normalPath, []byte("test"), 0o644))
+
+	// Mock MoveToTrash to fail for newline paths
+	MoveToTrash = func(path string) error {
+		if path == normalPath {
+			return nil
+		}
 		return ErrInvalidPath
 	}
 
-	// Path with newline should fail in both batch and fallback
-	paths := []string{"/path/with\nnewline"}
-	result := moveToTrashBatchImpl(paths)
+	// Path with newline fails escape validation in executeBatch
+	// Normal file still exists so it falls back to individual deletion
+	paths := []string{normalPath}
+	result := moveToTrashBatchImpl(append([]string{"/path/with\nnewline"}, paths...))
 
-	assert.Empty(t, result.Succeeded)
-	assert.Len(t, result.Failed, 1)
+	// The newline path doesn't exist, so it's treated as "already deleted"
+	// The normal path is deleted via fallback
+	assert.Len(t, result.Succeeded, 2)
+	assert.Empty(t, result.Failed)
 }
 
 func TestMoveToTrashImpl_Success_WithMockCommand(t *testing.T) {
@@ -251,4 +296,44 @@ func TestExecuteBatch_Timeout_WithMockCommand(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "timeout after")
+}
+
+func TestMoveToTrashBatchImpl_PartialBatchSuccess_FileAlreadyDeleted(t *testing.T) {
+	originalCmd := execCommandContext
+	originalMoveToTrash := MoveToTrash
+	defer func() {
+		execCommandContext = originalCmd
+		MoveToTrash = originalMoveToTrash
+	}()
+
+	// Create a temp file that exists
+	tmpDir := t.TempDir()
+	existingFile := tmpDir + "/existing.txt"
+	if err := writeTestFile(existingFile); err != nil {
+		t.Fatal(err)
+	}
+
+	// Simulate batch failure (e.g., one file in batch caused error)
+	execCommandContext = func(_ context.Context, _ string, _ ...string) *exec.Cmd {
+		return exec.Command("false") // Always fails
+	}
+
+	// MoveToTrash succeeds for existing file
+	MoveToTrash = func(_ string) error {
+		return nil
+	}
+
+	// nonexistent path simulates file already deleted by batch
+	paths := []string{"/nonexistent/already/deleted", existingFile}
+	result := moveToTrashBatchImpl(paths)
+
+	// Both should be in Succeeded:
+	// - /nonexistent/already/deleted: os.Stat returns NotExist → treated as already deleted
+	// - existingFile: os.Stat returns nil → MoveToTrash called → succeeds
+	assert.Len(t, result.Succeeded, 2)
+	assert.Empty(t, result.Failed)
+}
+
+func writeTestFile(path string) error {
+	return os.WriteFile(path, []byte("test"), 0o644)
 }

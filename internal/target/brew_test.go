@@ -85,8 +85,10 @@ func TestBrewTarget_Clean_ReturnsResult(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "homebrew", result.Category.ID)
-	// MoveToTrash will fail for nonexistent path, but Clean should not return error
-	assert.NotEmpty(t, result.Errors)
+	// Nonexistent paths are treated as "already deleted" (success)
+	assert.Empty(t, result.Errors)
+	assert.Equal(t, 1, result.CleanedItems)
+	assert.Equal(t, int64(1000), result.FreedSpace)
 }
 
 func TestBrewTarget_Scan_WithMockCachePath(t *testing.T) {
