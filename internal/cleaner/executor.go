@@ -3,6 +3,7 @@ package cleaner
 import (
 	"os"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/logger"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
@@ -63,9 +64,12 @@ func (c *Executor) moveToTrash(items []types.CleanableItem, result *types.CleanR
 }
 
 func (c *Executor) removePermanent(items []types.CleanableItem, result *types.CleanResult) {
+	sipSkipped := 0
+
 	for _, item := range items {
 		// Skip SIP protected paths
 		if utils.IsSIPProtected(item.Path) {
+			sipSkipped++
 			result.SkippedItems++
 			continue
 		}
@@ -78,10 +82,17 @@ func (c *Executor) removePermanent(items []types.CleanableItem, result *types.Cl
 		}
 
 		if err != nil {
+			logger.Debug("permanent delete failed", "path", item.Path, "error", err)
 			result.Errors = append(result.Errors, item.Path+": "+err.Error())
 		} else {
 			result.FreedSpace += item.Size
 			result.CleanedItems++
 		}
 	}
+
+	logger.Info("removePermanent completed",
+		"total", len(items),
+		"cleaned", result.CleanedItems,
+		"sipSkipped", sipSkipped,
+		"failed", len(result.Errors))
 }

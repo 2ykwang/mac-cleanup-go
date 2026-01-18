@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/logger"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
@@ -18,9 +19,12 @@ func (m *Model) startScan() tea.Cmd {
 	m.scanTotal = len(scanners)
 	m.scanCompleted = 0
 
+	logger.Info("scan started", "registered", m.scanRegistered, "available", m.scanTotal)
+
 	m.initScanResults(scanners)
 	if len(scanners) == 0 {
 		m.scanning = false
+		logger.Info("scan skipped: no available scanners")
 		return nil
 	}
 
@@ -154,6 +158,12 @@ func (m *Model) handleCleanDone(msg cleanDoneMsg) {
 	m.report.Duration = time.Since(m.startTime)
 	m.recentDeleted.Clear()
 	m.view = ViewReport
+
+	logger.Info("cleaning completed",
+		"freedSpace", m.report.FreedSpace,
+		"cleanedItems", m.report.CleanedItems,
+		"failedItems", m.report.FailedItems,
+		"duration", m.report.Duration.String())
 }
 
 func (m *Model) handleScanResult(result *types.ScanResult) {
@@ -196,12 +206,19 @@ func (m *Model) handleScanResult(result *types.ScanResult) {
 func (m *Model) finalizeScanResults() {
 	filtered := make([]*types.ScanResult, 0, len(m.results))
 	m.resultMap = make(map[string]*types.ScanResult)
+	var totalSize int64
 	for _, result := range m.results {
 		if result.TotalSize <= 0 {
 			continue
 		}
 		filtered = append(filtered, result)
 		m.resultMap[result.Category.ID] = result
+		totalSize += result.TotalSize
 	}
 	m.results = filtered
+
+	logger.Info("scan completed",
+		"categories", len(filtered),
+		"totalSize", totalSize,
+		"errors", len(m.scanErrors))
 }

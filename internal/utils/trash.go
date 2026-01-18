@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/logger"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
@@ -122,6 +123,9 @@ func moveToTrashBatchImpl(paths []string) TrashBatchResult {
 		return result
 	}
 
+	totalBatches := (len(paths) + TrashBatchSize - 1) / TrashBatchSize
+	fallbackCount := 0
+
 	// Process in batches
 	for i := 0; i < len(paths); i += TrashBatchSize {
 		end := i + TrashBatchSize
@@ -129,8 +133,13 @@ func moveToTrashBatchImpl(paths []string) TrashBatchResult {
 			end = len(paths)
 		}
 		batch := paths[i:end]
+		batchNum := i/TrashBatchSize + 1
 
 		if err := executeBatch(batch); err != nil {
+			logger.Debug("batch failed, falling back to individual deletion",
+				"batch", batchNum, "batchSize", len(batch), "error", err)
+			fallbackCount++
+
 			// Batch failed, check each file and fallback to individual deletion if needed
 			for _, p := range batch {
 				if _, statErr := os.Lstat(p); os.IsNotExist(statErr) {
@@ -153,6 +162,13 @@ func moveToTrashBatchImpl(paths []string) TrashBatchResult {
 		}
 	}
 
+	logger.Info("trash batch completed",
+		"total", len(paths),
+		"succeeded", len(result.Succeeded),
+		"failed", len(result.Failed),
+		"batches", totalBatches,
+		"fallbacks", fallbackCount)
+
 	return result
 }
 
@@ -161,6 +177,8 @@ func executeBatch(paths []string) error {
 	if len(paths) == 0 {
 		return nil
 	}
+
+	start := time.Now()
 
 	// Build AppleScript with proper escaping
 	var script strings.Builder
@@ -193,5 +211,10 @@ func executeBatch(paths []string) error {
 		}
 		return fmt.Errorf("osascript: %w, stderr: %s", err, stderr.String())
 	}
+
+	logger.Debug("AppleScript batch executed",
+		"fileCount", len(paths),
+		"duration", time.Since(start).String())
+
 	return nil
 }

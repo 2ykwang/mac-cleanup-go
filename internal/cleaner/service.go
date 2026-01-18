@@ -1,6 +1,7 @@
 package cleaner
 
 import (
+	"github.com/2ykwang/mac-cleanup-go/internal/logger"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
@@ -67,9 +68,13 @@ func (s *CleanService) Clean(jobs []CleanJob, callbacks Callbacks) *types.Report
 		totalItems += len(job.Items)
 	}
 
+	logger.Info("clean started", "jobs", len(jobs), "totalItems", totalItems)
+
 	currentItem := 0
 
 	for _, job := range jobs {
+		logger.Debug("processing job", "category", job.Category.Name, "method", job.Category.Method, "items", len(job.Items))
+
 		var result *types.CleanResult
 
 		switch job.Category.Method {
@@ -97,6 +102,11 @@ func (s *CleanService) Clean(jobs []CleanJob, callbacks Callbacks) *types.Report
 			}
 		}
 	}
+
+	logger.Info("clean completed",
+		"freedSpace", report.FreedSpace,
+		"cleanedItems", report.CleanedItems,
+		"failedItems", report.FailedItems)
 
 	return report
 }

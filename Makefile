@@ -19,7 +19,11 @@ build-dev: ## Build without version info (faster)
 	$(GO) build -o $(BINARY_DIR)/$(BINARY_NAME) .
 
 .PHONY: run
-run: ## Run the application
+run: ## Run the application (with DEBUG logging)
+	DEBUG=true $(GO) run .
+
+.PHONY: run-release
+run-release: ## Run without debug logging
 	$(GO) run .
 
 ##@ Development

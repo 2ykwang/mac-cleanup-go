@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/config"
+	"github.com/2ykwang/mac-cleanup-go/internal/logger"
 	"github.com/2ykwang/mac-cleanup-go/internal/tui"
 	pkgversion "github.com/2ykwang/mac-cleanup-go/internal/version"
 )
@@ -20,7 +21,15 @@ func main() {
 	showVersion := flag.Bool("version", false, "Show version")
 	shortVersion := flag.Bool("v", false, "Show version (short)")
 	doUpdate := flag.Bool("update", false, "Update to latest version via Homebrew")
+	debugMode := flag.Bool("debug", false, "Enable debug logging to ~/.config/mac-cleanup-go/debug.log")
 	flag.Parse()
+
+	// Initialize logger: --debug flag or DEBUG env var
+	debug := *debugMode || os.Getenv("DEBUG") == "true"
+	if err := logger.Init(debug); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: logging disabled: %v\n", err)
+	}
+	defer logger.Close()
 
 	if *showVersion || *shortVersion {
 		fmt.Printf("mac-cleanup %s\n", version)
