@@ -218,17 +218,17 @@ func TestBrewTarget_Clean_ReturnsError_WhenCachePathEmpty(t *testing.T) {
 
 func TestBrewTarget_Clean_Success_WithMock(t *testing.T) {
 	original := execCommand
-	originalMoveToTrash := utils.MoveToTrash
+	originalMoveToTrashBatch := utils.MoveToTrashBatch
 	defer func() {
 		execCommand = original
-		utils.MoveToTrash = originalMoveToTrash
+		utils.MoveToTrashBatch = originalMoveToTrashBatch
 	}()
 
 	execCommand = func(_ string, _ ...string) *exec.Cmd {
 		return exec.Command("true")
 	}
-	utils.MoveToTrash = func(_ string) error {
-		return nil
+	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
+		return utils.TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
 	}
 
 	tmpDir := t.TempDir()

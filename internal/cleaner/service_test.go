@@ -396,10 +396,12 @@ func TestClean_EmptyJobs(t *testing.T) {
 }
 
 func TestClean_NilCallbacks(t *testing.T) {
-	// Setup: use MoveToTrash mock to avoid actual file operations
-	original := utils.MoveToTrash
-	defer func() { utils.MoveToTrash = original }()
-	utils.MoveToTrash = func(_ string) error { return nil }
+	// Setup: use MoveToTrashBatch mock to avoid actual file operations
+	original := utils.MoveToTrashBatch
+	defer func() { utils.MoveToTrashBatch = original }()
+	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
+		return utils.TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
+	}
 
 	service := NewCleanService(target.NewRegistry())
 
@@ -422,9 +424,11 @@ func TestClean_NilCallbacks(t *testing.T) {
 }
 
 func TestClean_CallsOnProgress_NonBuiltin(t *testing.T) {
-	original := utils.MoveToTrash
-	defer func() { utils.MoveToTrash = original }()
-	utils.MoveToTrash = func(_ string) error { return nil }
+	original := utils.MoveToTrashBatch
+	defer func() { utils.MoveToTrashBatch = original }()
+	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
+		return utils.TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
+	}
 
 	service := NewCleanService(target.NewRegistry())
 
@@ -508,9 +512,11 @@ func TestClean_CallsOnProgress_Builtin(t *testing.T) {
 }
 
 func TestClean_CallsOnItemDone(t *testing.T) {
-	original := utils.MoveToTrash
-	defer func() { utils.MoveToTrash = original }()
-	utils.MoveToTrash = func(_ string) error { return nil }
+	original := utils.MoveToTrashBatch
+	defer func() { utils.MoveToTrashBatch = original }()
+	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
+		return utils.TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
+	}
 
 	service := NewCleanService(target.NewRegistry())
 
@@ -555,13 +561,21 @@ func TestClean_CallsOnItemDone(t *testing.T) {
 }
 
 func TestClean_CallsOnItemDone_WithError(t *testing.T) {
-	original := utils.MoveToTrash
-	defer func() { utils.MoveToTrash = original }()
-	utils.MoveToTrash = func(path string) error {
-		if path == "/path2" {
-			return assert.AnError
+	original := utils.MoveToTrashBatch
+	defer func() { utils.MoveToTrashBatch = original }()
+	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
+		result := utils.TrashBatchResult{
+			Succeeded: make([]string, 0, len(paths)),
+			Failed:    make(map[string]error),
 		}
-		return nil
+		for _, p := range paths {
+			if p == "/path2" {
+				result.Failed[p] = assert.AnError
+			} else {
+				result.Succeeded = append(result.Succeeded, p)
+			}
+		}
+		return result
 	}
 
 	service := NewCleanService(target.NewRegistry())
@@ -598,9 +612,11 @@ func TestClean_CallsOnItemDone_WithError(t *testing.T) {
 }
 
 func TestClean_CallsOnCategoryDone(t *testing.T) {
-	original := utils.MoveToTrash
-	defer func() { utils.MoveToTrash = original }()
-	utils.MoveToTrash = func(_ string) error { return nil }
+	original := utils.MoveToTrashBatch
+	defer func() { utils.MoveToTrashBatch = original }()
+	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
+		return utils.TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
+	}
 
 	service := NewCleanService(target.NewRegistry())
 
@@ -695,13 +711,13 @@ func TestClean_BuiltinBatchProcessing(t *testing.T) {
 }
 
 func TestClean_NonBuiltinItemByItem(t *testing.T) {
-	original := utils.MoveToTrash
-	defer func() { utils.MoveToTrash = original }()
+	original := utils.MoveToTrashBatch
+	defer func() { utils.MoveToTrashBatch = original }()
 
-	var trashCalls []string
-	utils.MoveToTrash = func(path string) error {
-		trashCalls = append(trashCalls, path)
-		return nil
+	var batchCalls [][]string
+	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
+		batchCalls = append(batchCalls, paths)
+		return utils.TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
 	}
 
 	service := NewCleanService(target.NewRegistry())
@@ -726,9 +742,12 @@ func TestClean_NonBuiltinItemByItem(t *testing.T) {
 
 	report := service.Clean(jobs, callbacks)
 
-	// Non-builtin processes items one by one
-	assert.Len(t, trashCalls, 3, "Should call MoveToTrash for each item")
-	assert.Equal(t, []string{"/path1", "/path2", "/path3"}, trashCalls)
+	// Non-builtin processes items one by one (for progress tracking)
+	// Each item triggers a separate MoveToTrashBatch call
+	require.Len(t, batchCalls, 3, "Should call MoveToTrashBatch for each item")
+	assert.Equal(t, []string{"/path1"}, batchCalls[0])
+	assert.Equal(t, []string{"/path2"}, batchCalls[1])
+	assert.Equal(t, []string{"/path3"}, batchCalls[2])
 
 	// OnItemDone is called for each item
 	assert.Equal(t, 3, itemDoneCalls, "OnItemDone should be called for each item")
@@ -737,13 +756,21 @@ func TestClean_NonBuiltinItemByItem(t *testing.T) {
 }
 
 func TestClean_AggregatesResults(t *testing.T) {
-	original := utils.MoveToTrash
-	defer func() { utils.MoveToTrash = original }()
-	utils.MoveToTrash = func(path string) error {
-		if path == "/fail" {
-			return assert.AnError
+	original := utils.MoveToTrashBatch
+	defer func() { utils.MoveToTrashBatch = original }()
+	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
+		result := utils.TrashBatchResult{
+			Succeeded: make([]string, 0, len(paths)),
+			Failed:    make(map[string]error),
 		}
-		return nil
+		for _, p := range paths {
+			if p == "/fail" {
+				result.Failed[p] = assert.AnError
+			} else {
+				result.Succeeded = append(result.Succeeded, p)
+			}
+		}
+		return result
 	}
 
 	service := NewCleanService(target.NewRegistry())
@@ -774,9 +801,11 @@ func TestClean_AggregatesResults(t *testing.T) {
 }
 
 func TestClean_MultipleCategories(t *testing.T) {
-	original := utils.MoveToTrash
-	defer func() { utils.MoveToTrash = original }()
-	utils.MoveToTrash = func(_ string) error { return nil }
+	original := utils.MoveToTrashBatch
+	defer func() { utils.MoveToTrashBatch = original }()
+	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
+		return utils.TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
+	}
 
 	registry := target.NewRegistry()
 	cat := types.Category{
@@ -833,9 +862,11 @@ func TestClean_MultipleCategories(t *testing.T) {
 }
 
 func TestClean_ReturnsCorrectReport(t *testing.T) {
-	original := utils.MoveToTrash
-	defer func() { utils.MoveToTrash = original }()
-	utils.MoveToTrash = func(_ string) error { return nil }
+	original := utils.MoveToTrashBatch
+	defer func() { utils.MoveToTrashBatch = original }()
+	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
+		return utils.TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
+	}
 
 	service := NewCleanService(target.NewRegistry())
 

@@ -1,9 +1,12 @@
 package utils
 
 import (
+	"context"
 	"fmt"
+	"os/exec"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -120,4 +123,132 @@ func TestMoveToTrashBatch_PartialFailure(t *testing.T) {
 
 	assert.Contains(t, result.Succeeded, "/success/path")
 	assert.Contains(t, result.Failed, "/fail/this/path")
+}
+
+func TestExecuteBatch_EmptyPaths(t *testing.T) {
+	err := executeBatch([]string{})
+	assert.NoError(t, err)
+}
+
+func TestExecuteBatch_InvalidPathWithNewline(t *testing.T) {
+	// Path with newline should cause escape error
+	err := executeBatch([]string{"/path/with\nnewline"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid path")
+}
+
+func TestMoveToTrashBatch_PathWithNewline_FailsGracefully(t *testing.T) {
+	original := MoveToTrash
+	defer func() { MoveToTrash = original }()
+
+	// Mock MoveToTrash to also fail for newline paths
+	MoveToTrash = func(_ string) error {
+		return ErrInvalidPath
+	}
+
+	// Path with newline should fail in both batch and fallback
+	paths := []string{"/path/with\nnewline"}
+	result := moveToTrashBatchImpl(paths)
+
+	assert.Empty(t, result.Succeeded)
+	assert.Len(t, result.Failed, 1)
+}
+
+func TestMoveToTrashImpl_Success_WithMockCommand(t *testing.T) {
+	original := execCommandContext
+	defer func() { execCommandContext = original }()
+
+	execCommandContext = func(_ context.Context, _ string, _ ...string) *exec.Cmd {
+		return exec.Command("true") // Always succeeds
+	}
+
+	err := moveToTrashImpl("/valid/path")
+
+	assert.NoError(t, err)
+}
+
+func TestMoveToTrashImpl_CommandFailure_WithMockCommand(t *testing.T) {
+	original := execCommandContext
+	defer func() { execCommandContext = original }()
+
+	execCommandContext = func(_ context.Context, _ string, _ ...string) *exec.Cmd {
+		return exec.Command("false") // Always fails
+	}
+
+	err := moveToTrashImpl("/valid/path")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "move to trash:")
+}
+
+func TestMoveToTrashImpl_InvalidPath_ReturnsError(t *testing.T) {
+	// Path with newline should return escape error
+	err := moveToTrashImpl("/path/with\nnewline")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid path")
+}
+
+func TestExecuteBatch_Success_WithMockCommand(t *testing.T) {
+	original := execCommandContext
+	defer func() { execCommandContext = original }()
+
+	execCommandContext = func(_ context.Context, _ string, _ ...string) *exec.Cmd {
+		return exec.Command("true")
+	}
+
+	err := executeBatch([]string{"/path1", "/path2"})
+
+	assert.NoError(t, err)
+}
+
+func TestExecuteBatch_CommandFailure_WithMockCommand(t *testing.T) {
+	original := execCommandContext
+	defer func() { execCommandContext = original }()
+
+	execCommandContext = func(_ context.Context, _ string, _ ...string) *exec.Cmd {
+		return exec.Command("false")
+	}
+
+	err := executeBatch([]string{"/valid/path"})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "osascript:")
+}
+
+func TestMoveToTrashBatchImpl_BatchSuccess_WithMockCommand(t *testing.T) {
+	original := execCommandContext
+	defer func() { execCommandContext = original }()
+
+	execCommandContext = func(_ context.Context, _ string, _ ...string) *exec.Cmd {
+		return exec.Command("true")
+	}
+
+	paths := []string{"/path1", "/path2", "/path3"}
+	result := moveToTrashBatchImpl(paths)
+
+	assert.Equal(t, paths, result.Succeeded)
+	assert.Empty(t, result.Failed)
+}
+
+func TestExecuteBatch_Timeout_WithMockCommand(t *testing.T) {
+	originalCmd := execCommandContext
+	originalTimeout := trashTimeout
+	defer func() {
+		execCommandContext = originalCmd
+		trashTimeout = originalTimeout
+	}()
+
+	// Set very short timeout
+	trashTimeout = 10 * time.Millisecond
+
+	// Use CommandContext so the command respects context cancellation
+	execCommandContext = func(ctx context.Context, _ string, _ ...string) *exec.Cmd {
+		return exec.CommandContext(ctx, "sleep", "1")
+	}
+
+	err := executeBatch([]string{"/valid/path"})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "timeout after")
 }

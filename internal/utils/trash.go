@@ -10,10 +10,14 @@ import (
 	"time"
 )
 
-const trashTimeout = 30 * time.Second
+// trashTimeout is the timeout for trash operations. It is a variable to allow mocking in tests.
+var trashTimeout = 30 * time.Second
 
 // batchSize is the maximum number of files to process in a single AppleScript call.
 const batchSize = 50
+
+// execCommandContext is a variable for exec.CommandContext to allow mocking in tests.
+var execCommandContext = exec.CommandContext
 
 // TrashBatchResult holds the result of batch trash operation.
 type TrashBatchResult struct {
@@ -35,7 +39,7 @@ func moveToTrashImpl(path string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), trashTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "osascript", "-e", script)
+	cmd := execCommandContext(ctx, "osascript", "-e", script)
 	if err := cmd.Run(); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			return fmt.Errorf("move to trash timeout: %s", path)
@@ -112,7 +116,7 @@ func executeBatch(paths []string) error {
 	defer cancel()
 
 	var stderr bytes.Buffer
-	cmd := exec.CommandContext(ctx, "osascript", "-e", script.String())
+	cmd := execCommandContext(ctx, "osascript", "-e", script.String())
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
