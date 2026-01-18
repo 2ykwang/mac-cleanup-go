@@ -287,13 +287,16 @@ func TestClean_Manual_SkipsWithGuide(t *testing.T) {
 }
 
 func TestClean_Trash_MovesToTrash(t *testing.T) {
-	original := utils.MoveToTrash
-	defer func() { utils.MoveToTrash = original }()
+	original := utils.MoveToTrashBatch
+	defer func() { utils.MoveToTrashBatch = original }()
 
 	var trashedPaths []string
-	utils.MoveToTrash = func(path string) error {
-		trashedPaths = append(trashedPaths, path)
-		return nil
+	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
+		trashedPaths = paths
+		return utils.TrashBatchResult{
+			Succeeded: paths,
+			Failed:    make(map[string]error),
+		}
 	}
 
 	c := NewExecutor(nil)
@@ -316,14 +319,22 @@ func TestClean_Trash_MovesToTrash(t *testing.T) {
 }
 
 func TestClean_Trash_PartialFailure(t *testing.T) {
-	original := utils.MoveToTrash
-	defer func() { utils.MoveToTrash = original }()
+	original := utils.MoveToTrashBatch
+	defer func() { utils.MoveToTrashBatch = original }()
 
-	utils.MoveToTrash = func(path string) error {
-		if path == "/tmp/test2" {
-			return fmt.Errorf("permission denied")
+	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
+		result := utils.TrashBatchResult{
+			Succeeded: make([]string, 0, len(paths)),
+			Failed:    make(map[string]error),
 		}
-		return nil
+		for _, p := range paths {
+			if p == "/tmp/test2" {
+				result.Failed[p] = fmt.Errorf("permission denied")
+			} else {
+				result.Succeeded = append(result.Succeeded, p)
+			}
+		}
+		return result
 	}
 
 	c := NewExecutor(nil)
