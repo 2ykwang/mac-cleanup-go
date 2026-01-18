@@ -6,6 +6,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/logger"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
@@ -46,19 +47,26 @@ func validateConfig(cfg *types.Config) error {
 	for _, cat := range cfg.Categories {
 		// Validate method
 		if !validMethods[cat.Method] {
+			logger.Warn("config validation failed: invalid method",
+				"category", cat.ID, "method", cat.Method)
 			return fmt.Errorf("category '%s': invalid method '%s'", cat.ID, cat.Method)
 		}
 
 		// Validate safety
 		if !validSafety[cat.Safety] {
+			logger.Warn("config validation failed: invalid safety",
+				"category", cat.ID, "safety", cat.Safety)
 			return fmt.Errorf("category '%s': invalid safety '%s'", cat.ID, cat.Safety)
 		}
 
 		// Method-specific validations
 		if cat.Method == types.MethodBuiltin && !target.IsBuiltinID(cat.ID) {
+			logger.Warn("config validation failed: unknown builtin ID",
+				"category", cat.ID)
 			return fmt.Errorf("category '%s': unknown builtin ID", cat.ID)
 		}
 	}
 
+	logger.Info("config validated", "categories", len(cfg.Categories))
 	return nil
 }

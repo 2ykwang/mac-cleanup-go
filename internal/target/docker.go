@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/logger"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
@@ -30,10 +31,15 @@ func (s *DockerTarget) Category() types.Category {
 
 func (s *DockerTarget) IsAvailable() bool {
 	if !utils.CommandExists("docker") {
+		logger.Debug("docker command not found")
 		return false
 	}
 	cmd := execCommand("docker", "info")
-	return cmd.Run() == nil
+	if err := cmd.Run(); err != nil {
+		logger.Warn("docker daemon not running", "error", err)
+		return false
+	}
+	return true
 }
 
 type dockerDfOutput struct {
@@ -54,6 +60,7 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 	cmd := execCommand("docker", "system", "df", "--format", "{{json .}}")
 	output, err := cmd.Output()
 	if err != nil {
+		logger.Warn("docker system df failed", "error", err)
 		result.Error = err
 		return result, nil
 	}
@@ -66,6 +73,7 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 
 		var df dockerDfOutput
 		if err := json.Unmarshal([]byte(line), &df); err != nil {
+			logger.Debug("docker df json parse failed", "line", line, "error", err)
 			continue
 		}
 
@@ -88,6 +96,10 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 		result.TotalFileCount += fileCount
 	}
 
+	logger.Info("docker scan completed",
+		"resourceTypes", len(result.Items),
+		"totalSize", result.TotalSize)
+
 	return result, nil
 }
 
@@ -109,13 +121,20 @@ func (s *DockerTarget) Clean(items []types.CleanableItem) (*types.CleanResult, e
 
 		if cmd != nil {
 			if err := cmd.Run(); err != nil {
+				logger.Warn("docker prune failed", "resourceType", item.Path, "error", err)
 				result.Errors = append(result.Errors, err.Error())
 			} else {
+				logger.Debug("docker prune succeeded", "resourceType", item.Path, "size", item.Size)
 				result.FreedSpace += item.Size
 				result.CleanedItems++
 			}
 		}
 	}
+
+	logger.Info("docker clean completed",
+		"cleanedItems", result.CleanedItems,
+		"freedSpace", result.FreedSpace,
+		"errors", len(result.Errors))
 
 	return result, nil
 }

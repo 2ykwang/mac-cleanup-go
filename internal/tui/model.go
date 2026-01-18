@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/cleaner"
+	"github.com/2ykwang/mac-cleanup-go/internal/logger"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
@@ -67,9 +68,14 @@ func NewModel(cfg *types.Config, currentVersion string) *Model {
 
 	registry, err := target.DefaultRegistry(cfg)
 	if err != nil {
+		logger.Warn("registry initialization failed", "error", err)
 		// Prevent nil registry when we surface a fatal config error.
 		registry = target.NewRegistry()
 	}
+
+	logger.Info("model initialized",
+		"categories", len(cfg.Categories),
+		"hasFullDiskAccess", utils.CheckFullDiskAccess())
 
 	// Initialize progress bar
 	prog := progress.New(

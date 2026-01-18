@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/logger"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
@@ -41,10 +42,12 @@ func (s *BrewTarget) getBrewCachePath() string {
 	cmd := execCommand("brew", "--cache")
 	output, err := cmd.Output()
 	if err != nil {
+		logger.Warn("brew --cache failed", "error", err)
 		return ""
 	}
 
 	s.cachePath = strings.TrimSpace(string(output))
+	logger.Debug("brew cache path resolved", "path", s.cachePath)
 	return s.cachePath
 }
 
@@ -52,6 +55,7 @@ func (s *BrewTarget) Scan() (*types.ScanResult, error) {
 	result := types.NewScanResult(s.category)
 
 	if !s.IsAvailable() {
+		logger.Debug("brew not available, skipping scan")
 		return result, nil
 	}
 
@@ -82,6 +86,11 @@ func (s *BrewTarget) Scan() (*types.ScanResult, error) {
 		result.TotalFileCount = fileCount
 	}
 
+	logger.Info("brew scan completed",
+		"cachePath", cachePath,
+		"totalSize", result.TotalSize,
+		"fileCount", result.TotalFileCount)
+
 	return result, nil
 }
 
@@ -92,8 +101,13 @@ func (s *BrewTarget) Clean(items []types.CleanableItem) (*types.CleanResult, err
 		return result, nil
 	}
 
+	// Run brew cleanup first
 	cmd := execCommand("brew", "cleanup", "--prune=all", "-s")
-	_ = cmd.Run()
+	if err := cmd.Run(); err != nil {
+		logger.Warn("brew cleanup command failed", "error", err)
+	} else {
+		logger.Debug("brew cleanup command completed")
+	}
 
 	cachePath := s.getBrewCachePath()
 
@@ -110,6 +124,11 @@ func (s *BrewTarget) Clean(items []types.CleanableItem) (*types.CleanResult, err
 	result.CleanedItems += batchResult.CleanedItems
 	result.FreedSpace += batchResult.FreedSpace
 	result.Errors = append(result.Errors, batchResult.Errors...)
+
+	logger.Info("brew clean completed",
+		"cleanedItems", result.CleanedItems,
+		"freedSpace", result.FreedSpace,
+		"errors", len(result.Errors))
 
 	return result, nil
 }
