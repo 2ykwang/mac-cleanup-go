@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -284,10 +285,8 @@ func TestExecuteBatch_Timeout_WithMockCommand(t *testing.T) {
 		trashTimeout = originalTimeout
 	}()
 
-	// Set very short timeout
 	trashTimeout = 10 * time.Millisecond
 
-	// Use CommandContext so the command respects context cancellation
 	execCommandContext = func(ctx context.Context, _ string, _ ...string) *exec.Cmd {
 		return exec.CommandContext(ctx, "sleep", "1")
 	}
@@ -296,6 +295,120 @@ func TestExecuteBatch_Timeout_WithMockCommand(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "timeout after")
+}
+
+func TestBatchTrash_ReturnsEmptyForNoItems(t *testing.T) {
+	result := BatchTrash(nil, BatchTrashOptions{})
+
+	assert.NotNil(t, result)
+	assert.Equal(t, 0, result.CleanedItems)
+	assert.Equal(t, 0, result.SkippedItems)
+	assert.Equal(t, int64(0), result.FreedSpace)
+	assert.Empty(t, result.Errors)
+}
+
+func TestBatchTrash_FiltersAndSkipsItems(t *testing.T) {
+	original := MoveToTrashBatch
+	defer func() { MoveToTrashBatch = original }()
+
+	MoveToTrashBatch = func(paths []string) TrashBatchResult {
+		return TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
+	}
+
+	items := []types.CleanableItem{
+		{Path: "/keep", Size: 100},
+		{Path: "/skip", Size: 200},
+	}
+
+	result := BatchTrash(items, BatchTrashOptions{
+		Filter: func(item types.CleanableItem) bool {
+			return item.Path == "/skip"
+		},
+	})
+
+	assert.Equal(t, 1, result.CleanedItems)
+	assert.Equal(t, 1, result.SkippedItems)
+	assert.Equal(t, int64(100), result.FreedSpace)
+	assert.Empty(t, result.Errors)
+}
+
+func TestBatchTrash_ValidateRejectsItem(t *testing.T) {
+	original := MoveToTrashBatch
+	defer func() { MoveToTrashBatch = original }()
+
+	MoveToTrashBatch = func(paths []string) TrashBatchResult {
+		return TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
+	}
+
+	items := []types.CleanableItem{
+		{Path: "/valid", Size: 100},
+		{Path: "/invalid", Size: 200},
+	}
+
+	result := BatchTrash(items, BatchTrashOptions{
+		Validate: func(item types.CleanableItem) error {
+			if item.Path == "/invalid" {
+				return fmt.Errorf("invalid path: %s", item.Path)
+			}
+			return nil
+		},
+	})
+
+	assert.Equal(t, 1, result.CleanedItems)
+	assert.Equal(t, int64(100), result.FreedSpace)
+	assert.Len(t, result.Errors, 1)
+	assert.Contains(t, result.Errors[0], "invalid path: /invalid")
+}
+
+func TestBatchTrash_FormatsBatchErrors(t *testing.T) {
+	original := MoveToTrashBatch
+	defer func() { MoveToTrashBatch = original }()
+
+	MoveToTrashBatch = func(_ []string) TrashBatchResult {
+		return TrashBatchResult{
+			Succeeded: []string{},
+			Failed: map[string]error{
+				"/fail": fmt.Errorf("boom"),
+			},
+		}
+	}
+
+	items := []types.CleanableItem{
+		{Path: "/fail", Size: 100},
+	}
+
+	result := BatchTrash(items, BatchTrashOptions{})
+
+	assert.Equal(t, 0, result.CleanedItems)
+	assert.Len(t, result.Errors, 1)
+	assert.Equal(t, "/fail: boom", result.Errors[0])
+}
+
+func TestBatchTrash_ReturnsEarlyWhenAllItemsExcluded(t *testing.T) {
+	original := MoveToTrashBatch
+	defer func() { MoveToTrashBatch = original }()
+
+	called := false
+	MoveToTrashBatch = func(_ []string) TrashBatchResult {
+		called = true
+		return TrashBatchResult{Succeeded: []string{}, Failed: make(map[string]error)}
+	}
+
+	items := []types.CleanableItem{
+		{Path: "/skip1", Size: 100},
+		{Path: "/skip2", Size: 200},
+	}
+
+	result := BatchTrash(items, BatchTrashOptions{
+		Filter: func(_ types.CleanableItem) bool {
+			return true
+		},
+	})
+
+	assert.False(t, called)
+	assert.Equal(t, 0, result.CleanedItems)
+	assert.Equal(t, 2, result.SkippedItems)
+	assert.Empty(t, result.Errors)
 }
 
 func TestMoveToTrashBatchImpl_PartialBatchSuccess_FileAlreadyDeleted(t *testing.T) {

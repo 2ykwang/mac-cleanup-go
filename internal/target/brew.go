@@ -1,6 +1,7 @@
 package target
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -94,39 +95,21 @@ func (s *BrewTarget) Clean(items []types.CleanableItem) (*types.CleanResult, err
 	cmd := execCommand("brew", "cleanup", "--prune=all", "-s")
 	_ = cmd.Run()
 
-	// Collect valid paths and build path-to-item map
-	paths := make([]string, 0, len(items))
-	pathToItem := make(map[string]types.CleanableItem, len(items))
 	cachePath := s.getBrewCachePath()
 
-	for _, item := range items {
-		// Verify the path is within brew cache (safety check)
-		if cachePath == "" || !strings.HasPrefix(item.Path, cachePath) {
-			result.Errors = append(result.Errors, "invalid path: "+item.Path)
-			continue
-		}
-		paths = append(paths, item.Path)
-		pathToItem[item.Path] = item
-	}
+	batchResult := utils.BatchTrash(items, utils.BatchTrashOptions{
+		Category: result.Category,
+		Validate: func(item types.CleanableItem) error {
+			if cachePath == "" || !strings.HasPrefix(item.Path, cachePath) {
+				return fmt.Errorf("invalid path: %s", item.Path)
+			}
+			return nil
+		},
+	})
 
-	if len(paths) == 0 {
-		return result, nil
-	}
-
-	// Batch delete
-	batchResult := utils.MoveToTrashBatch(paths)
-
-	// Process succeeded items
-	for _, p := range batchResult.Succeeded {
-		item := pathToItem[p]
-		result.FreedSpace += item.Size
-		result.CleanedItems++
-	}
-
-	// Process failed items
-	for p, err := range batchResult.Failed {
-		result.Errors = append(result.Errors, p+": "+err.Error())
-	}
+	result.CleanedItems += batchResult.CleanedItems
+	result.FreedSpace += batchResult.FreedSpace
+	result.Errors = append(result.Errors, batchResult.Errors...)
 
 	return result, nil
 }

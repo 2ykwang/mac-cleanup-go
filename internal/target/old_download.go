@@ -65,29 +65,13 @@ func (s *OldDownloadTarget) Clean(items []types.CleanableItem) (*types.CleanResu
 		return result, nil
 	}
 
-	// Collect paths and build path-to-item map
-	paths := make([]string, 0, len(items))
-	pathToItem := make(map[string]types.CleanableItem, len(items))
+	batchResult := utils.BatchTrash(items, utils.BatchTrashOptions{
+		Category: result.Category,
+	})
 
-	for _, item := range items {
-		paths = append(paths, item.Path)
-		pathToItem[item.Path] = item
-	}
-
-	// Batch delete
-	batchResult := utils.MoveToTrashBatch(paths)
-
-	// Process succeeded items
-	for _, p := range batchResult.Succeeded {
-		item := pathToItem[p]
-		result.FreedSpace += item.Size
-		result.CleanedItems++
-	}
-
-	// Process failed items
-	for p, err := range batchResult.Failed {
-		result.Errors = append(result.Errors, p+": "+err.Error())
-	}
+	result.CleanedItems += batchResult.CleanedItems
+	result.FreedSpace += batchResult.FreedSpace
+	result.Errors = append(result.Errors, batchResult.Errors...)
 
 	return result, nil
 }
