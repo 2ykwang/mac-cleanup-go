@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
 // trashTimeout is the timeout for trash operations. It is a variable to allow mocking in tests.
@@ -24,6 +26,62 @@ var execCommandContext = exec.CommandContext
 type TrashBatchResult struct {
 	Succeeded []string
 	Failed    map[string]error
+}
+
+type BatchTrashOptions struct {
+	Category types.Category
+	Filter   func(types.CleanableItem) bool
+	Validate func(types.CleanableItem) error
+}
+
+func BatchTrash(items []types.CleanableItem, opts BatchTrashOptions) *types.CleanResult {
+	result := &types.CleanResult{
+		Category: opts.Category,
+		Errors:   make([]string, 0),
+	}
+
+	if len(items) == 0 {
+		return result
+	}
+
+	paths := make([]string, 0, len(items))
+	pathToItem := make(map[string]types.CleanableItem, len(items))
+
+	for _, item := range items {
+		if opts.Filter != nil && opts.Filter(item) {
+			result.SkippedItems++
+			continue
+		}
+
+		if opts.Validate != nil {
+			if err := opts.Validate(item); err != nil {
+				result.Errors = append(result.Errors, err.Error())
+				continue
+			}
+		}
+
+		paths = append(paths, item.Path)
+		pathToItem[item.Path] = item
+	}
+
+	if len(paths) == 0 {
+		return result
+	}
+
+	batchResult := MoveToTrashBatch(paths)
+
+	for _, p := range batchResult.Succeeded {
+		item := pathToItem[p]
+		result.FreedSpace += item.Size
+		result.CleanedItems++
+	}
+
+	for p, err := range batchResult.Failed {
+		item := pathToItem[p]
+		result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Path, err))
+	}
+
+	return result
 }
 
 // MoveToTrash moves a file or directory to macOS Trash using Finder.

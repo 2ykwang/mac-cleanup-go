@@ -1,7 +1,6 @@
 package cleaner
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
@@ -53,38 +52,17 @@ func (c *Executor) Clean(cat types.Category, items []types.CleanableItem) *types
 }
 
 func (c *Executor) moveToTrash(items []types.CleanableItem, result *types.CleanResult) {
-	// SIP filtering and path collection
-	paths := make([]string, 0, len(items))
-	pathToItem := make(map[string]types.CleanableItem, len(items))
+	batchResult := utils.BatchTrash(items, utils.BatchTrashOptions{
+		Category: result.Category,
+		Filter: func(item types.CleanableItem) bool {
+			return utils.IsSIPProtected(item.Path)
+		},
+	})
 
-	for _, item := range items {
-		if utils.IsSIPProtected(item.Path) {
-			result.SkippedItems++
-			continue
-		}
-		paths = append(paths, item.Path)
-		pathToItem[item.Path] = item
-	}
-
-	if len(paths) == 0 {
-		return
-	}
-
-	// Batch delete
-	batchResult := utils.MoveToTrashBatch(paths)
-
-	// Process succeeded items
-	for _, p := range batchResult.Succeeded {
-		item := pathToItem[p]
-		result.FreedSpace += item.Size
-		result.CleanedItems++
-	}
-
-	// Process failed items
-	for p, err := range batchResult.Failed {
-		item := pathToItem[p]
-		result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Path, err))
-	}
+	result.CleanedItems += batchResult.CleanedItems
+	result.SkippedItems += batchResult.SkippedItems
+	result.FreedSpace += batchResult.FreedSpace
+	result.Errors = append(result.Errors, batchResult.Errors...)
 }
 
 func (c *Executor) removePermanent(items []types.CleanableItem, result *types.CleanResult) {
@@ -103,7 +81,7 @@ func (c *Executor) removePermanent(items []types.CleanableItem, result *types.Cl
 		}
 
 		if err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Path, err))
+			result.Errors = append(result.Errors, item.Path+": "+err.Error())
 		} else {
 			result.FreedSpace += item.Size
 			result.CleanedItems++
