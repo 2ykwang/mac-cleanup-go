@@ -423,7 +423,7 @@ func TestClean_NilCallbacks(t *testing.T) {
 	assert.Equal(t, 2, report.CleanedItems)
 }
 
-func TestClean_CallsOnProgress_NonBuiltin(t *testing.T) {
+func TestClean_CallsOnProgress_TrashMethod(t *testing.T) {
 	original := utils.MoveToTrashBatch
 	defer func() { utils.MoveToTrashBatch = original }()
 	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
@@ -452,13 +452,50 @@ func TestClean_CallsOnProgress_NonBuiltin(t *testing.T) {
 
 	service.Clean(jobs, callbacks)
 
-	// For non-builtin methods, OnProgress is called for each item
+	// For trash method, OnProgress is called per batch (not per item)
+	// 3 items < batch size 50, so only 1 progress call
+	assert.Len(t, progressCalls, 1)
+
+	// Verify progress at batch start
+	assert.Equal(t, 0, progressCalls[0].Current)
+	assert.Equal(t, 3, progressCalls[0].Total)
+	assert.Equal(t, "Test Category", progressCalls[0].CategoryName)
+	assert.Equal(t, "/path1", progressCalls[0].CurrentItem) // First item in batch
+}
+
+func TestClean_CallsOnProgress_PermanentMethod(t *testing.T) {
+	service := NewCleanService(target.NewRegistry())
+
+	jobs := []CleanJob{
+		{
+			Category: types.Category{
+				ID:     "cat1",
+				Name:   "Test Category",
+				Method: types.MethodPermanent, // Non-trash, non-builtin
+			},
+			Items: newTestItems("/path1", "/path2", "/path3"),
+		},
+	}
+
+	var progressCalls []Progress
+	var itemDoneCalls []ItemResult
+	callbacks := Callbacks{
+		OnProgress: func(p Progress) {
+			progressCalls = append(progressCalls, p)
+		},
+		OnItemDone: func(r ItemResult) {
+			itemDoneCalls = append(itemDoneCalls, r)
+		},
+	}
+
+	service.Clean(jobs, callbacks)
+
+	// Permanent method processes items one by one
 	assert.Len(t, progressCalls, 3)
 
 	// Verify progress increments
 	assert.Equal(t, 1, progressCalls[0].Current)
 	assert.Equal(t, 3, progressCalls[0].Total)
-	assert.Equal(t, "Test Category", progressCalls[0].CategoryName)
 	assert.Equal(t, "/path1", progressCalls[0].CurrentItem)
 
 	assert.Equal(t, 2, progressCalls[1].Current)
@@ -466,6 +503,14 @@ func TestClean_CallsOnProgress_NonBuiltin(t *testing.T) {
 
 	assert.Equal(t, 3, progressCalls[2].Current)
 	assert.Equal(t, "/path3", progressCalls[2].CurrentItem)
+
+	// OnItemDone called for each item
+	assert.Len(t, itemDoneCalls, 3)
+	// Files don't exist, so deletePermanent fails
+	for _, r := range itemDoneCalls {
+		assert.False(t, r.Success)
+		assert.NotEmpty(t, r.ErrMsg)
+	}
 }
 
 func TestClean_CallsOnProgress_Builtin(t *testing.T) {
@@ -710,7 +755,7 @@ func TestClean_BuiltinBatchProcessing(t *testing.T) {
 	assert.Equal(t, 3, report.CleanedItems)
 }
 
-func TestClean_NonBuiltinItemByItem(t *testing.T) {
+func TestClean_TrashMethodBatchProcessing(t *testing.T) {
 	original := utils.MoveToTrashBatch
 	defer func() { utils.MoveToTrashBatch = original }()
 
@@ -742,14 +787,12 @@ func TestClean_NonBuiltinItemByItem(t *testing.T) {
 
 	report := service.Clean(jobs, callbacks)
 
-	// Non-builtin processes items one by one (for progress tracking)
-	// Each item triggers a separate MoveToTrashBatch call
-	require.Len(t, batchCalls, 3, "Should call MoveToTrashBatch for each item")
-	assert.Equal(t, []string{"/path1"}, batchCalls[0])
-	assert.Equal(t, []string{"/path2"}, batchCalls[1])
-	assert.Equal(t, []string{"/path3"}, batchCalls[2])
+	// Trash method processes items in batches (batch size 50)
+	// 3 items < batch size, so single batch call
+	require.Len(t, batchCalls, 1, "Should call MoveToTrashBatch once for batch")
+	assert.Equal(t, []string{"/path1", "/path2", "/path3"}, batchCalls[0])
 
-	// OnItemDone is called for each item
+	// OnItemDone is called for each item after batch completes
 	assert.Equal(t, 3, itemDoneCalls, "OnItemDone should be called for each item")
 
 	assert.Equal(t, 3, report.CleanedItems)
@@ -850,8 +893,8 @@ func TestClean_MultipleCategories(t *testing.T) {
 
 	report := service.Clean(jobs, callbacks)
 
-	// Total items = 3, progress calls = 2 (trash items) + 1 (docker batch) = 3
-	assert.Len(t, progressCalls, 3)
+	// Total items = 3, progress calls = 1 (trash batch) + 1 (docker batch) = 2
+	assert.Len(t, progressCalls, 2)
 
 	// Category done called for each category
 	assert.Len(t, categoryDoneCalls, 2)

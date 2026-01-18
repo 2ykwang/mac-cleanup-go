@@ -14,8 +14,8 @@ import (
 // trashTimeout is the timeout for trash operations. It is a variable to allow mocking in tests.
 var trashTimeout = 30 * time.Second
 
-// batchSize is the maximum number of files to process in a single AppleScript call.
-const batchSize = 50
+// TrashBatchSize is the maximum number of files to process in a single AppleScript call.
+const TrashBatchSize = 50
 
 // execCommandContext is a variable for exec.CommandContext to allow mocking in tests.
 var execCommandContext = exec.CommandContext
@@ -65,8 +65,8 @@ func moveToTrashBatchImpl(paths []string) TrashBatchResult {
 	}
 
 	// Process in batches
-	for i := 0; i < len(paths); i += batchSize {
-		end := i + batchSize
+	for i := 0; i < len(paths); i += TrashBatchSize {
+		end := i + TrashBatchSize
 		if end > len(paths) {
 			end = len(paths)
 		}
