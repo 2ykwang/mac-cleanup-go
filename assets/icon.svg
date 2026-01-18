@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg15p" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f0c29"/>
+      <stop offset="50%" style="stop-color:#302b63"/>
+      <stop offset="100%" style="stop-color:#24243e"/>
+    </linearGradient>
+    <radialGradient id="star15p" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#fff"/>
+      <stop offset="100%" style="stop-color:#fff;stop-opacity:0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="8" y="8" width="112" height="112" rx="24" fill="url(#bg15p)"/>
+
+  <!-- 별들 -->
+  <g fill="#fff">
+    <circle cx="20" cy="25" r="1.5"/><circle cx="35" cy="18" r="1"/>
+    <circle cx="95" cy="22" r="1.5"/><circle cx="108" cy="35" r="1"/>
+    <circle cx="18" cy="55" r="1"/><circle cx="110" cy="65" r="1"/>
+    <circle cx="25" cy="100" r="1.5"/><circle cx="105" cy="105" r="1"/>
+  </g>
+
+  <!-- 은하수 효과 -->
+  <ellipse cx="64" cy="64" rx="50" ry="15" fill="#9b59b6" opacity="0.1" transform="rotate(-20, 64, 64)"/>
+
+  <!-- 빗자루 -->
+  <g transform="translate(55, 30) rotate(-10)">
+    <rect x="0" y="0" width="6" height="50" rx="2" fill="#c9a66b"/>
+    <path d="M-12 50 L18 50 L15 70 L-9 70 Z" fill="#b366ff"/>
+    <rect x="-9" y="70" width="3" height="10" rx="1" fill="#9b59b6"/>
+    <rect x="-3" y="70" width="3" height="12" rx="1" fill="#9b59b6"/>
+    <rect x="3" y="70" width="3" height="10" rx="1" fill="#9b59b6"/>
+    <rect x="9" y="70" width="3" height="11" rx="1" fill="#9b59b6"/>
+  </g>
+
+  <!-- 나뭇잎: 우주 색상 -->
+  <path d="M85 75 Q95 70 100 80 Q95 90 85 85 Q80 80 85 75" fill="#ff6b6b"/>
+  <path d="M90 65 Q98 62 102 70 Q98 78 90 74 Q86 70 90 65" fill="#b366ff" transform="rotate(20, 95, 70)"/>
+  <path d="M95 88 Q102 85 105 92 Q102 99 95 96 Q91 92 95 88" fill="#4ecdc4"/>
+  <path d="M78 90 Q85 87 88 93 Q85 99 78 96 Q74 93 78 90" fill="#9b59b6"/>
+
+  <g stroke="#b366ff" stroke-width="2" stroke-linecap="round" opacity="0.6">
+    <line x1="70" y1="85" x2="80" y2="83"/>
+    <line x1="72" y1="92" x2="85" y2="89"/>
+  </g>
+
+  <path d="M30 85 L33 88 L40 81" stroke="#b366ff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+</svg>
