@@ -32,8 +32,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *Model) handleReportKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "?":
-		m.help.ShowAll = !m.help.ShowAll
-		return m, nil
+		return m.toggleHelp()
 	case "ctrl+c", "q":
 		return m, tea.Quit
 	case "up", "k":
@@ -54,8 +53,7 @@ func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "?":
-		m.help.ShowAll = !m.help.ShowAll
-		return m, nil
+		return m.toggleHelp()
 	case "ctrl+c", "q":
 		return m, tea.Quit
 	case "up", "k":
@@ -150,8 +148,7 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "?":
-		m.help.ShowAll = !m.help.ShowAll
-		return m, nil
+		return m.toggleHelp()
 	case "ctrl+c", "q":
 		return m, tea.Quit
 	case "esc", "n":
@@ -274,8 +271,7 @@ func (m *Model) handleFilterTypingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "?":
-		m.help.ShowAll = !m.help.ShowAll
-		return m, nil
+		return m.toggleHelp()
 	case "ctrl+c", "q":
 		return m, tea.Quit
 	case "y", "Y", "enter":
@@ -293,8 +289,7 @@ func (m *Model) handleDrillDownKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "?":
-		m.help.ShowAll = !m.help.ShowAll
-		return m, nil
+		return m.toggleHelp()
 	case "ctrl+c", "q":
 		return m, tea.Quit
 	case "esc", "backspace", "n":
@@ -450,39 +445,48 @@ func clamp(value, min, max int) int {
 	return value
 }
 
-func (m *Model) movePreviewCursor(delta int) {
-	r := m.getPreviewCatResult()
-	if r == nil || len(r.Items) == 0 {
-		return
-	}
-	m.setPreviewCursor(m.previewItemIndex+delta, len(r.Items)-1)
+func (m *Model) toggleHelp() (tea.Model, tea.Cmd) {
+	m.help.ShowAll = !m.help.ShowAll
+	return m, nil
 }
 
-func (m *Model) setPreviewCursor(index int, max int) {
+func setCursor(index int, max int, cursor *int, scroll *int) {
+	if max < 0 {
+		return
+	}
 	if index < 0 {
 		index = 0
 	}
 	if index > max {
 		index = max
 	}
-	m.previewItemIndex = index
-	m.previewScroll = 0
+	*cursor = index
+	*scroll = 0
+}
+
+func moveCursor(delta int, max int, cursor *int, scroll *int) {
+	setCursor(*cursor+delta, max, cursor, scroll)
+}
+
+func (m *Model) movePreviewCursor(delta int) {
+	r := m.getPreviewCatResult()
+	if r == nil || len(r.Items) == 0 {
+		return
+	}
+	moveCursor(delta, len(r.Items)-1, &m.previewItemIndex, &m.previewScroll)
+}
+
+func (m *Model) setPreviewCursor(index int, max int) {
+	setCursor(index, max, &m.previewItemIndex, &m.previewScroll)
 }
 
 func (m *Model) moveDrillCursor(state *drillDownState, delta int) {
 	if state == nil || len(state.items) == 0 {
 		return
 	}
-	m.setDrillCursor(state, state.cursor+delta, len(state.items)-1)
+	moveCursor(delta, len(state.items)-1, &state.cursor, &state.scroll)
 }
 
 func (m *Model) setDrillCursor(state *drillDownState, index int, max int) {
-	if index < 0 {
-		index = 0
-	}
-	if index > max {
-		index = max
-	}
-	state.cursor = index
-	state.scroll = 0
+	setCursor(index, max, &state.cursor, &state.scroll)
 }

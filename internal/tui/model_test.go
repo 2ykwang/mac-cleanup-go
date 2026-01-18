@@ -1361,6 +1361,34 @@ func TestHandlePreviewKey_CursorDownIncreases(t *testing.T) {
 	assert.Equal(t, 1, m.previewItemIndex)
 }
 
+func TestHandlePreviewKey_CursorDownIgnoresEmptyItems(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewItemIndex = 0
+	r := m.getPreviewCatResult()
+	require.NotNil(t, r)
+	r.Items = nil
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyDown})
+
+	assert.Equal(t, 0, m.previewItemIndex)
+	assert.Equal(t, 0, m.previewScroll)
+}
+
+func TestHandleDrillDownKey_DownIgnoresEmptyItems(t *testing.T) {
+	m := newTestModelForPreview()
+	m.drillDownStack = append(m.drillDownStack, drillDownState{
+		path:   "/test/path",
+		items:  []types.CleanableItem{},
+		cursor: 0,
+		scroll: 0,
+	})
+
+	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyDown})
+
+	assert.Equal(t, 0, m.drillDownStack[0].cursor)
+	assert.Equal(t, 0, m.drillDownStack[0].scroll)
+}
+
 func TestHandlePreviewKey_SortToggle(t *testing.T) {
 	m := newTestModelForPreview()
 	m.previewItemIndex = 5
