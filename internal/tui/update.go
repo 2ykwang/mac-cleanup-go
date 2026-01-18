@@ -79,10 +79,7 @@ func (m *Model) initScanResults(scanners []target.Target) {
 			if _, ok := available[cat.ID]; !ok {
 				continue
 			}
-			result := &types.ScanResult{
-				Category: cat,
-				Items:    make([]types.CleanableItem, 0),
-			}
+			result := types.NewScanResult(cat)
 			m.results = append(m.results, result)
 			m.resultMap[cat.ID] = result
 		}
@@ -91,10 +88,7 @@ func (m *Model) initScanResults(scanners []target.Target) {
 
 	for _, s := range scanners {
 		cat := s.Category()
-		result := &types.ScanResult{
-			Category: cat,
-			Items:    make([]types.CleanableItem, 0),
-		}
+		result := types.NewScanResult(cat)
 		m.results = append(m.results, result)
 		m.resultMap[cat.ID] = result
 	}

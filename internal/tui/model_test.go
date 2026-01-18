@@ -41,11 +41,11 @@ type testTarget struct {
 }
 
 func (s testTarget) Scan() (*types.ScanResult, error) {
-	return &types.ScanResult{Category: s.category}, nil
+	return types.NewScanResult(s.category), nil
 }
 
 func (s testTarget) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
-	return &types.CleanResult{Category: s.category}, nil
+	return types.NewCleanResult(s.category), nil
 }
 
 func (s testTarget) Category() types.Category {
@@ -102,12 +102,10 @@ func TestHandleScanResult_AddsErrorAndMarksComplete(t *testing.T) {
 	m := newTestModel()
 	m.scanning = true
 	m.scanTotal = 1
-	result := &types.ScanResult{
-		Category:  types.Category{ID: "test", Name: "Test"},
-		Items:     []types.CleanableItem{{Path: "/tmp/a", Size: 10}},
-		TotalSize: 10,
-		Error:     errors.New("scan failed"),
-	}
+	result := types.NewScanResult(types.Category{ID: "test", Name: "Test"})
+	result.Items = []types.CleanableItem{{Path: "/tmp/a", Size: 10}}
+	result.TotalSize = 10
+	result.Error = errors.New("scan failed")
 
 	m.handleScanResult(result)
 
@@ -712,9 +710,7 @@ func TestStartScan_NoAvailableTargetsStopsScanning(t *testing.T) {
 func TestRenderListItem_ScanningShowsPlaceholderCounts(t *testing.T) {
 	m := newTestModel()
 	m.scanning = true
-	result := &types.ScanResult{
-		Category: types.Category{ID: "cat1", Name: "Test Cat", Safety: types.SafetyLevelSafe},
-	}
+	result := types.NewScanResult(types.Category{ID: "cat1", Name: "Test Cat", Safety: types.SafetyLevelSafe})
 
 	nameWidth, sizeWidth, countWidth := m.listColumnWidths()
 	output := m.renderListItem(0, result, nameWidth, sizeWidth, countWidth)
@@ -735,12 +731,10 @@ func TestHandleScanResult_UpdatesExistingEntry(t *testing.T) {
 	}
 	m.initScanResults(available)
 
-	result := &types.ScanResult{
-		Category:       cat,
-		Items:          []types.CleanableItem{{Path: "/tmp/a", Size: 64}},
-		TotalSize:      64,
-		TotalFileCount: 1,
-	}
+	result := types.NewScanResult(cat)
+	result.Items = []types.CleanableItem{{Path: "/tmp/a", Size: 64}}
+	result.TotalSize = 64
+	result.TotalFileCount = 1
 	m.handleScanResult(result)
 
 	updated := m.resultMap["cat1"]
@@ -763,12 +757,26 @@ func TestHandleScanResult_FinalizeRemovesZeroSize(t *testing.T) {
 	}
 	m.initScanResults(available)
 
-	result := &types.ScanResult{Category: cat}
+	result := types.NewScanResult(cat)
 	m.handleScanResult(result)
 
 	assert.False(t, m.scanning)
 	assert.Empty(t, m.results)
 	assert.Empty(t, m.resultMap)
+}
+
+func TestInitScanResults_UsesAvailableTargetsWhenNoConfig(t *testing.T) {
+	m := newTestModel()
+	m.config = nil
+
+	available := []target.Target{
+		testTarget{category: types.Category{ID: "cat1", Name: "Cat 1"}, available: true},
+	}
+
+	m.initScanResults(available)
+
+	assert.Len(t, m.results, 1)
+	assert.NotNil(t, m.resultMap["cat1"])
 }
 
 func TestHandleListKey_Scanning_DisablesSelection(t *testing.T) {

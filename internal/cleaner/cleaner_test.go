@@ -150,12 +150,11 @@ func TestClean_MethodBuiltin_DelegatesToTarget(t *testing.T) {
 	}
 
 	mockTarget := newMockTargetWithCategory(cat)
-	mockTarget.On("Clean", mock.Anything).Return(&types.CleanResult{
-		Category:     cat,
-		CleanedItems: 2,
-		FreedSpace:   100,
-		Errors:       []string{},
-	}, nil)
+	cleanResult := types.NewCleanResult(cat)
+	cleanResult.CleanedItems = 2
+	cleanResult.FreedSpace = 100
+	cleanResult.Errors = []string{}
+	mockTarget.On("Clean", mock.Anything).Return(cleanResult, nil)
 	registry.Register(mockTarget)
 
 	c := NewExecutor(registry)
@@ -200,12 +199,11 @@ func TestClean_MethodBuiltin_TargetReturnsError(t *testing.T) {
 	}
 
 	mockTarget := newMockTargetWithCategory(cat)
-	mockTarget.On("Clean", mock.Anything).Return(&types.CleanResult{
-		Category:     cat,
-		CleanedItems: 1,
-		FreedSpace:   50,
-		Errors:       []string{"partial failure"},
-	}, nil)
+	cleanResult := types.NewCleanResult(cat)
+	cleanResult.CleanedItems = 1
+	cleanResult.FreedSpace = 50
+	cleanResult.Errors = []string{"partial failure"}
+	mockTarget.On("Clean", mock.Anything).Return(cleanResult, nil)
 	registry.Register(mockTarget)
 
 	c := NewExecutor(registry)
@@ -230,12 +228,11 @@ func TestClean_MethodBuiltin_TargetErrorPropagates(t *testing.T) {
 	}
 
 	mockTarget := newMockTargetWithCategory(cat)
-	mockTarget.On("Clean", mock.Anything).Return(&types.CleanResult{
-		Category:     cat,
-		CleanedItems: 0,
-		FreedSpace:   0,
-		Errors:       []string{},
-	}, fmt.Errorf("scanner failed"))
+	cleanResult := types.NewCleanResult(cat)
+	cleanResult.CleanedItems = 0
+	cleanResult.FreedSpace = 0
+	cleanResult.Errors = []string{}
+	mockTarget.On("Clean", mock.Anything).Return(cleanResult, fmt.Errorf("scanner failed"))
 	registry.Register(mockTarget)
 
 	c := NewExecutor(registry)

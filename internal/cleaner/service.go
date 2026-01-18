@@ -119,10 +119,7 @@ func (s *CleanService) cleanBuiltin(job CleanJob, callbacks Callbacks, currentIt
 
 // cleanTrashBatch handles trash method with batch processing for performance.
 func (s *CleanService) cleanTrashBatch(job CleanJob, callbacks Callbacks, currentItem *int, totalItems int) *types.CleanResult {
-	result := &types.CleanResult{
-		Category: job.Category,
-		Errors:   make([]string, 0),
-	}
+	result := types.NewCleanResult(job.Category)
 
 	items := job.Items
 	for i := 0; i < len(items); i += utils.TrashBatchSize {
@@ -192,10 +189,7 @@ func (s *CleanService) sendBatchItemCallbacks(batch []types.CleanableItem, batch
 
 // cleanItemByItem handles other methods with item-by-item processing.
 func (s *CleanService) cleanItemByItem(job CleanJob, callbacks Callbacks, currentItem *int, totalItems int) *types.CleanResult {
-	result := &types.CleanResult{
-		Category: job.Category,
-		Errors:   make([]string, 0),
-	}
+	result := types.NewCleanResult(job.Category)
 
 	for _, item := range job.Items {
 		*currentItem++

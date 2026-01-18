@@ -16,8 +16,8 @@ func newMockTarget(id string, available bool) *mocks.MockTarget {
 	cat := types.Category{ID: id, Name: "Mock " + id}
 	m.On("Category").Return(cat)
 	m.On("IsAvailable").Return(available)
-	m.On("Scan").Return(&types.ScanResult{Category: cat}, nil)
-	m.On("Clean", mock.Anything).Return(&types.CleanResult{Category: cat}, nil)
+	m.On("Scan").Return(types.NewScanResult(cat), nil)
+	m.On("Clean", mock.Anything).Return(types.NewCleanResult(cat), nil)
 	return m
 }
 

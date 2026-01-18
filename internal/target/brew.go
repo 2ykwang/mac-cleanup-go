@@ -48,10 +48,7 @@ func (s *BrewTarget) getBrewCachePath() string {
 }
 
 func (s *BrewTarget) Scan() (*types.ScanResult, error) {
-	result := &types.ScanResult{
-		Category: s.category,
-		Items:    make([]types.CleanableItem, 0),
-	}
+	result := types.NewScanResult(s.category)
 
 	if !s.IsAvailable() {
 		return result, nil
@@ -88,10 +85,7 @@ func (s *BrewTarget) Scan() (*types.ScanResult, error) {
 }
 
 func (s *BrewTarget) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
-	result := &types.CleanResult{
-		Category: s.category,
-		Errors:   make([]string, 0),
-	}
+	result := types.NewCleanResult(s.category)
 
 	if len(items) == 0 {
 		return result, nil
