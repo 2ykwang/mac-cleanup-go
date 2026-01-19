@@ -77,6 +77,14 @@ type Config struct {
 	Groups     []Group    `yaml:"groups"`
 }
 
+// ItemStatus represents the availability state of a cleanable item.
+type ItemStatus int
+
+const (
+	ItemStatusAvailable ItemStatus = iota
+	ItemStatusProcessLocked
+)
+
 type CleanableItem struct {
 	Path        string
 	Size        int64
@@ -84,6 +92,7 @@ type CleanableItem struct {
 	Name        string
 	IsDirectory bool
 	ModifiedAt  time.Time
+	Status      ItemStatus
 }
 
 type ScanResult struct {

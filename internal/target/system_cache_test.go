@@ -1,6 +1,7 @@
 package target
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -222,4 +223,121 @@ func TestSystemCacheScan_CalculatesTotalFileCount(t *testing.T) {
 	require.Len(t, result.Items, 1)
 	assert.Equal(t, int64(3), result.Items[0].FileCount)
 	assert.Equal(t, int64(3), result.TotalFileCount)
+}
+
+func TestScan_MarksLockedItems(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "systemcache-locked-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	cachesDir := filepath.Join(tmpDir, "Caches")
+	appDir := filepath.Join(cachesDir, "App")
+	otherDir := filepath.Join(cachesDir, "Other")
+
+	for _, dir := range []string{appDir, otherDir} {
+		require.NoError(t, os.MkdirAll(dir, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "cache.dat"), []byte("test"), 0o644))
+	}
+
+	systemCache := types.Category{
+		ID:    "system-cache",
+		Paths: []string{filepath.Join(cachesDir, "*")},
+	}
+	s := NewSystemCacheTarget(systemCache, []types.Category{systemCache})
+
+	originalGetLockedPaths := getLockedPaths
+	getLockedPaths = func(basePath string) (map[string]bool, error) {
+		assert.Equal(t, cachesDir, basePath)
+		return map[string]bool{
+			appDir: true,
+		}, nil
+	}
+	defer func() { getLockedPaths = originalGetLockedPaths }()
+
+	result, err := s.Scan()
+	require.NoError(t, err)
+
+	itemsByPath := make(map[string]types.CleanableItem)
+	for _, item := range result.Items {
+		itemsByPath[item.Path] = item
+	}
+
+	require.Contains(t, itemsByPath, appDir)
+	require.Contains(t, itemsByPath, otherDir)
+	assert.Equal(t, types.ItemStatusProcessLocked, itemsByPath[appDir].Status)
+	assert.Equal(t, types.ItemStatusAvailable, itemsByPath[otherDir].Status)
+}
+
+func TestMarkLockedItems_WhenNoItems_SkipsLockCheck(t *testing.T) {
+	systemCache := types.Category{
+		ID:    "system-cache",
+		Paths: []string{"/tmp/test/Caches/*"},
+	}
+	s := NewSystemCacheTarget(systemCache, []types.Category{systemCache})
+
+	called := false
+	originalGetLockedPaths := getLockedPaths
+	getLockedPaths = func(_ string) (map[string]bool, error) {
+		called = true
+		return map[string]bool{}, nil
+	}
+	defer func() { getLockedPaths = originalGetLockedPaths }()
+
+	s.markLockedItems(&types.ScanResult{Items: nil})
+
+	assert.False(t, called)
+}
+
+func TestMarkLockedItems_WhenBasePathEmpty_SkipsLockCheck(t *testing.T) {
+	systemCache := types.Category{
+		ID:    "system-cache",
+		Paths: nil,
+	}
+	s := NewSystemCacheTarget(systemCache, []types.Category{systemCache})
+
+	called := false
+	originalGetLockedPaths := getLockedPaths
+	getLockedPaths = func(_ string) (map[string]bool, error) {
+		called = true
+		return map[string]bool{}, nil
+	}
+	defer func() { getLockedPaths = originalGetLockedPaths }()
+
+	result := &types.ScanResult{
+		Items: []types.CleanableItem{{Path: "/tmp/test/Caches/App"}},
+	}
+	s.markLockedItems(result)
+
+	assert.False(t, called)
+	assert.Equal(t, types.ItemStatusAvailable, result.Items[0].Status)
+}
+
+func TestMarkLockedItems_WhenLockCheckFails_DoesNotUpdate(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "systemcache-lockfail-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	cachesDir := filepath.Join(tmpDir, "Caches")
+	appDir := filepath.Join(cachesDir, "App")
+	require.NoError(t, os.MkdirAll(appDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, "cache.dat"), []byte("test"), 0o644))
+
+	systemCache := types.Category{
+		ID:    "system-cache",
+		Paths: []string{filepath.Join(cachesDir, "*")},
+	}
+	s := NewSystemCacheTarget(systemCache, []types.Category{systemCache})
+
+	originalGetLockedPaths := getLockedPaths
+	getLockedPaths = func(_ string) (map[string]bool, error) {
+		return nil, errors.New("lsof failed")
+	}
+	defer func() { getLockedPaths = originalGetLockedPaths }()
+
+	result := &types.ScanResult{
+		Items: []types.CleanableItem{{Path: appDir}},
+	}
+	s.markLockedItems(result)
+
+	assert.Equal(t, types.ItemStatusAvailable, result.Items[0].Status)
 }
