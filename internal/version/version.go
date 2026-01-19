@@ -1,16 +1,22 @@
 package version
 
 import (
+	"errors"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
-	"regexp"
+	"path"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
-	execLookPath = exec.LookPath
-	execCommand  = exec.Command
+	execLookPath     = exec.LookPath
+	execCommand      = exec.Command
+	httpClient       = &http.Client{Timeout: 2 * time.Second}
+	latestReleaseURL = "https://github.com/2ykwang/mac-cleanup-go/releases/latest"
 )
 
 const (
@@ -26,7 +32,7 @@ type CheckResult struct {
 	Error           error
 }
 
-// CheckForUpdate checks if a newer version is available via Homebrew
+// CheckForUpdate checks if a newer version is available via GitHub Releases.
 func CheckForUpdate(currentVersion string) CheckResult {
 	result := CheckResult{CurrentVersion: currentVersion}
 
@@ -35,21 +41,16 @@ func CheckForUpdate(currentVersion string) CheckResult {
 		return result
 	}
 
-	// Check if brew is available
-	if _, err := execLookPath("brew"); err != nil {
-		return result
-	}
-
-	// Run: brew info 2ykwang/2ykwang/mac-cleanup-go
-	cmd := execCommand("brew", "info", BrewFormula)
-	output, err := cmd.Output()
+	latestVersion, err := fetchLatestVersion()
 	if err != nil {
 		result.Error = err
 		return result
 	}
 
-	// Parse version from output
-	result.LatestVersion = parseBrewVersion(string(output))
+	result.LatestVersion = latestVersion
+	if _, err := execLookPath("brew"); err != nil {
+		return result
+	}
 	if result.LatestVersion != "" {
 		result.UpdateAvailable = isNewerVersion(result.LatestVersion, currentVersion)
 	}
@@ -65,15 +66,30 @@ func RunUpdate() error {
 	return cmd.Run()
 }
 
-// parseBrewVersion extracts version from brew info output
-// Example: "==> 2ykwang/2ykwang/mac-cleanup-go: stable 1.3.1"
-func parseBrewVersion(output string) string {
-	re := regexp.MustCompile(`mac-cleanup-go:\s*stable\s+(\d+\.\d+\.\d+)`)
-	matches := re.FindStringSubmatch(output)
-	if len(matches) >= 2 {
-		return matches[1]
+func fetchLatestVersion() (string, error) {
+	req, err := http.NewRequest(http.MethodGet, latestReleaseURL, nil)
+	if err != nil {
+		return "", err
 	}
-	return ""
+	req.Header.Set("User-Agent", "mac-cleanup-go")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusBadRequest {
+		return "", errors.New("latest release request failed")
+	}
+
+	tag := path.Base(resp.Request.URL.Path)
+	if tag == "" || tag == "latest" {
+		return "", errors.New("latest tag not resolved")
+	}
+
+	return strings.TrimPrefix(tag, "v"), nil
 }
 
 // isNewerVersion compares semantic versions
