@@ -17,9 +17,10 @@ const (
 	colAge  = 6 // Age column width for FormatAge output (e.g., "2mo")
 
 	// listPrefixWidth: cursor(2) + checkbox(3) + space(1) + dot(1) + space(1)
-	listPrefixWidth = 8
-	// previewPrefixWidth: cursor(2) + checkbox(3) + space(1) + icon(1) + space(1)
-	previewPrefixWidth = 8
+	listPrefixWidth  = 8
+	previewIconWidth = 2
+	// previewPrefixWidth: cursor(2) + checkbox(3) + space(1) + icon(2) + space(1)
+	previewPrefixWidth = 9
 )
 
 // Colors

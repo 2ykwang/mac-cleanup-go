@@ -9,6 +9,8 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
+const lockedItemStatusMessage = "In use by another process. Can't select."
+
 func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.view {
 	case ViewList:
@@ -182,7 +184,14 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		r := m.getPreviewCatResult()
 		item := m.getCurrentPreviewItem()
 		if r != nil && item != nil {
+			if item.Status == types.ItemStatusProcessLocked {
+				m.statusMessage = lockedItemStatusMessage
+				return m, nil
+			}
 			m.toggleExclude(r.Category.ID, item.Path)
+			if m.statusMessage == lockedItemStatusMessage {
+				m.statusMessage = ""
+			}
 		}
 	case "enter":
 		// Drill down into directory (use visible items after filter/sort)
@@ -400,6 +409,7 @@ func (m *Model) resetForRescan() {
 func (m *Model) resetPreviewSelection() {
 	m.previewItemIndex = 0
 	m.previewScroll = 0
+	m.updatePreviewStatusMessage()
 }
 
 func (m *Model) clearFilter() {
@@ -474,10 +484,23 @@ func (m *Model) movePreviewCursor(delta int) {
 		return
 	}
 	moveCursor(delta, len(r.Items)-1, &m.previewItemIndex, &m.previewScroll)
+	m.updatePreviewStatusMessage()
 }
 
 func (m *Model) setPreviewCursor(index int, max int) {
 	setCursor(index, max, &m.previewItemIndex, &m.previewScroll)
+	m.updatePreviewStatusMessage()
+}
+
+func (m *Model) updatePreviewStatusMessage() {
+	item := m.getCurrentPreviewItem()
+	if item != nil && item.Status == types.ItemStatusProcessLocked {
+		m.statusMessage = lockedItemStatusMessage
+		return
+	}
+	if m.statusMessage == lockedItemStatusMessage {
+		m.statusMessage = ""
+	}
 }
 
 func (m *Model) moveDrillCursor(state *drillDownState, delta int) {

@@ -3,6 +3,7 @@ package target
 import (
 	"strings"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/logger"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
@@ -12,6 +13,8 @@ type SystemCacheTarget struct {
 	*PathTarget
 	excludePaths []string
 }
+
+var getLockedPaths = utils.GetLockedPaths
 
 func init() {
 	RegisterBuiltin("system-cache", func(cat types.Category, categories []types.Category) Target {
@@ -57,6 +60,7 @@ func (s *SystemCacheTarget) Scan() (*types.ScanResult, error) {
 		return result, nil
 	}
 	result.Items, result.TotalSize, result.TotalFileCount = s.scanPathsParallel(paths)
+	s.markLockedItems(result)
 	return result, nil
 }
 
@@ -91,4 +95,33 @@ func (s *SystemCacheTarget) isExcluded(path string) bool {
 		}
 	}
 	return false
+}
+
+func (s *SystemCacheTarget) markLockedItems(result *types.ScanResult) {
+	if len(result.Items) == 0 {
+		return
+	}
+
+	basePath := ""
+	for _, pattern := range s.category.Paths {
+		basePath = utils.StripGlobPattern(pattern)
+		if basePath != "" {
+			break
+		}
+	}
+	if basePath == "" {
+		return
+	}
+
+	lockedPaths, err := getLockedPaths(basePath)
+	if err != nil {
+		logger.Warn("system cache lock check failed", "error", err)
+		return
+	}
+
+	for i := range result.Items {
+		if lockedPaths[result.Items[i].Path] {
+			result.Items[i].Status = types.ItemStatusProcessLocked
+		}
+	}
 }

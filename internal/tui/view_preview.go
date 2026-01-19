@@ -247,6 +247,7 @@ func (m *Model) viewPreview() string {
 			item := sortedItems[i]
 			isCurrent := m.previewItemIndex == i
 			isExcluded := m.isExcluded(cat.Category.ID, item.Path)
+			isLocked := item.Status == types.ItemStatusProcessLocked
 
 			cursor := "  "
 			if isCurrent {
@@ -254,7 +255,9 @@ func (m *Model) viewPreview() string {
 			}
 
 			checkbox := SuccessStyle.Render("[x]")
-			if isExcluded {
+			if isLocked {
+				checkbox = MutedStyle.Render(" - ")
+			} else if isExcluded {
 				checkbox = MutedStyle.Render("[ ]")
 			}
 
@@ -262,10 +265,16 @@ func (m *Model) viewPreview() string {
 			if item.IsDirectory {
 				icon = ">"
 			}
+			icon = padToWidth(icon, previewIconWidth)
+			if isLocked {
+				icon = MutedStyle.Render(icon)
+			}
 
 			// Pad using display width (not byte count) for CJK character alignment
 			paddedPath := padToWidth(shortenPath(item.Path, pathWidth), pathWidth)
-			if isExcluded {
+			if isLocked {
+				paddedPath = MutedStyle.Render(paddedPath)
+			} else if isExcluded {
 				paddedPath = MutedStyle.Render(paddedPath)
 			} else if isCurrent {
 				paddedPath = SelectedStyle.Render(paddedPath)
@@ -273,7 +282,10 @@ func (m *Model) viewPreview() string {
 
 			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(item.Size))
 			age := fmt.Sprintf("%*s", ageWidth, utils.FormatAge(item.ModifiedAt))
-			if isExcluded {
+			if isLocked {
+				size = MutedStyle.Render(size)
+				age = MutedStyle.Render(age)
+			} else if isExcluded {
 				size = MutedStyle.Render(size)
 				age = MutedStyle.Render(age)
 			} else {
@@ -285,7 +297,7 @@ func (m *Model) viewPreview() string {
 		}
 
 		if len(sortedItems) > visible {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("\n  [%d-%d / %d]", m.previewScroll+1, endIdx, len(sortedItems))))
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("\n\n  [%d-%d / %d]", m.previewScroll+1, endIdx, len(sortedItems))))
 		}
 	}
 

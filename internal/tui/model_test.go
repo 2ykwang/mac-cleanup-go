@@ -397,6 +397,29 @@ func TestGetEffectiveSize(t *testing.T) {
 	assert.Equal(t, int64(500), m.getEffectiveSize(r))
 }
 
+func TestGetEffectiveSize_SkipsLockedItems(t *testing.T) {
+	m := newTestModelWithResults()
+	r := m.results[0] // cat1 with 1000 total
+
+	r.Items[0].Status = types.ItemStatusProcessLocked
+
+	assert.Equal(t, int64(500), m.getEffectiveSize(r))
+}
+
+func TestAutoExcludeCategory_SkipsLockedItems(t *testing.T) {
+	m := newTestModel()
+	r := types.NewScanResult(types.Category{ID: "cat1"})
+	r.Items = []types.CleanableItem{
+		{Path: "/path/1", Status: types.ItemStatusProcessLocked},
+		{Path: "/path/2", Status: types.ItemStatusAvailable},
+	}
+
+	m.autoExcludeCategory("cat1", r)
+
+	assert.False(t, m.isExcluded("cat1", "/path/1"))
+	assert.True(t, m.isExcluded("cat1", "/path/2"))
+}
+
 func TestGetSelectedResults(t *testing.T) {
 	m := newTestModelWithResults()
 	m.selected["cat1"] = true
@@ -895,6 +918,36 @@ func TestViewPreview_ContainsItems(t *testing.T) {
 
 	assert.Contains(t, output, "/path/1")
 	assert.Contains(t, output, "/path/2")
+}
+
+func TestViewPreview_ShowsLockedItemIndicator(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewPreview
+	m.selected["cat1"] = true
+	m.previewCatID = "cat1"
+	m.results[0].Items[0].Status = types.ItemStatusProcessLocked
+
+	output := m.viewPreview()
+
+	assert.Contains(t, output, " - ")
+}
+
+func TestViewPreview_ShowsPaginationWhenOverflow(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewPreview
+	m.selected["cat1"] = true
+	m.previewCatID = "cat1"
+	m.height = 10
+
+	items := make([]types.CleanableItem, 30)
+	for i := range items {
+		items[i] = types.CleanableItem{Path: fmt.Sprintf("/path/%d", i), Size: 1}
+	}
+	m.results[0].Items = items
+
+	output := m.viewPreview()
+
+	assert.Contains(t, output, "[1-")
 }
 
 func TestViewPreview_NoSelection(t *testing.T) {
@@ -1554,6 +1607,56 @@ func TestHandlePreviewKey_SpaceTogglesExclusion(t *testing.T) {
 	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeySpace})
 
 	assert.True(t, m.excluded["cat1"][itemPath])
+}
+
+func TestHandlePreviewKey_SpaceSkipsLockedItem(t *testing.T) {
+	m := newTestModelForPreview()
+	item := &m.results[0].Items[0]
+	item.Status = types.ItemStatusProcessLocked
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeySpace})
+
+	assert.False(t, m.isExcluded("cat1", item.Path))
+	assert.Equal(t, lockedItemStatusMessage, m.statusMessage)
+}
+
+func TestHandlePreviewKey_MoveShowsLockedStatusMessage(t *testing.T) {
+	m := newTestModelForPreview()
+	m.results[0].Items[0].Status = types.ItemStatusProcessLocked
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyUp})
+
+	assert.Equal(t, lockedItemStatusMessage, m.statusMessage)
+}
+
+func TestHandlePreviewKey_SpaceClearsLockedStatusMessage(t *testing.T) {
+	m := newTestModelForPreview()
+	m.statusMessage = lockedItemStatusMessage
+	itemPath := m.results[0].Items[0].Path
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeySpace})
+
+	assert.True(t, m.isExcluded("cat1", itemPath))
+	assert.Empty(t, m.statusMessage)
+}
+
+func TestHandlePreviewKey_MoveClearsLockedStatusMessage(t *testing.T) {
+	m := newTestModelForPreview()
+	m.statusMessage = lockedItemStatusMessage
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyDown})
+
+	assert.Empty(t, m.statusMessage)
+}
+
+func TestHandlePreviewKey_HomeClearsLockedStatusMessage(t *testing.T) {
+	m := newTestModelForPreview()
+	m.statusMessage = lockedItemStatusMessage
+	m.previewItemIndex = 1
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyHome})
+
+	assert.Empty(t, m.statusMessage)
 }
 
 func TestHandlePreviewKey_PageDown(t *testing.T) {

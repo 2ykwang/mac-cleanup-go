@@ -57,12 +57,12 @@ func (m *Model) getAvailableSize() int64 {
 
 func (m *Model) getEffectiveSize(r *types.ScanResult) int64 {
 	excludedMap := m.excluded[r.Category.ID]
-	if excludedMap == nil {
-		return r.TotalSize
-	}
 	var total int64
 	for _, item := range r.Items {
-		if !excludedMap[item.Path] {
+		if item.Status == types.ItemStatusProcessLocked {
+			continue
+		}
+		if excludedMap == nil || !excludedMap[item.Path] {
 			total += item.Size
 		}
 	}
@@ -140,6 +140,9 @@ func (m *Model) autoExcludeCategory(catID string, r *types.ScanResult) {
 		m.excluded[catID] = make(map[string]bool)
 	}
 	for _, item := range r.Items {
+		if item.Status == types.ItemStatusProcessLocked {
+			continue
+		}
 		m.excluded[catID][item.Path] = true
 	}
 	m.saveExcludedPaths()
