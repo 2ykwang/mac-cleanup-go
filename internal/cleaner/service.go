@@ -260,6 +260,9 @@ func (s *CleanService) PrepareJobs(
 		var items []types.CleanableItem
 		excludedMap := excluded[id]
 		for _, item := range r.Items {
+			if item.Status == types.ItemStatusProcessLocked {
+				continue
+			}
 			if excludedMap == nil || !excludedMap[item.Path] {
 				items = append(items, item)
 			}

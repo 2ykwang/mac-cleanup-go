@@ -162,6 +162,49 @@ func TestPrepareJobs_FiltersExcludedItems(t *testing.T) {
 	assert.Contains(t, paths, "/path3")
 }
 
+func TestPrepareJobs_SkipsLockedItems(t *testing.T) {
+	service := NewCleanService(target.NewRegistry())
+
+	resultMap := map[string]*types.ScanResult{
+		"cat1": newTestScanResult("cat1", "Category 1", types.MethodTrash, []types.CleanableItem{
+			{Path: "/path1", Name: "path1", Status: types.ItemStatusAvailable},
+			{Path: "/path2", Name: "path2", Status: types.ItemStatusProcessLocked},
+			{Path: "/path3", Name: "path3"},
+		}),
+	}
+
+	selected := map[string]bool{
+		"cat1": true,
+	}
+
+	jobs := service.PrepareJobs(resultMap, selected, nil)
+
+	require.Len(t, jobs, 1)
+	assert.Len(t, jobs[0].Items, 2)
+
+	for _, item := range jobs[0].Items {
+		assert.NotEqual(t, "/path2", item.Path, "locked item should not be in jobs")
+	}
+}
+
+func TestPrepareJobs_SkipsWhenAllItemsLocked(t *testing.T) {
+	service := NewCleanService(target.NewRegistry())
+
+	resultMap := map[string]*types.ScanResult{
+		"cat1": newTestScanResult("cat1", "Category 1", types.MethodTrash, []types.CleanableItem{
+			{Path: "/path1", Name: "path1", Status: types.ItemStatusProcessLocked},
+		}),
+	}
+
+	selected := map[string]bool{
+		"cat1": true,
+	}
+
+	jobs := service.PrepareJobs(resultMap, selected, nil)
+
+	assert.Empty(t, jobs)
+}
+
 func TestPrepareJobs_SkipsWhenAllItemsExcluded(t *testing.T) {
 	service := NewCleanService(target.NewRegistry())
 
