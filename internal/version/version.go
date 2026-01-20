@@ -33,6 +33,8 @@ type CheckResult struct {
 }
 
 // CheckForUpdate checks if a newer version is available via GitHub Releases.
+// TODO(homebrew-core): After migrating to homebrew-core, consider version detection delay.
+// GitHub Release may be published 1-3 days before the formula is updated.
 func CheckForUpdate(currentVersion string) CheckResult {
 	result := CheckResult{CurrentVersion: currentVersion}
 
