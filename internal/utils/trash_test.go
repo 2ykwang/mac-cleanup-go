@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
 	"testing"
 	"time"
 
@@ -42,14 +41,6 @@ func TestMoveToTrash_MockError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "mock error")
-}
-
-func TestMoveToTrashImpl_SkipOnNonMacOS(t *testing.T) {
-	if runtime.GOOS != "darwin" {
-		t.Skip("skipping test on non-macOS")
-	}
-	// Real implementation test would go here
-	// but we don't test actual osascript calls to avoid side effects
 }
 
 func TestMoveToTrashBatch_CanBeMocked(t *testing.T) {

@@ -92,10 +92,6 @@ func TestBrewTarget_Clean_ReturnsResult(t *testing.T) {
 }
 
 func TestBrewTarget_Scan_WithMockCachePath(t *testing.T) {
-	if !utils.CommandExists("brew") {
-		t.Skip("brew not installed")
-	}
-
 	tmpDir := t.TempDir()
 	cacheDir := filepath.Join(tmpDir, "Homebrew")
 	require.NoError(t, os.MkdirAll(cacheDir, 0o755))
@@ -118,10 +114,6 @@ func TestBrewTarget_Scan_WithMockCachePath(t *testing.T) {
 }
 
 func TestBrewTarget_Scan_NonexistentCachePath(t *testing.T) {
-	if !utils.CommandExists("brew") {
-		t.Skip("brew not installed")
-	}
-
 	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
 	s := NewBrewTarget(cat)
 	s.cachePath = "/nonexistent/path/that/does/not/exist"

@@ -28,7 +28,7 @@ jobs:
           version: v2.7.2
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
 
     steps:
       # actions/checkout@v6.0.1
