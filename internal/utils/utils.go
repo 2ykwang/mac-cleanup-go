@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/logger"
 	"golang.org/x/sys/unix"
 )
 
@@ -161,44 +162,50 @@ func GetDirSizeWithCount(path string) (int64, int64, error) {
 
 				dirFile, err := os.Open(dir)
 				if err != nil {
-					continue
-				}
-				entries, err := dirFile.ReadDir(-1)
-				if err != nil {
+					logger.Debug("GetDirSizeWithCount open failed", "path", dir, "error", err)
+				} else {
+					entries, err := dirFile.ReadDir(-1)
+					if err != nil {
+						logger.Debug("GetDirSizeWithCount readdir failed", "path", dir, "error", err)
+					} else {
+						dirPrefix := dir
+						if dirPrefix == "" {
+							dirPrefix = string(os.PathSeparator)
+						} else if dirPrefix[len(dirPrefix)-1] != os.PathSeparator {
+							dirPrefix += string(os.PathSeparator)
+						}
+						dirFD := int(dirFile.Fd())
+						statErrs := 0
+
+						for _, entry := range entries {
+							entryName := entry.Name()
+							entryType := entry.Type()
+							// Do not follow symlinked directories to avoid cycles or surprises.
+							if entryType.IsDir() && entryType&os.ModeSymlink == 0 {
+								entryPath := dirPrefix + entryName
+								subDirs = append(subDirs, entryPath)
+								continue
+							}
+
+							var stat unix.Stat_t
+							if err := unix.Fstatat(dirFD, entryName, &stat, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+								statErrs++
+								continue
+							}
+							if stat.Mode&unix.S_IFMT == unix.S_IFDIR {
+								entryPath := dirPrefix + entryName
+								subDirs = append(subDirs, entryPath)
+								continue
+							}
+							localSize += stat.Size
+							localCount++
+						}
+						if statErrs != 0 {
+							logger.Debug("GetDirSizeWithCount stat skipped", "path", dir, "errors", statErrs)
+						}
+					}
 					_ = dirFile.Close()
-					continue
 				}
-				dirPrefix := dir
-				if dirPrefix == "" {
-					dirPrefix = string(os.PathSeparator)
-				} else if dirPrefix[len(dirPrefix)-1] != os.PathSeparator {
-					dirPrefix += string(os.PathSeparator)
-				}
-				dirFD := int(dirFile.Fd())
-
-				for _, entry := range entries {
-					entryName := entry.Name()
-					entryType := entry.Type()
-					if entryType.IsDir() && entryType&os.ModeSymlink == 0 {
-						entryPath := dirPrefix + entryName
-						subDirs = append(subDirs, entryPath)
-						continue
-					}
-
-					var stat unix.Stat_t
-					if err := unix.Fstatat(dirFD, entryName, &stat, unix.AT_SYMLINK_NOFOLLOW); err != nil {
-						continue
-					}
-					if stat.Mode&unix.S_IFMT == unix.S_IFDIR {
-						entryPath := dirPrefix + entryName
-						subDirs = append(subDirs, entryPath)
-						continue
-					}
-					localSize += stat.Size
-					localCount++
-				}
-
-				_ = dirFile.Close()
 
 				if localSize != 0 {
 					atomic.AddInt64(&size, localSize)
@@ -224,14 +231,14 @@ func GetDirSizeWithCount(path string) (int64, int64, error) {
 	}
 
 	wg.Wait()
-
 	return size, count, nil
 }
 
 func getDirSizeWithCountSequential(path string) (int64, int64, error) {
 	var size, count int64
-	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+	err := filepath.Walk(path, func(walkPath string, info os.FileInfo, err error) error {
 		if err != nil {
+			logger.Debug("getDirSizeWithCountSequential walk error", "path", walkPath, "error", err)
 			return nil
 		}
 		if !info.IsDir() {
