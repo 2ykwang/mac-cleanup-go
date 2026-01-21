@@ -150,8 +150,8 @@ func createBenchmarkTreeOnce(root string, depth, filesPerDir int) string {
 
 	// Create files in parallel (one goroutine per directory)
 	var wg sync.WaitGroup
-	sem := make(chan struct{}, 32) // Limit concurrent goroutines
-	data := make([]byte, 1024)     // 1KB, shared read-only
+	sem := make(chan struct{}, utils.DefaultWorkers())
+	data := make([]byte, 1024) // 1KB, shared read-only
 
 	for _, dir := range dirs {
 		wg.Add(1)

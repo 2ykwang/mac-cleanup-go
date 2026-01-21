@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -77,6 +78,19 @@ func TestPathExists(t *testing.T) {
 func TestCommandExists(t *testing.T) {
 	assert.True(t, CommandExists("ls"), "common command should exist")
 	assert.False(t, CommandExists("nonexistentcommand12345"), "non-existing command should return false")
+}
+
+func TestDefaultWorkers_RespectsBounds(t *testing.T) {
+	prev := runtime.GOMAXPROCS(1)
+	defer runtime.GOMAXPROCS(prev)
+
+	assert.Equal(t, 1, DefaultWorkers())
+
+	runtime.GOMAXPROCS(2)
+	assert.Equal(t, 2, DefaultWorkers())
+
+	runtime.GOMAXPROCS(32)
+	assert.Equal(t, 16, DefaultWorkers())
 }
 
 func TestGetDirSize(t *testing.T) {

@@ -3,24 +3,12 @@ package target
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"sync"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
-
-// getMaxWorkers returns the optimal number of workers based on CPU cores
-func getMaxWorkers(numCPU int) int {
-	if numCPU > 16 {
-		return 16
-	}
-	if numCPU < 4 {
-		return 4
-	}
-	return numCPU
-}
 
 type PathTarget struct {
 	category types.Category
@@ -95,7 +83,7 @@ func (s *PathTarget) scanPathsParallel(paths []string) ([]types.CleanableItem, i
 		totalCount int64
 	)
 
-	sem := make(chan struct{}, getMaxWorkers(runtime.NumCPU()))
+	sem := make(chan struct{}, utils.DefaultWorkers())
 
 	for _, path := range paths {
 		sem <- struct{}{}

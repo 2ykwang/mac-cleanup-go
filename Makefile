@@ -86,9 +86,29 @@ test-cover-html: ## Generate HTML coverage report
 	$(GO) tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
 
+PERF_COUNT ?= 1
+ifneq ($(filter test-perf,$(MAKECMDGOALS)),)
+PERF_ARGS := $(filter-out test-perf,$(MAKECMDGOALS))
+ifneq ($(strip $(PERF_ARGS)),)
+PERF_COUNT := $(firstword $(PERF_ARGS))
+endif
+$(PERF_ARGS):
+	@:
+endif
+
 .PHONY: test-perf
-test-perf: ## Run performance benchmarks (requires -tags=perf)
-	$(GO) test -tags=perf -bench=. -benchmem -run=^$$ ./internal/target/...
+test-perf: ## Run performance benchmarks (requires -tags=perf, set count via `make test-perf 3`)
+	@set -e; \
+	tmp=$$(mktemp -t bench.XXXXXX); \
+	trap 'rm -f $$tmp' EXIT; \
+	$(GO) test -tags=perf -bench=. -benchmem -run=^$$ -count=$(PERF_COUNT) ./internal/target/... | tee $$tmp; \
+	if command -v benchstat >/dev/null 2>&1; then \
+		echo ""; \
+		benchstat $$tmp; \
+	else \
+		echo ""; \
+		echo "benchstat not found; install with: go install golang.org/x/perf/cmd/benchstat@latest"; \
+	fi
 
 ##@ Cleanup
 
