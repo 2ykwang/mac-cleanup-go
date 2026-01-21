@@ -86,6 +86,10 @@ test-cover-html: ## Generate HTML coverage report
 	$(GO) tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
 
+.PHONY: test-perf
+test-perf: ## Run performance benchmarks (requires -tags=perf)
+	$(GO) test -tags=perf -bench=. -benchmem -run=^$$ ./internal/target/...
+
 ##@ Cleanup
 
 .PHONY: clean
