@@ -22,7 +22,7 @@ func GetLockedPaths(basePath string) (map[string]bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), lsofTimeout)
 	defer cancel()
 
-	args := []string{"-nP", "-F", "n"}
+	args := []string{"-nP", "-F", "n", "+D", expanded}
 	cmd := execCommandContext(ctx, "lsof", args...)
 	output, err := cmd.CombinedOutput()
 	if ctx.Err() != nil {

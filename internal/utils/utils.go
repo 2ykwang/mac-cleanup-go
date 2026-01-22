@@ -112,9 +112,12 @@ var CommandExists = func(cmd string) bool {
 }
 
 func GetDirSizeWithCount(path string) (int64, int64, error) {
-	info, err := os.Stat(path)
+	info, err := os.Lstat(path)
 	if err != nil {
 		return 0, 0, err
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return info.Size(), 1, nil
 	}
 	if !info.IsDir() {
 		return info.Size(), 1, nil
