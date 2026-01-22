@@ -3,10 +3,8 @@ package utils
 import (
 	"context"
 	"errors"
-	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -25,9 +23,6 @@ func GetLockedPaths(basePath string) (map[string]bool, error) {
 	defer cancel()
 
 	args := []string{"-nP", "-F", "n", "+D", expanded}
-	if os.Getenv("MAC_CLEANUP_LSOF_ALL") != "1" {
-		args = []string{"-nP", "-F", "n", "-a", "+D", expanded, "-u", strconv.Itoa(os.Getuid())}
-	}
 	cmd := execCommandContext(ctx, "lsof", args...)
 	output, err := cmd.CombinedOutput()
 	if ctx.Err() != nil {

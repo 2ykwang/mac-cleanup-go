@@ -40,29 +40,39 @@ mac-cleanup
 mac-cleanup --update   # update via Homebrew
 ```
 
+Uninstall:
+
+```bash
+brew uninstall mac-cleanup-go
+```
+
 > Tip: Grant Full Disk Access to your terminal to clean Trash and restricted locations.  
 > System Settings -> Privacy & Security -> Full Disk Access
 
 ![demo](assets/demo.gif)
 
-## What it does
+## Safety & deletion policy
 
 - Scans known cache/log/temp paths across apps and tools in parallel.
 - Lets you preview items and exclude what you want to keep.
 - Labels targets by impact level (safe, moderate, risky).
 - Built-in scans for Homebrew, Docker, and old downloads (brew/docker output or last-modified time filtering).
 
-> Note: Risky categories start selected with all items excluded by default. You must
-> explicitly include items in the preview page to delete them.
+## What it does
+
+- Items are previewed before delete.
+- By default, items go to Trash; only the Trash category empties it permanently.
+- Risky categories start selected with all items excluded.
+- Manual categories never delete automatically and only show guidance.
 
 ## Impact levels
 
 - safe: auto-regenerated caches/logs.
 - moderate: may require re-download or re-login.
-- risky: user data possible; items start excluded.
-- manual: no automatic deletion; shows an app guide.
+- risky: user data possible; category starts selected with all items excluded.
+- manual: no automatic deletion; shows an app guide only.
 
-## Targets
+## Targets (v1.3.6)
 
 - Total targets: 107.
 - Groups: System 7, Browsers 10, Development 35, Applications 52, Storage 3.

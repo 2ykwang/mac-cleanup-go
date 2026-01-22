@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -79,6 +80,19 @@ func TestCommandExists(t *testing.T) {
 	assert.False(t, CommandExists("nonexistentcommand12345"), "non-existing command should return false")
 }
 
+func TestDefaultWorkers_RespectsBounds(t *testing.T) {
+	prev := runtime.GOMAXPROCS(1)
+	defer runtime.GOMAXPROCS(prev)
+
+	assert.Equal(t, 1, DefaultWorkers())
+
+	runtime.GOMAXPROCS(2)
+	assert.Equal(t, 2, DefaultWorkers())
+
+	runtime.GOMAXPROCS(32)
+	assert.Equal(t, 16, DefaultWorkers())
+}
+
 func TestGetDirSize(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "test-dir-size")
 	require.NoError(t, err)
@@ -115,6 +129,38 @@ func TestGetDirSizeWithCount(t *testing.T) {
 	size, count, err := GetDirSizeWithCount(tmpDir)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(350), size)
+	assert.Equal(t, int64(3), count)
+}
+
+func TestGetDirSizeWithCount_SymlinkDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink behavior differs on Windows")
+	}
+	prev := runtime.GOMAXPROCS(2)
+	defer runtime.GOMAXPROCS(prev)
+
+	tmpDir, err := os.MkdirTemp("", "test-dir-size-count-symlink")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	file1 := filepath.Join(tmpDir, "file1.txt")
+	require.NoError(t, os.WriteFile(file1, make([]byte, 100), 0o644))
+
+	subDir := filepath.Join(tmpDir, "subdir")
+	require.NoError(t, os.Mkdir(subDir, 0o755))
+	file2 := filepath.Join(subDir, "file2.txt")
+	require.NoError(t, os.WriteFile(file2, make([]byte, 50), 0o644))
+
+	linkPath := filepath.Join(tmpDir, "subdir-link")
+	require.NoError(t, os.Symlink(subDir, linkPath))
+	linkInfo, err := os.Lstat(linkPath)
+	require.NoError(t, err)
+
+	size, count, err := GetDirSizeWithCount(tmpDir)
+	require.NoError(t, err)
+
+	expectedSize := int64(150) + linkInfo.Size()
+	assert.Equal(t, expectedSize, size)
 	assert.Equal(t, int64(3), count)
 }
 

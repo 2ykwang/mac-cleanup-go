@@ -5,8 +5,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
+
+	"github.com/2ykwang/mac-cleanup-go/internal/logger"
+	"golang.org/x/sys/unix"
 )
 
 var (
@@ -15,6 +21,19 @@ var (
 	execCommand   = exec.Command
 	execLookPath  = exec.LookPath
 )
+
+const defaultWorkersMax = 16
+
+func DefaultWorkers() int {
+	workers := runtime.GOMAXPROCS(0)
+	if workers < 1 {
+		return 1
+	}
+	if workers > defaultWorkersMax {
+		return defaultWorkersMax
+	}
+	return workers
+}
 
 func ExpandPath(path string) string {
 	if strings.HasPrefix(path, "~/") {
@@ -93,9 +112,136 @@ var CommandExists = func(cmd string) bool {
 }
 
 func GetDirSizeWithCount(path string) (int64, int64, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return 0, 0, err
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return info.Size(), 1, nil
+	}
+	if !info.IsDir() {
+		return info.Size(), 1, nil
+	}
+
+	dirWorkers := DefaultWorkers()
+	if dirWorkers < 2 {
+		return getDirSizeWithCountSequential(path)
+	}
+
 	var size, count int64
-	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+	var (
+		mu      sync.Mutex
+		cond    = sync.NewCond(&mu)
+		queue   = []string{path}
+		pending = 1
+		done    = false
+	)
+
+	var wg sync.WaitGroup
+	wg.Add(dirWorkers)
+	for i := 0; i < dirWorkers; i++ {
+		go func() {
+			defer wg.Done()
+			for {
+				mu.Lock()
+				for len(queue) == 0 && !done {
+					cond.Wait()
+				}
+				if done {
+					mu.Unlock()
+					return
+				}
+
+				last := len(queue) - 1
+				dir := queue[last]
+				queue = queue[:last]
+				mu.Unlock()
+
+				var (
+					localSize  int64
+					localCount int64
+					subDirs    []string
+				)
+
+				dirFile, err := os.Open(dir)
+				if err != nil {
+					logger.Debug("GetDirSizeWithCount open failed", "path", dir, "error", err)
+				} else {
+					entries, err := dirFile.ReadDir(-1)
+					if err != nil {
+						logger.Debug("GetDirSizeWithCount readdir failed", "path", dir, "error", err)
+					} else {
+						dirPrefix := dir
+						if dirPrefix == "" {
+							dirPrefix = string(os.PathSeparator)
+						} else if dirPrefix[len(dirPrefix)-1] != os.PathSeparator {
+							dirPrefix += string(os.PathSeparator)
+						}
+						dirFD := int(dirFile.Fd())
+						statErrs := 0
+
+						for _, entry := range entries {
+							entryName := entry.Name()
+							entryType := entry.Type()
+							// Do not follow symlinked directories to avoid cycles or surprises.
+							if entryType.IsDir() && entryType&os.ModeSymlink == 0 {
+								entryPath := dirPrefix + entryName
+								subDirs = append(subDirs, entryPath)
+								continue
+							}
+
+							var stat unix.Stat_t
+							if err := unix.Fstatat(dirFD, entryName, &stat, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+								statErrs++
+								continue
+							}
+							if stat.Mode&unix.S_IFMT == unix.S_IFDIR {
+								entryPath := dirPrefix + entryName
+								subDirs = append(subDirs, entryPath)
+								continue
+							}
+							localSize += stat.Size
+							localCount++
+						}
+						if statErrs != 0 {
+							logger.Debug("GetDirSizeWithCount stat skipped", "path", dir, "errors", statErrs)
+						}
+					}
+					_ = dirFile.Close()
+				}
+
+				if localSize != 0 {
+					atomic.AddInt64(&size, localSize)
+				}
+				if localCount != 0 {
+					atomic.AddInt64(&count, localCount)
+				}
+
+				mu.Lock()
+				if len(subDirs) > 0 {
+					queue = append(queue, subDirs...)
+					pending += len(subDirs)
+					cond.Broadcast()
+				}
+				pending--
+				if pending == 0 {
+					done = true
+					cond.Broadcast()
+				}
+				mu.Unlock()
+			}
+		}()
+	}
+
+	wg.Wait()
+	return size, count, nil
+}
+
+func getDirSizeWithCountSequential(path string) (int64, int64, error) {
+	var size, count int64
+	err := filepath.Walk(path, func(walkPath string, info os.FileInfo, err error) error {
 		if err != nil {
+			logger.Debug("getDirSizeWithCountSequential walk error", "path", walkPath, "error", err)
 			return nil
 		}
 		if !info.IsDir() {
