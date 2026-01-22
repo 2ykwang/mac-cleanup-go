@@ -802,13 +802,23 @@ func TestInitScanResults_UsesAvailableTargetsWhenNoConfig(t *testing.T) {
 	assert.NotNil(t, m.resultMap["cat1"])
 }
 
-func TestHandleListKey_Scanning_DisablesSelection(t *testing.T) {
+func TestHandleListKey_Scanning_AllowsSelection(t *testing.T) {
 	m := newTestModelWithResults()
 	m.scanning = true
 
 	m.handleListKey(tea.KeyMsg{Type: tea.KeySpace})
 
-	assert.False(t, m.selected["cat1"])
+	assert.True(t, m.selected["cat1"], "selection should be allowed during scan")
+}
+
+func TestHandleListKey_Scanning_BlocksEnter(t *testing.T) {
+	m := newTestModelWithResults()
+	m.scanning = true
+	m.selected["cat1"] = true
+
+	m.handleListKey(tea.KeyMsg{Type: tea.KeyEnter})
+
+	assert.Equal(t, ViewList, m.view, "enter should be blocked during scan")
 }
 
 func TestListColumnWidths_CappedAtMax(t *testing.T) {

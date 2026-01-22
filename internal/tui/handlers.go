@@ -131,7 +131,7 @@ func (m *Model) isListKeyAllowed(msg tea.KeyMsg) bool {
 		return true
 	}
 	switch msg.String() {
-	case "?", "ctrl+c", "q", "up", "k", "down", "j":
+	case "?", "ctrl+c", "q", "up", "k", "down", "j", " ", "a", "A", "d", "D":
 		return true
 	default:
 		return false
