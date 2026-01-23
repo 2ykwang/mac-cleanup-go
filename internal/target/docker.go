@@ -34,7 +34,7 @@ func (s *DockerTarget) IsAvailable() bool {
 		logger.Debug("docker command not found")
 		return false
 	}
-	cmd := execCommand("docker", "info")
+	cmd := execCommand("docker", "version")
 	if err := cmd.Run(); err != nil {
 		logger.Warn("docker daemon not running", "error", err)
 		return false
