@@ -14,70 +14,46 @@ jobs:
     if: github.event.pull_request.head.repo.fork == false
     runs-on: macos-latest
     env:
-      BENCH_COUNT: 10
+      BENCH_COUNT: 7
       BENCH_PKG: ./internal/target/...
-      BENCH_DATA_DIR: ${{ github.workspace }}/bench-data
-      BASE_SHA: ${{ github.event.pull_request.base.sha }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
 
     steps:
       # actions/checkout@v6.0.1
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-          path: base
 
       # actions/setup-go@v6.1.0
       - uses: actions/setup-go@ae252ee6fb24babc50e89fc67c4aa608e69fbf8f
         with:
-          go-version-file: base/go.mod
+          go-version-file: go.mod
 
       - name: Install benchstat
         run: go install golang.org/x/perf/cmd/benchstat@latest
 
-      - name: Run base benchmarks
-        working-directory: base
+      - name: Run benchmarks
         run: |
-          go test -tags=perf -bench=. -benchmem -count="${BENCH_COUNT}" -run=^$ "${BENCH_PKG}" | tee "${GITHUB_WORKSPACE}/base.txt"
+          go test -tags=perf -bench=. -benchmem -count="${BENCH_COUNT}" -run=^$ "${BENCH_PKG}" | tee "${GITHUB_WORKSPACE}/bench.txt"
 
-      # actions/checkout@v6.0.1
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          path: head
-
-      - name: Run head benchmarks
-        working-directory: head
+      - name: Generate benchmark report
         run: |
-          go test -tags=perf -bench=. -benchmem -count="${BENCH_COUNT}" -run=^$ "${BENCH_PKG}" | tee "${GITHUB_WORKSPACE}/head.txt"
-
-      - name: Compare benchmarks
-        run: |
-          base_lines=$(grep -c '^Benchmark' "${GITHUB_WORKSPACE}/base.txt" || true)
-          head_lines=$(grep -c '^Benchmark' "${GITHUB_WORKSPACE}/head.txt" || true)
+          bench_lines=$(grep -c '^Benchmark' "${GITHUB_WORKSPACE}/bench.txt" || true)
 
           {
             echo "<!-- benchstat -->"
-            echo "## Benchmark Comparison"
+            echo "## Benchmark Results"
             echo ""
-            echo "- Base: \`${BASE_SHA}\`"
-            echo "- Head: \`${HEAD_SHA}\`"
+            echo "- Commit: \`${HEAD_SHA}\`"
             echo ""
           } > "${GITHUB_WORKSPACE}/benchstat_comment.md"
 
           {
-            echo "## Benchmark Comparison"
-            echo "- Base: \`${BASE_SHA}\`"
-            echo "- Head: \`${HEAD_SHA}\`"
+            echo "## Benchmark Results"
+            echo "- Commit: \`${HEAD_SHA}\`"
             echo ""
           } >> "${GITHUB_STEP_SUMMARY}"
 
-          if [ "${base_lines}" -gt 0 ] && [ "${head_lines}" -gt 0 ]; then
-            benchstat "${GITHUB_WORKSPACE}/base.txt" "${GITHUB_WORKSPACE}/head.txt" > "${GITHUB_WORKSPACE}/benchstat.txt"
-          elif [ "${base_lines}" -gt 0 ]; then
-            benchstat "${GITHUB_WORKSPACE}/base.txt" > "${GITHUB_WORKSPACE}/benchstat.txt"
-          elif [ "${head_lines}" -gt 0 ]; then
-            benchstat "${GITHUB_WORKSPACE}/head.txt" > "${GITHUB_WORKSPACE}/benchstat.txt"
+          if [ "${bench_lines}" -gt 0 ]; then
+            benchstat "${GITHUB_WORKSPACE}/bench.txt" > "${GITHUB_WORKSPACE}/benchstat.txt"
           else
             echo "No benchmark data to display." | tee -a "${GITHUB_WORKSPACE}/benchstat_comment.md" >> "${GITHUB_STEP_SUMMARY}"
             exit 0
