@@ -3,297 +3,106 @@
 package target
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
+// Benchmark tree configuration
 const (
-	benchDepthSmall    = 3
-	benchDepthMedium   = 5
-	benchDepthLarge    = 8
-	benchFilesPerDir   = 100
-	benchFanout        = 3
-	benchMarkerName    = ".bench_marker"
-	benchMarkerVersion = "v1"
+	benchFilesPerDir = 100
+	benchFanout      = 3
 )
 
-// Shared benchmark directories created once in TestMain (reused if BENCH_DATA_DIR is set).
-var (
-	benchDirSmall  string
-	benchDirMedium string
-	benchDirLarge  string
-)
+// Shared benchmark directories (initialized in TestMain)
+var benchDirs = []struct {
+	name  string
+	dir   string
+	depth int
+}{
+	{"Small", "", 3},
+	{"Medium", "", 5},
+	{"Large", "", 8},
+}
 
 func TestMain(m *testing.M) {
 	root := os.Getenv("BENCH_DATA_DIR")
-	cleanup := func() {}
-	if root == "" {
-		tempRoot, err := os.MkdirTemp("", "bench-trees-")
-		if err != nil {
-			panic("failed to create temp root: " + err.Error())
+	shouldCleanup := root == ""
+	if shouldCleanup {
+		root, _ = os.MkdirTemp("", "bench-")
+	}
+
+	for i := range benchDirs {
+		benchDirs[i].dir = filepath.Join(root, benchDirs[i].name)
+		if _, err := os.Stat(benchDirs[i].dir); err != nil {
+			createTree(benchDirs[i].dir, benchDirs[i].depth)
 		}
-		root = tempRoot
-		cleanup = func() { _ = os.RemoveAll(tempRoot) }
 	}
 
-	if err := ensureBenchmarkTrees(root); err != nil {
-		panic("failed to prepare benchmark trees: " + err.Error())
-	}
-
-	// Run benchmarks
 	code := m.Run()
 
-	// Cleanup
-	cleanup()
-
+	if shouldCleanup {
+		_ = os.RemoveAll(root)
+	}
 	os.Exit(code)
 }
 
-func ensureBenchmarkTrees(root string) error {
-	markerPath := filepath.Join(root, benchMarkerName)
-	marker := benchMarkerContent()
-
-	if data, err := os.ReadFile(markerPath); err == nil && string(data) == marker && benchDirsExist(root) {
-		benchDirSmall = filepath.Join(root, "small")
-		benchDirMedium = filepath.Join(root, "medium")
-		benchDirLarge = filepath.Join(root, "large")
-		return nil
-	}
-
-	if err := os.RemoveAll(root); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(root, 0o755); err != nil {
-		return err
-	}
-
-	// Create all trees once (in parallel for speed).
-	var wg sync.WaitGroup
-	wg.Add(3)
-
-	go func() {
-		defer wg.Done()
-		benchDirSmall = createBenchmarkTreeOnce(filepath.Join(root, "small"), benchDepthSmall, benchFilesPerDir)
-	}()
-	go func() {
-		defer wg.Done()
-		benchDirMedium = createBenchmarkTreeOnce(filepath.Join(root, "medium"), benchDepthMedium, benchFilesPerDir)
-	}()
-	go func() {
-		defer wg.Done()
-		benchDirLarge = createBenchmarkTreeOnce(filepath.Join(root, "large"), benchDepthLarge, benchFilesPerDir)
-	}()
-
-	wg.Wait()
-
-	if err := os.WriteFile(markerPath, []byte(marker), 0o644); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func benchMarkerContent() string {
-	return fmt.Sprintf(
-		"version=%s\nfanout=%d\nfiles=%d\ndepthSmall=%d\ndepthMedium=%d\ndepthLarge=%d\n",
-		benchMarkerVersion,
-		benchFanout,
-		benchFilesPerDir,
-		benchDepthSmall,
-		benchDepthMedium,
-		benchDepthLarge,
-	)
-}
-
-func benchDirsExist(root string) bool {
-	dirs := []string{
-		filepath.Join(root, "small"),
-		filepath.Join(root, "medium"),
-		filepath.Join(root, "large"),
-	}
-	for _, dir := range dirs {
-		if _, err := os.Stat(dir); err != nil {
-			return false
+// createTree creates a directory tree with the given depth.
+func createTree(root string, depth int) {
+	data := make([]byte, 1024)
+	var create func(path string, d int)
+	create = func(path string, d int) {
+		_ = os.MkdirAll(path, 0o755)
+		for i := 0; i < benchFilesPerDir; i++ {
+			_ = os.WriteFile(filepath.Join(path, string(rune('a'+i))+".txt"), data, 0o644)
 		}
-	}
-	return true
-}
-
-// createBenchmarkTreeOnce creates a directory tree with parallel file creation.
-func createBenchmarkTreeOnce(root string, depth, filesPerDir int) string {
-	if err := os.MkdirAll(root, 0o755); err != nil {
-		panic("failed to create root: " + err.Error())
-	}
-
-	// Collect all directories first
-	var dirs []string
-	var collectDirs func(path string, currentDepth int)
-	collectDirs = func(path string, currentDepth int) {
-		dirs = append(dirs, path)
-		if currentDepth < depth {
+		if d < depth {
 			for i := 0; i < benchFanout; i++ {
-				subDir := filepath.Join(path, "dir"+string(rune('a'+i)))
-				if err := os.MkdirAll(subDir, 0o755); err != nil {
-					panic("failed to create dir: " + err.Error())
-				}
-				collectDirs(subDir, currentDepth+1)
+				create(filepath.Join(path, "d"+string(rune('a'+i))), d+1)
 			}
 		}
 	}
-	collectDirs(root, 1)
+	create(root, 1)
+}
 
-	// Create files in parallel (one goroutine per directory)
-	var wg sync.WaitGroup
-	sem := make(chan struct{}, utils.DefaultWorkers())
-	data := make([]byte, 1024) // 1KB, shared read-only
-
-	for _, dir := range dirs {
-		wg.Add(1)
-		go func(d string) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-
-			for i := 0; i < filesPerDir; i++ {
-				filePath := filepath.Join(d, "file"+string(rune('a'+i))+".txt")
-				if err := os.WriteFile(filePath, data, 0o644); err != nil {
-					panic("failed to create file: " + err.Error())
-				}
+func BenchmarkPathTargetScan(b *testing.B) {
+	for _, bd := range benchDirs {
+		b.Run(bd.name, func(b *testing.B) {
+			target := NewPathTarget(types.Category{ID: bd.name, Paths: []string{bd.dir}})
+			_, _ = target.Scan()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, _ = target.Scan()
 			}
-		}(dir)
-	}
-	wg.Wait()
-
-	return root
-}
-
-// BenchmarkPathTargetScan_Small benchmarks PathTarget.Scan
-func BenchmarkPathTargetScan_Small(b *testing.B) {
-	cat := types.Category{
-		ID:    "bench-small",
-		Paths: []string{benchDirSmall},
-	}
-	target := NewPathTarget(cat)
-
-	// Warm up (ensure page cache is hot for this benchmark)
-	_, _ = target.Scan()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _ = target.Scan()
+		})
 	}
 }
 
-// BenchmarkPathTargetScan_Medium benchmarks PathTarget.Scan
-func BenchmarkPathTargetScan_Medium(b *testing.B) {
-	cat := types.Category{
-		ID:    "bench-medium",
-		Paths: []string{benchDirMedium},
-	}
-	target := NewPathTarget(cat)
-
-	// Warm up
-	_, _ = target.Scan()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _ = target.Scan()
+func BenchmarkGetDirSizeWithCount(b *testing.B) {
+	for _, bd := range benchDirs {
+		b.Run(bd.name, func(b *testing.B) {
+			_, _, _ = utils.GetDirSizeWithCount(bd.dir)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, _, _ = utils.GetDirSizeWithCount(bd.dir)
+			}
+		})
 	}
 }
 
-// BenchmarkPathTargetScan_Large benchmarks PathTarget.Scan
-func BenchmarkPathTargetScan_Large(b *testing.B) {
-	cat := types.Category{
-		ID:    "bench-large",
-		Paths: []string{benchDirLarge},
-	}
-	target := NewPathTarget(cat)
-
-	// Warm up
-	_, _ = target.Scan()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _ = target.Scan()
-	}
-}
-
-// BenchmarkGetDirSizeWithCount_Small benchmarks GetDirSizeWithCount alone
-func BenchmarkGetDirSizeWithCount_Small(b *testing.B) {
-	// Warm up
-	_, _, _ = utils.GetDirSizeWithCount(benchDirSmall)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _, _ = utils.GetDirSizeWithCount(benchDirSmall)
-	}
-}
-
-func BenchmarkGetDirSizeWithCount_Medium(b *testing.B) {
-	// Warm up
-	_, _, _ = utils.GetDirSizeWithCount(benchDirMedium)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _, _ = utils.GetDirSizeWithCount(benchDirMedium)
-	}
-}
-
-func BenchmarkGetDirSizeWithCount_Large(b *testing.B) {
-	// Warm up
-	_, _, _ = utils.GetDirSizeWithCount(benchDirLarge)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _, _ = utils.GetDirSizeWithCount(benchDirLarge)
-	}
-}
-
-// BenchmarkScanPathsParallel_Small benchmarks scanPathsParallel alone
-func BenchmarkScanPathsParallel_Small(b *testing.B) {
-	cat := types.Category{ID: "bench-small", Paths: []string{benchDirSmall}}
-	target := NewPathTarget(cat)
-	paths := target.collectPaths()
-
-	// Warm up
-	_, _, _ = target.scanPathsParallel(paths)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _, _ = target.scanPathsParallel(paths)
-	}
-}
-
-func BenchmarkScanPathsParallel_Medium(b *testing.B) {
-	cat := types.Category{ID: "bench-medium", Paths: []string{benchDirMedium}}
-	target := NewPathTarget(cat)
-	paths := target.collectPaths()
-
-	// Warm up
-	_, _, _ = target.scanPathsParallel(paths)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _, _ = target.scanPathsParallel(paths)
-	}
-}
-
-func BenchmarkScanPathsParallel_Large(b *testing.B) {
-	cat := types.Category{ID: "bench-large", Paths: []string{benchDirLarge}}
-	target := NewPathTarget(cat)
-	paths := target.collectPaths()
-
-	// Warm up
-	_, _, _ = target.scanPathsParallel(paths)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _, _ = target.scanPathsParallel(paths)
+func BenchmarkScanPathsParallel(b *testing.B) {
+	for _, bd := range benchDirs {
+		b.Run(bd.name, func(b *testing.B) {
+			target := NewPathTarget(types.Category{ID: bd.name, Paths: []string{bd.dir}})
+			paths := target.collectPaths()
+			_, _, _ = target.scanPathsParallel(paths)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, _, _ = target.scanPathsParallel(paths)
+			}
+		})
 	}
 }

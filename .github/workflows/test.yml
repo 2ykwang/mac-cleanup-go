@@ -14,28 +14,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # actions/checkout@v6.0.1
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+      - uses: actions/checkout@v6.0.2
 
-      # actions/setup-go@v6.1.0
-      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
+      - uses: actions/setup-go@v6.2.0
         with:
           go-version-file: go.mod
 
-      # golangci/golangci-lint-action@v9.2.0
-      - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20
+      - uses: golangci/golangci-lint-action@v9.2.0
         with:
-          version: v2.7.2
+          version: v2.8.0
 
   test:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, macos-26]
 
     steps:
-      # actions/checkout@v6.0.1
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+      - uses: actions/checkout@v6.0.2
 
-      # actions/setup-go@v6.1.0
-      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
+      - uses: actions/setup-go@v6.2.0
         with:
           go-version-file: go.mod
 
@@ -46,12 +44,16 @@ jobs:
         run: |
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}')
           echo "## Test Coverage: $COVERAGE" >> $GITHUB_STEP_SUMMARY
+          echo '<details>' >> $GITHUB_STEP_SUMMARY
+          echo '<summary>Details</summary>' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           go tool cover -func=coverage.out >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+          echo '</details>' >> $GITHUB_STEP_SUMMARY
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: 2ykwang/mac-cleanup-go
