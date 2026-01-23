@@ -60,9 +60,13 @@ jobs:
           fi
 
           {
+            echo '<details>'
+            echo '<summary>Benchmark Details</summary>'
+            echo ''
             echo '```'
             cat "${GITHUB_WORKSPACE}/benchstat.txt"
             echo '```'
+            echo '</details>'
           } | tee -a "${GITHUB_WORKSPACE}/benchstat_comment.md" >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Comment benchmark results
