@@ -15,7 +15,7 @@ jobs:
     runs-on: macos-latest
     env:
       BENCH_COUNT: 7
-      BENCH_PKG: ./internal/target/...
+      BENCH_PKG: ./internal/...
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
 
     steps:
