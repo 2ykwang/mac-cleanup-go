@@ -50,8 +50,12 @@ func (s *CleanService) Clean(jobs []CleanJob, callbacks types.CleanCallbacks) *t
 			result = s.cleanBuiltin(job, callbacks, &currentItem, totalItems)
 		case types.MethodTrash:
 			result = s.cleanTrashBatch(job, callbacks, &currentItem, totalItems)
+		case types.MethodPermanent:
+			result = s.cleanByItem(job, callbacks, &currentItem, totalItems, s.executor.Permanent)
+		case types.MethodManual:
+			result = s.cleanByItem(job, callbacks, &currentItem, totalItems, s.executor.Manual)
 		default:
-			result = s.cleanItemByItem(job, callbacks, &currentItem, totalItems)
+			result = s.cleanUnsupported(job)
 		}
 
 		if result != nil {
@@ -79,6 +83,49 @@ func (s *CleanService) Clean(jobs []CleanJob, callbacks types.CleanCallbacks) *t
 	return report
 }
 
+// PrepareJobs prepares clean jobs from scan results, filtering by selection and exclusion.
+func (s *CleanService) PrepareJobs(
+	resultMap map[string]*types.ScanResult,
+	selected map[string]bool,
+	excluded map[string]map[string]bool,
+) []CleanJob {
+	var jobs []CleanJob
+
+	for id, sel := range selected {
+		if !sel {
+			continue
+		}
+		r, ok := resultMap[id]
+		if !ok {
+			continue
+		}
+		if r.Category.Method == types.MethodManual {
+			continue
+		}
+
+		var items []types.CleanableItem
+		excludedMap := excluded[id]
+		for _, item := range r.Items {
+			if item.Status == types.ItemStatusProcessLocked {
+				continue
+			}
+			if excludedMap == nil || !excludedMap[item.Path] {
+				items = append(items, item)
+			}
+		}
+		if len(items) == 0 {
+			continue
+		}
+
+		jobs = append(jobs, CleanJob{
+			Category: r.Category,
+			Items:    items,
+		})
+	}
+
+	return jobs
+}
+
 // cleanBuiltin handles builtin methods (docker, brew) with category-level progress.
 func (s *CleanService) cleanBuiltin(job CleanJob, callbacks types.CleanCallbacks, currentItem *int, totalItems int) *types.CleanResult {
 	if callbacks.OnProgress != nil {
@@ -90,7 +137,7 @@ func (s *CleanService) cleanBuiltin(job CleanJob, callbacks types.CleanCallbacks
 		})
 	}
 
-	result := s.executor.Clean(job.Category, job.Items)
+	result := s.executor.Builtin(job.Category, job.Items)
 	*currentItem += len(job.Items)
 	return result
 }
@@ -113,7 +160,7 @@ func (s *CleanService) cleanTrashBatch(job CleanJob, callbacks types.CleanCallba
 			})
 		}
 
-		batchResult := s.executor.Clean(job.Category, batch)
+		batchResult := s.executor.Trash(job.Category, batch)
 		result.FreedSpace += batchResult.FreedSpace
 		result.CleanedItems += batchResult.CleanedItems
 		result.Errors = append(result.Errors, batchResult.Errors...)
@@ -165,8 +212,10 @@ func (s *CleanService) sendBatchItemCallbacks(batch []types.CleanableItem, batch
 	}
 }
 
-// cleanItemByItem handles other methods with item-by-item processing.
-func (s *CleanService) cleanItemByItem(job CleanJob, callbacks types.CleanCallbacks, currentItem *int, totalItems int) *types.CleanResult {
+type itemCleaner func(types.Category, []types.CleanableItem) *types.CleanResult
+
+// cleanByItem handles item-by-item processing with a provided executor function.
+func (s *CleanService) cleanByItem(job CleanJob, callbacks types.CleanCallbacks, currentItem *int, totalItems int, exec itemCleaner) *types.CleanResult {
 	result := types.NewCleanResult(job.Category)
 
 	for _, item := range job.Items {
@@ -181,7 +230,7 @@ func (s *CleanService) cleanItemByItem(job CleanJob, callbacks types.CleanCallba
 			})
 		}
 
-		singleResult := s.executor.Clean(job.Category, []types.CleanableItem{item})
+		singleResult := exec(job.Category, []types.CleanableItem{item})
 		result.FreedSpace += singleResult.FreedSpace
 		result.CleanedItems += singleResult.CleanedItems
 		result.Errors = append(result.Errors, singleResult.Errors...)
@@ -205,45 +254,14 @@ func (s *CleanService) cleanItemByItem(job CleanJob, callbacks types.CleanCallba
 	return result
 }
 
-// PrepareJobs prepares clean jobs from scan results, filtering by selection and exclusion.
-func (s *CleanService) PrepareJobs(
-	resultMap map[string]*types.ScanResult,
-	selected map[string]bool,
-	excluded map[string]map[string]bool,
-) []CleanJob {
-	var jobs []CleanJob
+func (s *CleanService) cleanUnsupported(job CleanJob) *types.CleanResult {
+	logger.Info("unsupported clean method",
+		"category", job.Category.Name,
+		"method", job.Category.Method,
+		"items", len(job.Items))
 
-	for id, sel := range selected {
-		if !sel {
-			continue
-		}
-		r, ok := resultMap[id]
-		if !ok {
-			continue
-		}
-		if r.Category.Method == types.MethodManual {
-			continue
-		}
-
-		var items []types.CleanableItem
-		excludedMap := excluded[id]
-		for _, item := range r.Items {
-			if item.Status == types.ItemStatusProcessLocked {
-				continue
-			}
-			if excludedMap == nil || !excludedMap[item.Path] {
-				items = append(items, item)
-			}
-		}
-		if len(items) == 0 {
-			continue
-		}
-
-		jobs = append(jobs, CleanJob{
-			Category: r.Category,
-			Items:    items,
-		})
-	}
-
-	return jobs
+	result := types.NewCleanResult(job.Category)
+	result.Errors = append(result.Errors, "unsupported method: "+string(job.Category.Method))
+	result.SkippedItems = len(job.Items)
+	return result
 }
