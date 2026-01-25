@@ -3,7 +3,7 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/2ykwang/mac-cleanup-go/internal/cleaner"
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
 func (m *Model) doClean() tea.Cmd {
@@ -26,8 +26,8 @@ func (m *Model) doClean() tea.Cmd {
 	m.cleanItemDoneChan = make(chan cleanItemDoneMsg, 1)
 
 	// Create callbacks that bridge CleanService to TUI channels
-	callbacks := cleaner.Callbacks{
-		OnProgress: func(p cleaner.Progress) {
+	callbacks := types.CleanCallbacks{
+		OnProgress: func(p types.CleanProgress) {
 			m.cleanProgressChan <- cleanProgressMsg{
 				categoryName: p.CategoryName,
 				currentItem:  p.CurrentItem,
@@ -35,7 +35,7 @@ func (m *Model) doClean() tea.Cmd {
 				total:        p.Total,
 			}
 		},
-		OnItemDone: func(r cleaner.ItemResult) {
+		OnItemDone: func(r types.ItemCleanedResult) {
 			m.cleanItemDoneChan <- cleanItemDoneMsg{
 				path:    r.Path,
 				name:    r.Name,
@@ -44,7 +44,7 @@ func (m *Model) doClean() tea.Cmd {
 				errMsg:  r.ErrMsg,
 			}
 		},
-		OnCategoryDone: func(r cleaner.CategoryResult) {
+		OnCategoryDone: func(r types.CategoryCleanedResult) {
 			m.cleanCategoryDoneCh <- cleanCategoryDoneMsg{
 				categoryName: r.CategoryName,
 				freedSpace:   r.FreedSpace,

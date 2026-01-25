@@ -65,7 +65,7 @@ func (s *OldDownloadTarget) Clean(items []types.CleanableItem) (*types.CleanResu
 		return result, nil
 	}
 
-	batchResult := utils.BatchTrash(items, utils.BatchTrashOptions{
+	batchResult := utils.BatchTrash(items, types.BatchTrashOptions{
 		Category: result.Category,
 	})
 

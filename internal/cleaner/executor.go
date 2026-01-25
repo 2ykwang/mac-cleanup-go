@@ -50,7 +50,7 @@ func (c *Executor) Clean(cat types.Category, items []types.CleanableItem) *types
 }
 
 func (c *Executor) moveToTrash(items []types.CleanableItem, result *types.CleanResult) {
-	batchResult := utils.BatchTrash(items, utils.BatchTrashOptions{
+	batchResult := utils.BatchTrash(items, types.BatchTrashOptions{
 		Category: result.Category,
 		Filter: func(item types.CleanableItem) bool {
 			return utils.IsSIPProtected(item.Path)

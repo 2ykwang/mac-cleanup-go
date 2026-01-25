@@ -289,7 +289,7 @@ func TestExecuteBatch_Timeout_WithMockCommand(t *testing.T) {
 }
 
 func TestBatchTrash_ReturnsEmptyForNoItems(t *testing.T) {
-	result := BatchTrash(nil, BatchTrashOptions{})
+	result := BatchTrash(nil, types.BatchTrashOptions{})
 
 	assert.NotNil(t, result)
 	assert.Equal(t, 0, result.CleanedItems)
@@ -311,7 +311,7 @@ func TestBatchTrash_FiltersAndSkipsItems(t *testing.T) {
 		{Path: "/skip", Size: 200},
 	}
 
-	result := BatchTrash(items, BatchTrashOptions{
+	result := BatchTrash(items, types.BatchTrashOptions{
 		Filter: func(item types.CleanableItem) bool {
 			return item.Path == "/skip"
 		},
@@ -336,7 +336,7 @@ func TestBatchTrash_ValidateRejectsItem(t *testing.T) {
 		{Path: "/invalid", Size: 200},
 	}
 
-	result := BatchTrash(items, BatchTrashOptions{
+	result := BatchTrash(items, types.BatchTrashOptions{
 		Validate: func(item types.CleanableItem) error {
 			if item.Path == "/invalid" {
 				return fmt.Errorf("invalid path: %s", item.Path)
@@ -368,7 +368,7 @@ func TestBatchTrash_FormatsBatchErrors(t *testing.T) {
 		{Path: "/fail", Size: 100},
 	}
 
-	result := BatchTrash(items, BatchTrashOptions{})
+	result := BatchTrash(items, types.BatchTrashOptions{})
 
 	assert.Equal(t, 0, result.CleanedItems)
 	assert.Len(t, result.Errors, 1)
@@ -390,7 +390,7 @@ func TestBatchTrash_ReturnsEarlyWhenAllItemsExcluded(t *testing.T) {
 		{Path: "/skip2", Size: 200},
 	}
 
-	result := BatchTrash(items, BatchTrashOptions{
+	result := BatchTrash(items, types.BatchTrashOptions{
 		Filter: func(_ types.CleanableItem) bool {
 			return true
 		},

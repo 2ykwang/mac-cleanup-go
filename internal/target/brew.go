@@ -111,7 +111,7 @@ func (s *BrewTarget) Clean(items []types.CleanableItem) (*types.CleanResult, err
 
 	cachePath := s.getBrewCachePath()
 
-	batchResult := utils.BatchTrash(items, utils.BatchTrashOptions{
+	batchResult := utils.BatchTrash(items, types.BatchTrashOptions{
 		Category: result.Category,
 		Validate: func(item types.CleanableItem) error {
 			if cachePath == "" || !strings.HasPrefix(item.Path, cachePath) {

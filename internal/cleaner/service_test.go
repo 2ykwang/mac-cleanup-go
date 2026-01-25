@@ -428,7 +428,7 @@ func TestPrepareJobs_ResultWithEmptyItems(t *testing.T) {
 func TestClean_EmptyJobs(t *testing.T) {
 	service := NewCleanService(target.NewRegistry())
 
-	report := service.Clean([]CleanJob{}, Callbacks{})
+	report := service.Clean([]CleanJob{}, types.CleanCallbacks{})
 
 	require.NotNil(t, report)
 	assert.Equal(t, int64(0), report.FreedSpace)
@@ -459,7 +459,7 @@ func TestClean_NilCallbacks(t *testing.T) {
 	}
 
 	// Should not panic with nil callbacks
-	report := service.Clean(jobs, Callbacks{})
+	report := service.Clean(jobs, types.CleanCallbacks{})
 
 	require.NotNil(t, report)
 	assert.Equal(t, 2, report.CleanedItems)
@@ -485,9 +485,9 @@ func TestClean_CallsOnProgress_TrashMethod(t *testing.T) {
 		},
 	}
 
-	var progressCalls []Progress
-	callbacks := Callbacks{
-		OnProgress: func(p Progress) {
+	var progressCalls []types.CleanProgress
+	callbacks := types.CleanCallbacks{
+		OnProgress: func(p types.CleanProgress) {
 			progressCalls = append(progressCalls, p)
 		},
 	}
@@ -524,13 +524,13 @@ func TestClean_CallsOnProgress_PermanentMethod(t *testing.T) {
 		},
 	}
 
-	var progressCalls []Progress
-	var itemDoneCalls []ItemResult
-	callbacks := Callbacks{
-		OnProgress: func(p Progress) {
+	var progressCalls []types.CleanProgress
+	var itemDoneCalls []types.ItemCleanedResult
+	callbacks := types.CleanCallbacks{
+		OnProgress: func(p types.CleanProgress) {
 			progressCalls = append(progressCalls, p)
 		},
-		OnItemDone: func(r ItemResult) {
+		OnItemDone: func(r types.ItemCleanedResult) {
 			itemDoneCalls = append(itemDoneCalls, r)
 		},
 	}
@@ -585,9 +585,9 @@ func TestClean_CallsOnProgress_Builtin(t *testing.T) {
 		},
 	}
 
-	var progressCalls []Progress
-	callbacks := Callbacks{
-		OnProgress: func(p Progress) {
+	var progressCalls []types.CleanProgress
+	callbacks := types.CleanCallbacks{
+		OnProgress: func(p types.CleanProgress) {
 			progressCalls = append(progressCalls, p)
 		},
 	}
@@ -627,9 +627,9 @@ func TestClean_CallsOnItemDone(t *testing.T) {
 		},
 	}
 
-	var itemResults []ItemResult
-	callbacks := Callbacks{
-		OnItemDone: func(r ItemResult) {
+	var itemResults []types.ItemCleanedResult
+	callbacks := types.CleanCallbacks{
+		OnItemDone: func(r types.ItemCleanedResult) {
 			itemResults = append(itemResults, r)
 		},
 	}
@@ -682,9 +682,9 @@ func TestClean_CallsOnItemDone_WithError(t *testing.T) {
 		},
 	}
 
-	var itemResults []ItemResult
-	callbacks := Callbacks{
-		OnItemDone: func(r ItemResult) {
+	var itemResults []types.ItemCleanedResult
+	callbacks := types.CleanCallbacks{
+		OnItemDone: func(r types.ItemCleanedResult) {
 			itemResults = append(itemResults, r)
 		},
 	}
@@ -730,9 +730,9 @@ func TestClean_CallsOnCategoryDone(t *testing.T) {
 		},
 	}
 
-	var categoryResults []CategoryResult
-	callbacks := Callbacks{
-		OnCategoryDone: func(r CategoryResult) {
+	var categoryResults []types.CategoryCleanedResult
+	callbacks := types.CleanCallbacks{
+		OnCategoryDone: func(r types.CategoryCleanedResult) {
 			categoryResults = append(categoryResults, r)
 		},
 	}
@@ -778,8 +778,8 @@ func TestClean_BuiltinBatchProcessing(t *testing.T) {
 	}
 
 	var itemDoneCalls int
-	callbacks := Callbacks{
-		OnItemDone: func(_ ItemResult) {
+	callbacks := types.CleanCallbacks{
+		OnItemDone: func(_ types.ItemCleanedResult) {
 			itemDoneCalls++
 		},
 	}
@@ -824,8 +824,8 @@ func TestClean_TrashMethodBatchProcessing(t *testing.T) {
 	}
 
 	var itemDoneCalls int
-	callbacks := Callbacks{
-		OnItemDone: func(_ ItemResult) {
+	callbacks := types.CleanCallbacks{
+		OnItemDone: func(_ types.ItemCleanedResult) {
 			itemDoneCalls++
 		},
 	}
@@ -879,7 +879,7 @@ func TestClean_AggregatesResults(t *testing.T) {
 		},
 	}
 
-	report := service.Clean(jobs, Callbacks{})
+	report := service.Clean(jobs, types.CleanCallbacks{})
 
 	// Aggregate results
 	assert.Equal(t, int64(300), report.FreedSpace) // 100 + 200 (fail doesn't count)
@@ -923,14 +923,14 @@ func TestClean_MultipleCategories(t *testing.T) {
 		},
 	}
 
-	var progressCalls []Progress
-	var categoryDoneCalls []CategoryResult
+	var progressCalls []types.CleanProgress
+	var categoryDoneCalls []types.CategoryCleanedResult
 
-	callbacks := Callbacks{
-		OnProgress: func(p Progress) {
+	callbacks := types.CleanCallbacks{
+		OnProgress: func(p types.CleanProgress) {
 			progressCalls = append(progressCalls, p)
 		},
-		OnCategoryDone: func(r CategoryResult) {
+		OnCategoryDone: func(r types.CategoryCleanedResult) {
 			categoryDoneCalls = append(categoryDoneCalls, r)
 		},
 	}
@@ -972,7 +972,7 @@ func TestClean_ReturnsCorrectReport(t *testing.T) {
 		},
 	}
 
-	report := service.Clean(jobs, Callbacks{})
+	report := service.Clean(jobs, types.CleanCallbacks{})
 
 	require.NotNil(t, report)
 	assert.Equal(t, int64(3000), report.FreedSpace)
