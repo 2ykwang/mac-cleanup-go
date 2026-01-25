@@ -1,6 +1,6 @@
 //go:build perf
 
-package benchutil
+package benchfixtures
 
 import (
 	"os"

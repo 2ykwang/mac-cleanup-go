@@ -29,13 +29,7 @@ type TrashBatchResult struct {
 	Failed    map[string]error
 }
 
-type BatchTrashOptions struct {
-	Category types.Category
-	Filter   func(types.CleanableItem) bool
-	Validate func(types.CleanableItem) error
-}
-
-func BatchTrash(items []types.CleanableItem, opts BatchTrashOptions) *types.CleanResult {
+func BatchTrash(items []types.CleanableItem, opts types.BatchTrashOptions) *types.CleanResult {
 	result := &types.CleanResult{
 		Category: opts.Category,
 		Errors:   make([]string, 0),

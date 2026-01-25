@@ -1,6 +1,6 @@
 //go:build perf
 
-package target
+package utils
 
 import (
 	"fmt"
@@ -8,13 +8,12 @@ import (
 	"testing"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/benchfixtures"
-	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
-// Benchmark tree configuration
+// Benchmark tree configuration.
 const (
-	benchInternalFilesPerDir = 100
-	benchInternalFanout      = 3
+	benchFilesPerDir = 100
+	benchFanout      = 3
 )
 
 var benchSpecs = []benchfixtures.BenchDirSpec{
@@ -29,10 +28,10 @@ var benchDirs []benchfixtures.BenchDir
 func TestMain(m *testing.M) {
 	dirs, cleanup, err := benchfixtures.PrepareBenchDirs(
 		"BENCH_DATA_DIR",
-		"bench-internal-",
+		"bench-utils-",
 		benchSpecs,
-		benchInternalFilesPerDir,
-		benchInternalFanout,
+		benchFilesPerDir,
+		benchFanout,
 	)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -44,15 +43,13 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func BenchmarkScanPathsParallel(b *testing.B) {
+func BenchmarkDirSizeWithCount(b *testing.B) {
 	for _, bd := range benchDirs {
 		b.Run(bd.Name, func(b *testing.B) {
-			target := NewPathTarget(types.Category{ID: bd.Name, Paths: []string{bd.Dir}})
-			paths := target.collectPaths()
-			_, _, _ = target.scanPathsParallel(paths)
+			_, _, _ = GetDirSizeWithCount(bd.Dir)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_, _, _ = target.scanPathsParallel(paths)
+				_, _, _ = GetDirSizeWithCount(bd.Dir)
 			}
 		})
 	}

@@ -135,3 +135,37 @@ type Report struct {
 	Results      []CleanResult
 	Duration     time.Duration
 }
+
+type CleanProgress struct {
+	CategoryName string
+	CurrentItem  string
+	Current      int
+	Total        int
+}
+
+type ItemCleanedResult struct {
+	Path    string
+	Name    string
+	Size    int64
+	Success bool
+	ErrMsg  string
+}
+
+type CategoryCleanedResult struct {
+	CategoryName string
+	FreedSpace   int64
+	CleanedItems int
+	ErrorCount   int
+}
+
+type CleanCallbacks struct {
+	OnProgress     func(CleanProgress)
+	OnItemDone     func(ItemCleanedResult)
+	OnCategoryDone func(CategoryCleanedResult)
+}
+
+type BatchTrashOptions struct {
+	Category Category
+	Filter   func(CleanableItem) bool
+	Validate func(CleanableItem) error
+}

@@ -13,38 +13,6 @@ type CleanJob struct {
 	Items    []types.CleanableItem
 }
 
-// Progress represents the current cleaning progress.
-type Progress struct {
-	CategoryName string
-	CurrentItem  string
-	Current      int
-	Total        int
-}
-
-// ItemResult represents the result of cleaning a single item.
-type ItemResult struct {
-	Path    string
-	Name    string
-	Size    int64
-	Success bool
-	ErrMsg  string
-}
-
-// CategoryResult represents the result of cleaning a category.
-type CategoryResult struct {
-	CategoryName string
-	FreedSpace   int64
-	CleanedItems int
-	ErrorCount   int
-}
-
-// Callbacks holds callback functions for cleaning progress.
-type Callbacks struct {
-	OnProgress     func(Progress)
-	OnItemDone     func(ItemResult)
-	OnCategoryDone func(CategoryResult)
-}
-
 // CleanService orchestrates the cleaning process.
 type CleanService struct {
 	registry *target.Registry
@@ -60,7 +28,7 @@ func NewCleanService(registry *target.Registry) *CleanService {
 }
 
 // Clean executes the cleaning jobs and reports progress via callbacks.
-func (s *CleanService) Clean(jobs []CleanJob, callbacks Callbacks) *types.Report {
+func (s *CleanService) Clean(jobs []CleanJob, callbacks types.CleanCallbacks) *types.Report {
 	report := &types.Report{Results: make([]types.CleanResult, 0)}
 
 	totalItems := 0
@@ -82,8 +50,12 @@ func (s *CleanService) Clean(jobs []CleanJob, callbacks Callbacks) *types.Report
 			result = s.cleanBuiltin(job, callbacks, &currentItem, totalItems)
 		case types.MethodTrash:
 			result = s.cleanTrashBatch(job, callbacks, &currentItem, totalItems)
+		case types.MethodPermanent:
+			result = s.cleanByItem(job, callbacks, &currentItem, totalItems, s.executor.Permanent)
+		case types.MethodManual:
+			result = s.cleanByItem(job, callbacks, &currentItem, totalItems, s.executor.Manual)
 		default:
-			result = s.cleanItemByItem(job, callbacks, &currentItem, totalItems)
+			result = s.cleanUnsupported(job)
 		}
 
 		if result != nil {
@@ -93,7 +65,7 @@ func (s *CleanService) Clean(jobs []CleanJob, callbacks Callbacks) *types.Report
 			report.FailedItems += len(result.Errors)
 
 			if callbacks.OnCategoryDone != nil {
-				callbacks.OnCategoryDone(CategoryResult{
+				callbacks.OnCategoryDone(types.CategoryCleanedResult{
 					CategoryName: job.Category.Name,
 					FreedSpace:   result.FreedSpace,
 					CleanedItems: result.CleanedItems,
@@ -109,132 +81,6 @@ func (s *CleanService) Clean(jobs []CleanJob, callbacks Callbacks) *types.Report
 		"failedItems", report.FailedItems)
 
 	return report
-}
-
-// cleanBuiltin handles builtin methods (docker, brew) with category-level progress.
-func (s *CleanService) cleanBuiltin(job CleanJob, callbacks Callbacks, currentItem *int, totalItems int) *types.CleanResult {
-	if callbacks.OnProgress != nil {
-		callbacks.OnProgress(Progress{
-			CategoryName: job.Category.Name,
-			CurrentItem:  "",
-			Current:      *currentItem,
-			Total:        totalItems,
-		})
-	}
-
-	result := s.executor.Clean(job.Category, job.Items)
-	*currentItem += len(job.Items)
-	return result
-}
-
-// cleanTrashBatch handles trash method with batch processing for performance.
-func (s *CleanService) cleanTrashBatch(job CleanJob, callbacks Callbacks, currentItem *int, totalItems int) *types.CleanResult {
-	result := types.NewCleanResult(job.Category)
-
-	items := job.Items
-	for i := 0; i < len(items); i += utils.TrashBatchSize {
-		end := min(i+utils.TrashBatchSize, len(items))
-		batch := items[i:end]
-
-		if callbacks.OnProgress != nil {
-			callbacks.OnProgress(Progress{
-				CategoryName: job.Category.Name,
-				CurrentItem:  batch[0].Name,
-				Current:      *currentItem,
-				Total:        totalItems,
-			})
-		}
-
-		batchResult := s.executor.Clean(job.Category, batch)
-		result.FreedSpace += batchResult.FreedSpace
-		result.CleanedItems += batchResult.CleanedItems
-		result.Errors = append(result.Errors, batchResult.Errors...)
-
-		s.sendBatchItemCallbacks(batch, batchResult, callbacks)
-		*currentItem += len(batch)
-
-		// Send progress after batch completion to update UI
-		if callbacks.OnProgress != nil {
-			callbacks.OnProgress(Progress{
-				CategoryName: job.Category.Name,
-				CurrentItem:  batch[len(batch)-1].Name,
-				Current:      *currentItem,
-				Total:        totalItems,
-			})
-		}
-	}
-
-	return result
-}
-
-// sendBatchItemCallbacks sends OnItemDone callbacks for batch items with error tracking.
-func (s *CleanService) sendBatchItemCallbacks(batch []types.CleanableItem, batchResult *types.CleanResult, callbacks Callbacks) {
-	if callbacks.OnItemDone == nil {
-		return
-	}
-
-	// Build error map from batch result errors (format: "itemPath: error")
-	errorMap := make(map[string]string)
-	for _, errStr := range batchResult.Errors {
-		for _, item := range batch {
-			prefix := item.Path + ": "
-			if len(errStr) >= len(prefix) && errStr[:len(prefix)] == prefix {
-				errorMap[item.Path] = errStr[len(prefix):]
-				break
-			}
-		}
-	}
-
-	for _, item := range batch {
-		errMsg, hasFailed := errorMap[item.Path]
-		callbacks.OnItemDone(ItemResult{
-			Path:    item.Path,
-			Name:    item.Name,
-			Size:    item.Size,
-			Success: !hasFailed,
-			ErrMsg:  errMsg,
-		})
-	}
-}
-
-// cleanItemByItem handles other methods with item-by-item processing.
-func (s *CleanService) cleanItemByItem(job CleanJob, callbacks Callbacks, currentItem *int, totalItems int) *types.CleanResult {
-	result := types.NewCleanResult(job.Category)
-
-	for _, item := range job.Items {
-		*currentItem++
-
-		if callbacks.OnProgress != nil {
-			callbacks.OnProgress(Progress{
-				CategoryName: job.Category.Name,
-				CurrentItem:  item.Name,
-				Current:      *currentItem,
-				Total:        totalItems,
-			})
-		}
-
-		singleResult := s.executor.Clean(job.Category, []types.CleanableItem{item})
-		result.FreedSpace += singleResult.FreedSpace
-		result.CleanedItems += singleResult.CleanedItems
-		result.Errors = append(result.Errors, singleResult.Errors...)
-
-		if callbacks.OnItemDone != nil {
-			success := len(singleResult.Errors) == 0
-			errMsg := ""
-			if !success {
-				errMsg = singleResult.Errors[0]
-			}
-			callbacks.OnItemDone(ItemResult{
-				Path:    item.Path,
-				Name:    item.Name,
-				Size:    item.Size,
-				Success: success,
-				ErrMsg:  errMsg,
-			})
-		}
-	}
-
-	return result
 }
 
 // PrepareJobs prepares clean jobs from scan results, filtering by selection and exclusion.
@@ -278,4 +124,144 @@ func (s *CleanService) PrepareJobs(
 	}
 
 	return jobs
+}
+
+// cleanBuiltin handles builtin methods (docker, brew) with category-level progress.
+func (s *CleanService) cleanBuiltin(job CleanJob, callbacks types.CleanCallbacks, currentItem *int, totalItems int) *types.CleanResult {
+	if callbacks.OnProgress != nil {
+		callbacks.OnProgress(types.CleanProgress{
+			CategoryName: job.Category.Name,
+			CurrentItem:  "",
+			Current:      *currentItem,
+			Total:        totalItems,
+		})
+	}
+
+	result := s.executor.Builtin(job.Category, job.Items)
+	*currentItem += len(job.Items)
+	return result
+}
+
+// cleanTrashBatch handles trash method with batch processing for performance.
+func (s *CleanService) cleanTrashBatch(job CleanJob, callbacks types.CleanCallbacks, currentItem *int, totalItems int) *types.CleanResult {
+	result := types.NewCleanResult(job.Category)
+
+	items := job.Items
+	for i := 0; i < len(items); i += utils.TrashBatchSize {
+		end := min(i+utils.TrashBatchSize, len(items))
+		batch := items[i:end]
+
+		if callbacks.OnProgress != nil {
+			callbacks.OnProgress(types.CleanProgress{
+				CategoryName: job.Category.Name,
+				CurrentItem:  batch[0].Name,
+				Current:      *currentItem,
+				Total:        totalItems,
+			})
+		}
+
+		batchResult := s.executor.Trash(job.Category, batch)
+		result.FreedSpace += batchResult.FreedSpace
+		result.CleanedItems += batchResult.CleanedItems
+		result.Errors = append(result.Errors, batchResult.Errors...)
+
+		s.sendBatchItemCallbacks(batch, batchResult, callbacks)
+		*currentItem += len(batch)
+
+		// Send progress after batch completion to update UI
+		if callbacks.OnProgress != nil {
+			callbacks.OnProgress(types.CleanProgress{
+				CategoryName: job.Category.Name,
+				CurrentItem:  batch[len(batch)-1].Name,
+				Current:      *currentItem,
+				Total:        totalItems,
+			})
+		}
+	}
+
+	return result
+}
+
+// sendBatchItemCallbacks sends OnItemDone callbacks for batch items with error tracking.
+func (s *CleanService) sendBatchItemCallbacks(batch []types.CleanableItem, batchResult *types.CleanResult, callbacks types.CleanCallbacks) {
+	if callbacks.OnItemDone == nil {
+		return
+	}
+
+	// Build error map from batch result errors (format: "itemPath: error")
+	errorMap := make(map[string]string)
+	for _, errStr := range batchResult.Errors {
+		for _, item := range batch {
+			prefix := item.Path + ": "
+			if len(errStr) >= len(prefix) && errStr[:len(prefix)] == prefix {
+				errorMap[item.Path] = errStr[len(prefix):]
+				break
+			}
+		}
+	}
+
+	for _, item := range batch {
+		errMsg, hasFailed := errorMap[item.Path]
+		callbacks.OnItemDone(types.ItemCleanedResult{
+			Path:    item.Path,
+			Name:    item.Name,
+			Size:    item.Size,
+			Success: !hasFailed,
+			ErrMsg:  errMsg,
+		})
+	}
+}
+
+type itemCleaner func(types.Category, []types.CleanableItem) *types.CleanResult
+
+// cleanByItem handles item-by-item processing with a provided executor function.
+func (s *CleanService) cleanByItem(job CleanJob, callbacks types.CleanCallbacks, currentItem *int, totalItems int, exec itemCleaner) *types.CleanResult {
+	result := types.NewCleanResult(job.Category)
+
+	for _, item := range job.Items {
+		*currentItem++
+
+		if callbacks.OnProgress != nil {
+			callbacks.OnProgress(types.CleanProgress{
+				CategoryName: job.Category.Name,
+				CurrentItem:  item.Name,
+				Current:      *currentItem,
+				Total:        totalItems,
+			})
+		}
+
+		singleResult := exec(job.Category, []types.CleanableItem{item})
+		result.FreedSpace += singleResult.FreedSpace
+		result.CleanedItems += singleResult.CleanedItems
+		result.Errors = append(result.Errors, singleResult.Errors...)
+
+		if callbacks.OnItemDone != nil {
+			success := len(singleResult.Errors) == 0
+			errMsg := ""
+			if !success {
+				errMsg = singleResult.Errors[0]
+			}
+			callbacks.OnItemDone(types.ItemCleanedResult{
+				Path:    item.Path,
+				Name:    item.Name,
+				Size:    item.Size,
+				Success: success,
+				ErrMsg:  errMsg,
+			})
+		}
+	}
+
+	return result
+}
+
+func (s *CleanService) cleanUnsupported(job CleanJob) *types.CleanResult {
+	logger.Info("unsupported clean method",
+		"category", job.Category.Name,
+		"method", job.Category.Method,
+		"items", len(job.Items))
+
+	result := types.NewCleanResult(job.Category)
+	result.Errors = append(result.Errors, "unsupported method: "+string(job.Category.Method))
+	result.SkippedItems = len(job.Items)
+	return result
 }

@@ -41,7 +41,7 @@ func TestClean_CategoryInResult(t *testing.T) {
 		Safety: types.SafetyLevelSafe,
 	}
 
-	result := c.Clean(cat, []types.CleanableItem{})
+	result := c.Trash(cat, []types.CleanableItem{})
 
 	assert.Equal(t, "test-id", result.Category.ID)
 	assert.Equal(t, "Test Category", result.Category.Name)
@@ -61,7 +61,7 @@ func TestClean_SkipsSIPProtectedPaths(t *testing.T) {
 		Method: types.MethodTrash,
 	}
 
-	result := c.Clean(cat, items)
+	result := c.Trash(cat, items)
 
 	assert.Equal(t, 0, result.CleanedItems, "SIP protected items should be skipped")
 	assert.Equal(t, 2, result.SkippedItems)
@@ -86,7 +86,7 @@ func TestClean_Permanent_RemovesFiles(t *testing.T) {
 		Method: types.MethodPermanent,
 	}
 
-	result := c.Clean(cat, items)
+	result := c.Permanent(cat, items)
 
 	assert.Equal(t, 1, result.CleanedItems)
 	assert.Empty(t, result.Errors)
@@ -115,7 +115,7 @@ func TestClean_Permanent_RemovesDirectories(t *testing.T) {
 		Method: types.MethodPermanent,
 	}
 
-	result := c.Clean(cat, items)
+	result := c.Permanent(cat, items)
 
 	assert.Equal(t, 1, result.CleanedItems)
 
@@ -136,7 +136,7 @@ func TestClean_Permanent_SkipsSIPProtectedPaths(t *testing.T) {
 		Method: types.MethodPermanent,
 	}
 
-	result := c.Clean(cat, items)
+	result := c.Permanent(cat, items)
 
 	assert.Equal(t, 1, result.SkippedItems)
 }
@@ -163,7 +163,7 @@ func TestClean_MethodBuiltin_DelegatesToTarget(t *testing.T) {
 		{Path: "/tmp/test2", Name: "test2", Size: 200},
 	}
 
-	result := c.Clean(cat, items)
+	result := c.Builtin(cat, items)
 
 	mockTarget.AssertCalled(t, "Clean", items)
 	assert.Equal(t, 2, result.CleanedItems)
@@ -183,7 +183,7 @@ func TestClean_MethodBuiltin_TargetNotFound(t *testing.T) {
 		{Path: "/tmp/test", Name: "test", Size: 100},
 	}
 
-	result := c.Clean(cat, items)
+	result := c.Builtin(cat, items)
 
 	require.Len(t, result.Errors, 1)
 	assert.Contains(t, result.Errors[0], "scanner not found")
@@ -211,7 +211,7 @@ func TestClean_MethodBuiltin_TargetReturnsError(t *testing.T) {
 		{Path: "/tmp/test", Name: "test", Size: 100},
 	}
 
-	result := c.Clean(cat, items)
+	result := c.Builtin(cat, items)
 
 	mockTarget.AssertCalled(t, "Clean", mock.Anything)
 	assert.Equal(t, 1, result.CleanedItems)
@@ -237,7 +237,7 @@ func TestClean_MethodBuiltin_TargetErrorPropagates(t *testing.T) {
 
 	c := NewExecutor(registry)
 
-	result := c.Clean(cat, []types.CleanableItem{})
+	result := c.Builtin(cat, []types.CleanableItem{})
 
 	require.Len(t, result.Errors, 1)
 	assert.Contains(t, result.Errors[0], "scanner failed")
@@ -257,7 +257,7 @@ func TestClean_MethodBuiltin_TargetNilResultWithError(t *testing.T) {
 
 	c := NewExecutor(registry)
 
-	result := c.Clean(cat, []types.CleanableItem{{Path: "/tmp/test", Name: "test"}})
+	result := c.Builtin(cat, []types.CleanableItem{{Path: "/tmp/test", Name: "test"}})
 
 	require.Len(t, result.Errors, 1)
 	assert.Contains(t, result.Errors[0], "scanner failed")
@@ -277,7 +277,7 @@ func TestClean_Manual_SkipsWithGuide(t *testing.T) {
 		{Path: "/some/path", Name: "manual-item", Size: 1000},
 	}
 
-	result := c.Clean(cat, items)
+	result := c.Manual(cat, items)
 
 	assert.Equal(t, 0, result.CleanedItems, "manual methods should skip all items")
 	assert.Equal(t, 1, result.SkippedItems)
@@ -307,7 +307,7 @@ func TestClean_Trash_MovesToTrash(t *testing.T) {
 		{Path: "/tmp/test2", Name: "test2", Size: 200},
 	}
 
-	result := c.Clean(cat, items)
+	result := c.Trash(cat, items)
 
 	assert.Equal(t, 2, result.CleanedItems)
 	assert.Equal(t, int64(300), result.FreedSpace)
@@ -346,7 +346,7 @@ func TestClean_Trash_PartialFailure(t *testing.T) {
 		{Path: "/tmp/test3", Name: "test3", Size: 300},
 	}
 
-	result := c.Clean(cat, items)
+	result := c.Trash(cat, items)
 
 	assert.Equal(t, 2, result.CleanedItems)
 	assert.Equal(t, int64(400), result.FreedSpace)

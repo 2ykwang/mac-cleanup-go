@@ -17,40 +17,74 @@ func NewExecutor(registry *target.Registry) *Executor {
 	return &Executor{registry: registry}
 }
 
-func (c *Executor) Clean(cat types.Category, items []types.CleanableItem) *types.CleanResult {
+func (c *Executor) Trash(cat types.Category, items []types.CleanableItem) *types.CleanResult {
 	result := types.NewCleanResult(cat)
+	if !c.ensureMethod(cat, types.MethodTrash, result, items) {
+		return result
+	}
 
-	switch cat.Method {
-	case types.MethodTrash:
-		c.moveToTrash(items, result)
-	case types.MethodPermanent:
-		c.removePermanent(items, result)
-	case types.MethodBuiltin:
-		if s, ok := c.registry.Get(cat.ID); ok {
-			builtinResult, err := s.Clean(items)
-			if err != nil {
-				if builtinResult != nil {
-					builtinResult.Errors = append(builtinResult.Errors, err.Error())
-				} else {
-					result.Errors = append(result.Errors, err.Error())
-				}
-			}
+	c.moveToTrash(items, result)
+	return result
+}
+
+func (c *Executor) Permanent(cat types.Category, items []types.CleanableItem) *types.CleanResult {
+	result := types.NewCleanResult(cat)
+	if !c.ensureMethod(cat, types.MethodPermanent, result, items) {
+		return result
+	}
+
+	c.removePermanent(items, result)
+	return result
+}
+
+func (c *Executor) Builtin(cat types.Category, items []types.CleanableItem) *types.CleanResult {
+	result := types.NewCleanResult(cat)
+	if !c.ensureMethod(cat, types.MethodBuiltin, result, items) {
+		return result
+	}
+
+	if s, ok := c.registry.Get(cat.ID); ok {
+		builtinResult, err := s.Clean(items)
+		if err != nil {
 			if builtinResult != nil {
-				return builtinResult
+				builtinResult.Errors = append(builtinResult.Errors, err.Error())
+			} else {
+				result.Errors = append(result.Errors, err.Error())
 			}
-		} else {
-			result.Errors = append(result.Errors, "scanner not found: "+cat.ID)
 		}
-	case types.MethodManual:
-		// Manual methods require user action - skip all items
-		result.SkippedItems = len(items)
+		if builtinResult != nil {
+			return builtinResult
+		}
+	} else {
+		result.Errors = append(result.Errors, "scanner not found: "+cat.ID)
 	}
 
 	return result
 }
 
+func (c *Executor) Manual(cat types.Category, items []types.CleanableItem) *types.CleanResult {
+	result := types.NewCleanResult(cat)
+	if !c.ensureMethod(cat, types.MethodManual, result, items) {
+		return result
+	}
+
+	// Manual methods require user action - skip all items
+	result.SkippedItems = len(items)
+	return result
+}
+
+func (c *Executor) ensureMethod(cat types.Category, expected types.CleanupMethod, result *types.CleanResult, items []types.CleanableItem) bool {
+	if cat.Method == expected {
+		return true
+	}
+
+	result.Errors = append(result.Errors, "method mismatch: expected "+string(expected)+" got "+string(cat.Method))
+	result.SkippedItems += len(items)
+	return false
+}
+
 func (c *Executor) moveToTrash(items []types.CleanableItem, result *types.CleanResult) {
-	batchResult := utils.BatchTrash(items, utils.BatchTrashOptions{
+	batchResult := utils.BatchTrash(items, types.BatchTrashOptions{
 		Category: result.Category,
 		Filter: func(item types.CleanableItem) bool {
 			return utils.IsSIPProtected(item.Path)
