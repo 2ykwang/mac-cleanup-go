@@ -920,6 +920,21 @@ func TestViewPreview_ContainsItems(t *testing.T) {
 	assert.Contains(t, output, "/path/2")
 }
 
+func TestViewPreview_UsesDisplayNameWhenPresent(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewPreview
+	m.selected["cat1"] = true
+	m.previewCatID = "cat1"
+	m.results[0].Items = []types.CleanableItem{
+		{Path: "/path/1", DisplayName: "Pretty Name", Size: 500},
+	}
+
+	output := m.viewPreview()
+
+	assert.Contains(t, output, "Pretty Name")
+	assert.NotContains(t, output, "/path/1")
+}
+
 func TestViewPreview_ShowsLockedItemIndicator(t *testing.T) {
 	m := newTestModelWithResults()
 	m.view = ViewPreview

@@ -2,7 +2,9 @@ package target
 
 import (
 	"encoding/json"
+	"fmt"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -14,6 +16,11 @@ import (
 type DockerTarget struct {
 	category types.Category
 }
+
+const (
+	dockerShortIDLength = 12
+	dockerNameLimit     = 50
+)
 
 func init() {
 	RegisterBuiltin("docker", func(cat types.Category, _ []types.Category) Target {
@@ -50,6 +57,30 @@ type dockerDfOutput struct {
 	Reclaimable string `json:"Reclaimable"`
 }
 
+type dockerDfVerbose struct {
+	Images     []dockerDfImage     `json:"Images"`
+	Containers []dockerDfContainer `json:"Containers"`
+	Volumes    []dockerDfVolume    `json:"Volumes"`
+}
+
+type dockerDfImage struct {
+	ID         string `json:"ID"`
+	Repository string `json:"Repository"`
+	Tag        string `json:"Tag"`
+	Size       string `json:"Size"`
+}
+
+type dockerDfContainer struct {
+	Image  string `json:"Image"`
+	Names  string `json:"Names"`
+	Mounts string `json:"Mounts"`
+}
+
+type dockerDfVolume struct {
+	Name string `json:"Name"`
+	Size string `json:"Size"`
+}
+
 func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 	result := types.NewScanResult(s.category)
 
@@ -57,43 +88,194 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 		return result, nil
 	}
 
-	cmd := execCommand("docker", "system", "df", "--format", "{{json .}}")
-	output, err := cmd.Output()
+	verbose, err := s.fetchVerboseDf()
 	if err != nil {
-		logger.Warn("docker system df failed", "error", err)
 		result.Error = err
 		return result, nil
 	}
 
-	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-	for _, line := range lines {
-		if line == "" {
+	buildCacheSize := s.fetchBuildCacheSize()
+
+	volumeSet := make(map[string]struct{}, len(verbose.Volumes))
+	for _, v := range verbose.Volumes {
+		if v.Name != "" {
+			volumeSet[v.Name] = struct{}{}
+		}
+	}
+
+	imageUsedBy := make(map[string]map[string]struct{})
+	volumeUsedBy := make(map[string]map[string]struct{})
+
+	for _, c := range verbose.Containers {
+		name := strings.TrimPrefix(strings.TrimSpace(c.Names), "/")
+		if name == "" {
 			continue
 		}
+		imageRef := strings.TrimSpace(c.Image)
+		if imageRef != "" {
+			addUsedBy(imageUsedBy, imageRef, name)
+			if !strings.Contains(imageRef, ":") {
+				addUsedBy(imageUsedBy, imageRef+":latest", name)
+			}
+		}
+		if c.Mounts != "" {
+			for _, mount := range strings.Split(c.Mounts, ",") {
+				mount = strings.TrimSpace(mount)
+				if mount == "" {
+					continue
+				}
+				if _, ok := volumeSet[mount]; ok {
+					addUsedBy(volumeUsedBy, mount, name)
+				}
+			}
+		}
+	}
 
-		var df dockerDfOutput
-		if err := json.Unmarshal([]byte(line), &df); err != nil {
-			logger.Debug("docker df json parse failed", "line", line, "error", err)
+	type dockerImageAggregate struct {
+		ID   string
+		Size int64
+		Tags map[string]struct{}
+	}
+
+	imageAggregates := make(map[string]*dockerImageAggregate, len(verbose.Images))
+	for _, img := range verbose.Images {
+		if img.ID == "" {
 			continue
 		}
-
-		size := parseDockerSize(df.Reclaimable)
+		size := parseDockerSize(img.Size)
 		if size == 0 {
 			continue
 		}
 
-		fileCount, _ := strconv.ParseInt(df.TotalCount, 10, 64)
+		agg := imageAggregates[img.ID]
+		if agg == nil {
+			agg = &dockerImageAggregate{
+				ID:   img.ID,
+				Size: size,
+				Tags: make(map[string]struct{}),
+			}
+			imageAggregates[img.ID] = agg
+		} else if size > agg.Size {
+			agg.Size = size
+		}
+
+		repo := strings.TrimSpace(img.Repository)
+		tag := strings.TrimSpace(img.Tag)
+		if repo != "" && repo != "<none>" && tag != "" && tag != "<none>" {
+			agg.Tags[repo+":"+tag] = struct{}{}
+		}
+	}
+
+	imageIDs := make([]string, 0, len(imageAggregates))
+	for id := range imageAggregates {
+		imageIDs = append(imageIDs, id)
+	}
+	sort.Strings(imageIDs)
+
+	for _, imageID := range imageIDs {
+		agg := imageAggregates[imageID]
+		tags := make([]string, 0, len(agg.Tags))
+		for tag := range agg.Tags {
+			tags = append(tags, tag)
+		}
+		sort.Strings(tags)
+
+		var label string
+		if len(tags) > 0 {
+			label = tags[0]
+			for _, tag := range tags {
+				if strings.HasSuffix(tag, ":latest") {
+					label = tag
+					break
+				}
+			}
+		} else {
+			shortID := strings.TrimPrefix(imageID, "sha256:")
+			if shortID == "" {
+				shortID = "unknown"
+			}
+			if len(shortID) > dockerShortIDLength {
+				shortID = shortID[:dockerShortIDLength]
+			}
+			label = "untagged@" + shortID
+		}
+
+		baseName := "Image: " + truncateName(label, dockerNameLimit)
+		if len(tags) > 1 {
+			baseName = fmt.Sprintf("%s (+%d tags)", baseName, len(tags)-1)
+		}
+
+		combined := make(map[string]struct{})
+		for _, key := range []string{imageID, strings.TrimPrefix(imageID, "sha256:")} {
+			for name := range imageUsedBy[key] {
+				combined[name] = struct{}{}
+			}
+		}
+		for _, tag := range tags {
+			for name := range imageUsedBy[tag] {
+				combined[name] = struct{}{}
+			}
+		}
+		usedBy := usedByList(combined)
+		displayName := appendUsedBy(baseName, usedBy)
 
 		item := types.CleanableItem{
-			Path:        "docker:" + strings.ToLower(df.Type),
-			Size:        size,
-			FileCount:   fileCount,
-			Name:        dockerTypeName(df.Type),
+			Path:        "docker:image:" + imageID,
+			Size:        agg.Size,
+			FileCount:   1,
+			Name:        baseName,
+			DisplayName: displayName,
 			IsDirectory: false,
+		}
+		if len(usedBy) > 0 {
+			item.Status = types.ItemStatusProcessLocked
+		}
+		result.Items = append(result.Items, item)
+		result.TotalSize += agg.Size
+		result.TotalFileCount++
+	}
+
+	for _, v := range verbose.Volumes {
+		if v.Name == "" {
+			continue
+		}
+		size := parseDockerSize(v.Size)
+		if size == 0 {
+			continue
+		}
+		baseName := "Volume: " + truncateName(v.Name, dockerNameLimit)
+		usedBy := usedByList(volumeUsedBy[v.Name])
+		displayName := appendUsedBy(baseName, usedBy)
+
+		item := types.CleanableItem{
+			Path:        "docker:volume:" + v.Name,
+			Size:        size,
+			FileCount:   1,
+			Name:        baseName,
+			DisplayName: displayName,
+			IsDirectory: false,
+		}
+		if len(usedBy) > 0 {
+			item.Status = types.ItemStatusProcessLocked
 		}
 		result.Items = append(result.Items, item)
 		result.TotalSize += size
-		result.TotalFileCount += fileCount
+		result.TotalFileCount++
+	}
+
+	if buildCacheSize > 0 {
+		name := "Docker Build Cache"
+		item := types.CleanableItem{
+			Path:        "docker:build-cache",
+			Size:        buildCacheSize,
+			FileCount:   1,
+			Name:        name,
+			DisplayName: name,
+			IsDirectory: false,
+		}
+		result.Items = append(result.Items, item)
+		result.TotalSize += buildCacheSize
+		result.TotalFileCount++
 	}
 
 	logger.Info("docker scan completed",
@@ -108,14 +290,18 @@ func (s *DockerTarget) Clean(items []types.CleanableItem) (*types.CleanResult, e
 
 	for _, item := range items {
 		var cmd *exec.Cmd
-		switch item.Path {
-		case "docker:images":
-			cmd = execCommand("docker", "image", "prune", "-af")
-		case "docker:containers":
-			cmd = execCommand("docker", "container", "prune", "-f")
-		case "docker:local volumes":
-			cmd = execCommand("docker", "volume", "prune", "-af")
-		case "docker:build cache":
+		switch {
+		case strings.HasPrefix(item.Path, "docker:image:"):
+			imageID := strings.TrimPrefix(item.Path, "docker:image:")
+			if imageID != "" {
+				cmd = execCommand("docker", "image", "rm", imageID)
+			}
+		case strings.HasPrefix(item.Path, "docker:volume:"):
+			volumeName := strings.TrimPrefix(item.Path, "docker:volume:")
+			if volumeName != "" {
+				cmd = execCommand("docker", "volume", "rm", volumeName)
+			}
+		case item.Path == "docker:build-cache":
 			cmd = execCommand("docker", "builder", "prune", "-af")
 		}
 
@@ -137,6 +323,96 @@ func (s *DockerTarget) Clean(items []types.CleanableItem) (*types.CleanResult, e
 		"errors", len(result.Errors))
 
 	return result, nil
+}
+
+func (s *DockerTarget) fetchVerboseDf() (*dockerDfVerbose, error) {
+	cmd := execCommand("docker", "system", "df", "-v", "--format", "{{json .}}")
+	output, err := cmd.Output()
+	if err != nil {
+		logger.Warn("docker system df -v failed", "error", err)
+		return nil, err
+	}
+
+	line := strings.TrimSpace(string(output))
+	if line == "" {
+		return &dockerDfVerbose{}, nil
+	}
+
+	var df dockerDfVerbose
+	if err := json.Unmarshal([]byte(line), &df); err != nil {
+		logger.Warn("docker df -v json parse failed", "error", err)
+		return nil, err
+	}
+	return &df, nil
+}
+
+func (s *DockerTarget) fetchBuildCacheSize() int64 {
+	cmd := execCommand("docker", "system", "df", "--format", "{{json .}}")
+	output, err := cmd.Output()
+	if err != nil {
+		logger.Warn("docker system df failed", "error", err)
+		return 0
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		var df dockerDfOutput
+		if err := json.Unmarshal([]byte(line), &df); err != nil {
+			continue
+		}
+		if strings.EqualFold(df.Type, "Build Cache") {
+			return parseDockerSize(df.Reclaimable)
+		}
+	}
+	return 0
+}
+
+func addUsedBy(store map[string]map[string]struct{}, key, name string) {
+	if key == "" || name == "" {
+		return
+	}
+	if _, ok := store[key]; !ok {
+		store[key] = make(map[string]struct{})
+	}
+	store[key][name] = struct{}{}
+}
+
+func usedByList(set map[string]struct{}) []string {
+	if len(set) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(set))
+	for name := range set {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func appendUsedBy(name string, usedBy []string) string {
+	if len(usedBy) == 0 {
+		return name
+	}
+	first := usedBy[0]
+	extra := len(usedBy) - 1
+	if extra > 0 {
+		return fmt.Sprintf("%s [Used By: %s (+%d)]", name, first, extra)
+	}
+	return fmt.Sprintf("%s [Used By: %s]", name, first)
+}
+
+func truncateName(name string, limit int) string {
+	if limit <= 0 {
+		return name
+	}
+	runes := []rune(name)
+	if len(runes) <= limit {
+		return name
+	}
+	return string(runes[:limit])
 }
 
 func parseDockerSize(s string) int64 {
@@ -167,22 +443,9 @@ func parseDockerSize(s string) int64 {
 		s = strings.TrimSuffix(s, "B")
 	}
 
-	var value float64
-	_ = json.Unmarshal([]byte(s), &value) // parse failure returns 0
-	return int64(value * float64(multiplier))
-}
-
-func dockerTypeName(t string) string {
-	switch strings.ToLower(t) {
-	case "images":
-		return "Docker Images"
-	case "containers":
-		return "Docker Containers"
-	case "local volumes":
-		return "Docker Volumes [!DB DATA RISK]"
-	case "build cache":
-		return "Docker Build Cache"
-	default:
-		return "Docker " + t
+	value, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
+	if err != nil {
+		return 0
 	}
+	return int64(value * float64(multiplier))
 }

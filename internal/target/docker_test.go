@@ -3,6 +3,7 @@ package target
 import (
 	"math"
 	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -95,33 +96,6 @@ func TestParseDockerSize_WithWhitespace(t *testing.T) {
 	assert.Equal(t, expected, parseDockerSize("  1GB  "))
 	assert.Equal(t, expected, parseDockerSize("1GB "))
 	assert.Equal(t, expected, parseDockerSize(" 1GB"))
-}
-
-func TestDockerTypeName_Images(t *testing.T) {
-	assert.Equal(t, "Docker Images", dockerTypeName("images"))
-	assert.Equal(t, "Docker Images", dockerTypeName("Images"))
-	assert.Equal(t, "Docker Images", dockerTypeName("IMAGES"))
-}
-
-func TestDockerTypeName_Containers(t *testing.T) {
-	assert.Equal(t, "Docker Containers", dockerTypeName("containers"))
-	assert.Equal(t, "Docker Containers", dockerTypeName("Containers"))
-}
-
-func TestDockerTypeName_Volumes(t *testing.T) {
-	assert.Equal(t, "Docker Volumes [!DB DATA RISK]", dockerTypeName("local volumes"))
-	assert.Equal(t, "Docker Volumes [!DB DATA RISK]", dockerTypeName("Local Volumes"))
-}
-
-func TestDockerTypeName_BuildCache(t *testing.T) {
-	assert.Equal(t, "Docker Build Cache", dockerTypeName("build cache"))
-	assert.Equal(t, "Docker Build Cache", dockerTypeName("Build Cache"))
-}
-
-func TestDockerTypeName_UnknownType(t *testing.T) {
-	result := dockerTypeName("unknown")
-
-	assert.Equal(t, "Docker unknown", result)
 }
 
 func TestDockerTarget_Clean_IncludesCategoryInResult(t *testing.T) {
@@ -247,18 +221,17 @@ func TestDockerTarget_Scan_ReturnsError_WhenCommandFails(t *testing.T) {
 		execCommand = original
 	}()
 
-	callCount := 0
 	utils.CommandExists = func(_ string) bool {
 		return true
 	}
-	execCommand = func(_ string, _ ...string) *exec.Cmd {
-		callCount++
-		if callCount == 1 {
-			// docker info succeeds
+	execCommand = func(_ string, args ...string) *exec.Cmd {
+		if len(args) > 0 && args[0] == "version" {
 			return exec.Command("true")
 		}
-		// docker system df fails
-		return exec.Command("false")
+		if len(args) >= 3 && args[0] == "system" && args[1] == "df" && args[2] == "-v" {
+			return exec.Command("false")
+		}
+		return exec.Command("true")
 	}
 
 	cat := types.Category{ID: "docker", Name: "Docker"}
@@ -281,19 +254,19 @@ func TestDockerTarget_Scan_ParsesOutput(t *testing.T) {
 	utils.CommandExists = func(_ string) bool {
 		return true
 	}
-	callCount := 0
-	execCommand = func(_ string, _ ...string) *exec.Cmd {
-		callCount++
-		if callCount == 1 {
-			// docker info
+	verboseOutput := `{"Images":[{"ID":"sha256:img1","Repository":"repo","Tag":"latest","Size":"1GB"}],"Containers":[{"Image":"repo:latest","Names":"web","Mounts":"vol1"}],"Volumes":[{"Name":"vol1","Size":"500MB"}],"BuildCache":[]}`
+	summaryOutput := `{"Type":"Build Cache","TotalCount":"1","Active":"0","Size":"1GB","Reclaimable":"1GB (100%)"}`
+	execCommand = func(_ string, args ...string) *exec.Cmd {
+		if len(args) > 0 && args[0] == "version" {
 			return exec.Command("true")
 		}
-		// docker system df
-		output := `{"Type":"Images","TotalCount":"5","Active":"2","Size":"2.371GB","Reclaimable":"1.5GB (63%)"}
-{"Type":"Containers","TotalCount":"3","Active":"1","Size":"100MB","Reclaimable":"50MB (50%)"}
-{"Type":"Local Volumes","TotalCount":"2","Active":"0","Size":"500MB","Reclaimable":"500MB (100%)"}
-{"Type":"Build Cache","TotalCount":"10","Active":"0","Size":"1GB","Reclaimable":"1GB (100%)"}`
-		return exec.Command("echo", output)
+		if len(args) >= 3 && args[0] == "system" && args[1] == "df" && args[2] == "-v" {
+			return exec.Command("echo", verboseOutput)
+		}
+		if len(args) >= 2 && args[0] == "system" && args[1] == "df" {
+			return exec.Command("echo", summaryOutput)
+		}
+		return exec.Command("true")
 	}
 
 	cat := types.Category{ID: "docker", Name: "Docker"}
@@ -303,12 +276,36 @@ func TestDockerTarget_Scan_ParsesOutput(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Nil(t, result.Error)
-	assert.Len(t, result.Items, 4)
-	assert.Equal(t, "docker:images", result.Items[0].Path)
-	assert.Equal(t, "Docker Images", result.Items[0].Name)
+	assert.Len(t, result.Items, 3)
+
+	var imageItem, volumeItem, cacheItem *types.CleanableItem
+	for i := range result.Items {
+		item := &result.Items[i]
+		switch {
+		case strings.HasPrefix(item.Path, "docker:image:"):
+			imageItem = item
+		case strings.HasPrefix(item.Path, "docker:volume:"):
+			volumeItem = item
+		case item.Path == "docker:build-cache":
+			cacheItem = item
+		}
+	}
+
+	if assert.NotNil(t, imageItem) {
+		assert.Contains(t, imageItem.DisplayName, "Image: repo:latest")
+		assert.Contains(t, imageItem.DisplayName, "Used By: web")
+		assert.Equal(t, "docker:image:sha256:img1", imageItem.Path)
+		assert.Equal(t, types.ItemStatusProcessLocked, imageItem.Status)
+	}
+	if assert.NotNil(t, volumeItem) {
+		assert.Contains(t, volumeItem.DisplayName, "Volume: vol1")
+		assert.Contains(t, volumeItem.DisplayName, "Used By: web")
+		assert.Equal(t, types.ItemStatusProcessLocked, volumeItem.Status)
+	}
+	assert.NotNil(t, cacheItem)
 }
 
-func TestDockerTarget_Scan_SkipsEmptyLines(t *testing.T) {
+func TestDockerTarget_Scan_EmptyVerboseOutput(t *testing.T) {
 	originalCommandExists := utils.CommandExists
 	original := execCommand
 	defer func() {
@@ -319,16 +316,18 @@ func TestDockerTarget_Scan_SkipsEmptyLines(t *testing.T) {
 	utils.CommandExists = func(_ string) bool {
 		return true
 	}
-	callCount := 0
-	execCommand = func(_ string, _ ...string) *exec.Cmd {
-		callCount++
-		if callCount == 1 {
+	summaryOutput := `{"Type":"Build Cache","TotalCount":"1","Active":"0","Size":"1GB","Reclaimable":"1GB (100%)"}`
+	execCommand = func(_ string, args ...string) *exec.Cmd {
+		if len(args) > 0 && args[0] == "version" {
 			return exec.Command("true")
 		}
-		output := `{"Type":"Images","TotalCount":"5","Active":"2","Size":"2GB","Reclaimable":"1GB"}
-
-{"Type":"Build Cache","TotalCount":"10","Active":"0","Size":"1GB","Reclaimable":"1GB"}`
-		return exec.Command("echo", output)
+		if len(args) >= 3 && args[0] == "system" && args[1] == "df" && args[2] == "-v" {
+			return exec.Command("echo", "")
+		}
+		if len(args) >= 2 && args[0] == "system" && args[1] == "df" {
+			return exec.Command("echo", summaryOutput)
+		}
+		return exec.Command("true")
 	}
 
 	cat := types.Category{ID: "docker", Name: "Docker"}
@@ -337,10 +336,12 @@ func TestDockerTarget_Scan_SkipsEmptyLines(t *testing.T) {
 	result, err := s.Scan()
 
 	assert.NoError(t, err)
-	assert.Len(t, result.Items, 2)
+	assert.Nil(t, result.Error)
+	assert.Len(t, result.Items, 1)
+	assert.Equal(t, "docker:build-cache", result.Items[0].Path)
 }
 
-func TestDockerTarget_Scan_SkipsZeroReclaimable(t *testing.T) {
+func TestDockerTarget_Scan_InvalidVerboseJSON(t *testing.T) {
 	originalCommandExists := utils.CommandExists
 	original := execCommand
 	defer func() {
@@ -351,14 +352,14 @@ func TestDockerTarget_Scan_SkipsZeroReclaimable(t *testing.T) {
 	utils.CommandExists = func(_ string) bool {
 		return true
 	}
-	callCount := 0
-	execCommand = func(_ string, _ ...string) *exec.Cmd {
-		callCount++
-		if callCount == 1 {
+	execCommand = func(_ string, args ...string) *exec.Cmd {
+		if len(args) > 0 && args[0] == "version" {
 			return exec.Command("true")
 		}
-		output := `{"Type":"Images","TotalCount":"5","Active":"2","Size":"2GB","Reclaimable":"0B"}`
-		return exec.Command("echo", output)
+		if len(args) >= 3 && args[0] == "system" && args[1] == "df" && args[2] == "-v" {
+			return exec.Command("echo", "not-json")
+		}
+		return exec.Command("true")
 	}
 
 	cat := types.Category{ID: "docker", Name: "Docker"}
@@ -367,7 +368,125 @@ func TestDockerTarget_Scan_SkipsZeroReclaimable(t *testing.T) {
 	result, err := s.Scan()
 
 	assert.NoError(t, err)
+	assert.NotNil(t, result.Error)
 	assert.Empty(t, result.Items)
+}
+
+func TestDockerTarget_Scan_BuildCacheMissing(t *testing.T) {
+	originalCommandExists := utils.CommandExists
+	original := execCommand
+	defer func() {
+		utils.CommandExists = originalCommandExists
+		execCommand = original
+	}()
+
+	utils.CommandExists = func(_ string) bool {
+		return true
+	}
+	verboseOutput := `{"Images":[{"ID":"sha256:img1","Repository":"repo","Tag":"latest","Size":"1GB"}],"Containers":[],"Volumes":[{"Name":"vol1","Size":"500MB"}]}`
+	summaryOutput := `{"Type":"Images","TotalCount":"1","Active":"0","Size":"1GB","Reclaimable":"1GB (100%)"}`
+	execCommand = func(_ string, args ...string) *exec.Cmd {
+		if len(args) > 0 && args[0] == "version" {
+			return exec.Command("true")
+		}
+		if len(args) >= 3 && args[0] == "system" && args[1] == "df" && args[2] == "-v" {
+			return exec.Command("echo", verboseOutput)
+		}
+		if len(args) >= 2 && args[0] == "system" && args[1] == "df" {
+			return exec.Command("echo", summaryOutput)
+		}
+		return exec.Command("true")
+	}
+
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	result, err := s.Scan()
+
+	assert.NoError(t, err)
+	assert.Nil(t, result.Error)
+	assert.Len(t, result.Items, 2)
+	for _, item := range result.Items {
+		assert.NotEqual(t, "docker:build-cache", item.Path)
+	}
+}
+
+func TestDockerTarget_Scan_UntaggedImageLabel(t *testing.T) {
+	originalCommandExists := utils.CommandExists
+	original := execCommand
+	defer func() {
+		utils.CommandExists = originalCommandExists
+		execCommand = original
+	}()
+
+	utils.CommandExists = func(_ string) bool {
+		return true
+	}
+	verboseOutput := `{"Images":[{"ID":"sha256:img1","Repository":"<none>","Tag":"<none>","Size":"1GB"}],"Containers":[{"Image":"sha256:img1","Names":"worker","Mounts":""}],"Volumes":[]}`
+	execCommand = func(_ string, args ...string) *exec.Cmd {
+		if len(args) > 0 && args[0] == "version" {
+			return exec.Command("true")
+		}
+		if len(args) >= 3 && args[0] == "system" && args[1] == "df" && args[2] == "-v" {
+			return exec.Command("echo", verboseOutput)
+		}
+		if len(args) >= 2 && args[0] == "system" && args[1] == "df" {
+			return exec.Command("echo", `{"Type":"Build Cache","TotalCount":"0","Active":"0","Size":"0B","Reclaimable":"0B"}`)
+		}
+		return exec.Command("true")
+	}
+
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	result, err := s.Scan()
+
+	assert.NoError(t, err)
+	assert.Nil(t, result.Error)
+	if assert.Len(t, result.Items, 1) {
+		assert.Contains(t, result.Items[0].DisplayName, "Image: untagged@img1")
+		assert.Contains(t, result.Items[0].DisplayName, "Used By: worker")
+		assert.Equal(t, "docker:image:sha256:img1", result.Items[0].Path)
+	}
+}
+
+func TestDockerTarget_Scan_MultiTagImagesHaveUniquePaths(t *testing.T) {
+	originalCommandExists := utils.CommandExists
+	original := execCommand
+	defer func() {
+		utils.CommandExists = originalCommandExists
+		execCommand = original
+	}()
+
+	utils.CommandExists = func(_ string) bool {
+		return true
+	}
+	verboseOutput := `{"Images":[{"ID":"sha256:img1","Repository":"repo","Tag":"latest","Size":"1GB"},{"ID":"sha256:img1","Repository":"repo","Tag":"dev","Size":"1GB"}],"Containers":[],"Volumes":[]}`
+	execCommand = func(_ string, args ...string) *exec.Cmd {
+		if len(args) > 0 && args[0] == "version" {
+			return exec.Command("true")
+		}
+		if len(args) >= 3 && args[0] == "system" && args[1] == "df" && args[2] == "-v" {
+			return exec.Command("echo", verboseOutput)
+		}
+		if len(args) >= 2 && args[0] == "system" && args[1] == "df" {
+			return exec.Command("echo", `{"Type":"Build Cache","TotalCount":"0","Active":"0","Size":"0B","Reclaimable":"0B"}`)
+		}
+		return exec.Command("true")
+	}
+
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	result, err := s.Scan()
+
+	assert.NoError(t, err)
+	if assert.Len(t, result.Items, 1) {
+		assert.Contains(t, result.Items[0].DisplayName, "Image: repo:latest")
+		assert.Contains(t, result.Items[0].DisplayName, "(+1 tags)")
+		assert.Equal(t, "docker:image:sha256:img1", result.Items[0].Path)
+		assert.Equal(t, parseDockerSize("1GB"), result.TotalSize)
+	}
 }
 
 func TestDockerTarget_Clean_AllTypes(t *testing.T) {
@@ -382,18 +501,17 @@ func TestDockerTarget_Clean_AllTypes(t *testing.T) {
 	s := NewDockerTarget(cat)
 
 	items := []types.CleanableItem{
-		{Path: "docker:images", Size: 1000},
-		{Path: "docker:containers", Size: 2000},
-		{Path: "docker:local volumes", Size: 3000},
-		{Path: "docker:build cache", Size: 4000},
+		{Path: "docker:image:sha256:abc", Size: 1000},
+		{Path: "docker:volume:vol1", Size: 3000},
+		{Path: "docker:build-cache", Size: 4000},
 	}
 
 	result, err := s.Clean(items)
 
 	assert.NoError(t, err)
 	assert.Empty(t, result.Errors)
-	assert.Equal(t, int64(10000), result.FreedSpace)
-	assert.Equal(t, 4, result.CleanedItems)
+	assert.Equal(t, int64(8000), result.FreedSpace)
+	assert.Equal(t, 3, result.CleanedItems)
 }
 
 func TestDockerTarget_Clean_RecordsErrors(t *testing.T) {
@@ -408,7 +526,7 @@ func TestDockerTarget_Clean_RecordsErrors(t *testing.T) {
 	s := NewDockerTarget(cat)
 
 	items := []types.CleanableItem{
-		{Path: "docker:images", Size: 1000},
+		{Path: "docker:image:sha256:abc", Size: 1000},
 	}
 
 	result, err := s.Clean(items)

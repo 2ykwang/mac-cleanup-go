@@ -90,6 +90,7 @@ type CleanableItem struct {
 	Size        int64
 	FileCount   int64
 	Name        string
+	DisplayName string
 	IsDirectory bool
 	ModifiedAt  time.Time
 	Status      ItemStatus
