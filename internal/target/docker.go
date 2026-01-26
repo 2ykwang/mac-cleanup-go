@@ -143,10 +143,14 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 		if img.ID == "" {
 			continue
 		}
-		size := parseDockerSize(img.UniqueSize)
-		if size == 0 {
+
+		var size int64
+		if img.UniqueSize != "" {
+			size = parseDockerSize(img.UniqueSize)
+		} else {
 			size = parseDockerSize(img.Size)
 		}
+
 		if size == 0 {
 			continue
 		}

@@ -329,6 +329,22 @@ func TestDockerTarget_Scan_UsesUniqueSizeWhenPresent(t *testing.T) {
 	}
 }
 
+func TestDockerTarget_Scan_FallsBackToSizeWhenUniqueSizeEmpty(t *testing.T) {
+	verboseOutput := `{"Images":[{"ID":"sha256:img1","Repository":"repo","Tag":"latest","Size":"1GB"}],"Containers":[],"Volumes":[]}`
+	summaryOutput := `{"Type":"Build Cache","TotalCount":"0","Active":"0","Size":"0B","Reclaimable":"0B"}`
+	defer stubDockerScan(t, verboseOutput, summaryOutput)()
+
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	result, err := s.Scan()
+
+	assert.NoError(t, err)
+	if assert.Len(t, result.Items, 1) {
+		assert.Equal(t, parseDockerSize("1GB"), result.Items[0].Size)
+	}
+}
+
 func TestDockerTarget_Scan_EmptyVerboseOutput(t *testing.T) {
 	summaryOutput := `{"Type":"Build Cache","TotalCount":"1","Active":"0","Size":"1GB","Reclaimable":"1GB (100%)"}`
 	defer stubDockerScan(t, "", summaryOutput)()
