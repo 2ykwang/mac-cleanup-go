@@ -68,6 +68,7 @@ type dockerDfImage struct {
 	Repository string `json:"Repository"`
 	Tag        string `json:"Tag"`
 	Size       string `json:"Size"`
+	UniqueSize string `json:"UniqueSize"`
 }
 
 type dockerDfContainer struct {
@@ -114,7 +115,7 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 		imageRef := strings.TrimSpace(c.Image)
 		if imageRef != "" {
 			addUsedBy(imageUsedBy, imageRef, name)
-			if !strings.Contains(imageRef, ":") {
+			if !dockerHasTag(imageRef) {
 				addUsedBy(imageUsedBy, imageRef+":latest", name)
 			}
 		}
@@ -142,7 +143,10 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 		if img.ID == "" {
 			continue
 		}
-		size := parseDockerSize(img.Size)
+		size := parseDockerSize(img.UniqueSize)
+		if size == 0 {
+			size = parseDockerSize(img.Size)
+		}
 		if size == 0 {
 			continue
 		}
@@ -183,12 +187,6 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 		var label string
 		if len(tags) > 0 {
 			label = tags[0]
-			for _, tag := range tags {
-				if strings.HasSuffix(tag, ":latest") {
-					label = tag
-					break
-				}
-			}
 		} else {
 			shortID := strings.TrimPrefix(imageID, "sha256:")
 			if shortID == "" {
@@ -295,14 +293,20 @@ func (s *DockerTarget) Clean(items []types.CleanableItem) (*types.CleanResult, e
 			imageID := strings.TrimPrefix(item.Path, "docker:image:")
 			if imageID != "" {
 				cmd = execCommand("docker", "image", "rm", imageID)
+			} else {
+				logger.Debug("docker prune skipped empty image id", "path", item.Path)
 			}
 		case strings.HasPrefix(item.Path, "docker:volume:"):
 			volumeName := strings.TrimPrefix(item.Path, "docker:volume:")
 			if volumeName != "" {
 				cmd = execCommand("docker", "volume", "rm", volumeName)
+			} else {
+				logger.Debug("docker prune skipped empty volume name", "path", item.Path)
 			}
 		case item.Path == "docker:build-cache":
 			cmd = execCommand("docker", "builder", "prune", "-af")
+		default:
+			logger.Debug("docker prune skipped unknown path", "path", item.Path)
 		}
 
 		if cmd != nil {
@@ -402,6 +406,18 @@ func appendUsedBy(name string, usedBy []string) string {
 		return fmt.Sprintf("%s [Used By: %s (+%d)]", name, first, extra)
 	}
 	return fmt.Sprintf("%s [Used By: %s]", name, first)
+}
+
+func dockerHasTag(ref string) bool {
+	if ref == "" {
+		return false
+	}
+	if strings.Contains(ref, "@") {
+		return true
+	}
+	lastSlash := strings.LastIndex(ref, "/")
+	lastColon := strings.LastIndex(ref, ":")
+	return lastColon > lastSlash
 }
 
 func truncateName(name string, limit int) string {
