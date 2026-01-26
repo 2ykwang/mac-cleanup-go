@@ -19,8 +19,8 @@
 
 - 삭제될 항목을 미리보기하고 제외할 수 있습니다.
 - 기본은 휴지통으로 이동하고, '휴지통' 카테고리만 영구 삭제합니다.
-- risky 항목은 기본 제외, manual은 가이드만 표시합니다.
-- 범위: 캐시/로그/임시 파일과 일부 앱 데이터. 시스템 최적화/앱 제거는 하지 않습니다.
+- risky 항목은 기본으로 제외, manual은 삭제 가이드만 표시합니다.
+- 작업 범위: 캐시/로그/임시 파일과 일부 앱 데이터. 시스템 최적화/앱 제거는 하지 않습니다.
 
 ![demo](assets/result_view.png)
 
@@ -39,20 +39,30 @@ mac-cleanup
 mac-cleanup --update   # Homebrew로 업데이트
 ```
 
+삭제:
+
+```bash
+brew uninstall mac-cleanup-go
+```
+
 > 팁: 휴지통과 제한된 위치를 정리하려면 터미널에 전체 디스크 접근 권한을 부여하세요.  
 > 시스템 설정 -> 개인정보 보호 및 보안 -> 전체 디스크 접근
 
 ![demo](assets/demo.gif)
 
-## 무엇을 하는지
+## 안전 정책 및 삭제 방식
 
 - 앱/도구별 알려진 캐시, 로그, 임시 경로를 병렬로 스캔합니다.
 - 미리보기에서 항목을 제외할 수 있습니다.
 - 영향도 라벨(safe, moderate, risky)을 표시합니다.
-- Homebrew/Docker 명령 결과와 마지막 수정 시각 기준으로 동작하는 내장 스캔이 있습니다.
+- Homebrew, Docker, 오래된 다운로드 파일에 대한 전용 스캐너가 있습니다 (brew/docker 출력 또는 마지막 수정 시각 기준).
 
-> 참고: risky 카테고리는 기본 선택되지만 모든 항목이 제외된 상태로 시작합니다.
-> 삭제하려면 미리보기 페이지에서 항목을 직접 포함해야 합니다.
+## 무엇을 하는지
+
+- 삭제 전 항목을 미리보기합니다.
+- 기본적으로 항목은 휴지통으로 이동하고, '휴지통' 카테고리만 영구 삭제합니다.
+- risky 카테고리는 선택되어 있지만 모든 항목이 제외된 상태로 시작합니다.
+- manual 카테고리는 자동 삭제 없이 가이드만 표시합니다.
 
 ## 영향도 분류 기준
 
@@ -61,7 +71,7 @@ mac-cleanup --update   # Homebrew로 업데이트
 - risky: 사용자 데이터가 포함될 수 있음; 항목 기본 제외.
 - manual: 자동 삭제 없이 앱 가이드만 표시.
 
-## 대상 요약
+## 대상 (v1.3.6)
 
 - 전체 대상: 107개.
 - 그룹: System 7, Browsers 10, Development 35, Applications 52, Storage 3.
@@ -102,7 +112,7 @@ mac-cleanup --update   # Homebrew로 업데이트
 
 </details>
 
-## 대안
+## 대안 오픈소스
 
 - [mac-cleanup-py](https://github.com/mac-cleanup/mac-cleanup-py) - Python cleanup script for macOS
 - [Mole](https://github.com/tw93/Mole) - Deep clean and optimize your Mac
