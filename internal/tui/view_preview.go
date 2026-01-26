@@ -271,7 +271,18 @@ func (m *Model) viewPreview() string {
 			}
 
 			// Pad using display width (not byte count) for CJK character alignment
-			paddedPath := padToWidth(shortenPath(item.Path, pathWidth), pathWidth)
+			displayPath := item.Path
+			if item.DisplayName != "" {
+				displayPath = item.DisplayName
+			}
+
+			var truncated string
+			if displayPath == item.Path {
+				truncated = shortenPath(displayPath, pathWidth)
+			} else {
+				truncated = truncateToWidth(displayPath, pathWidth, false)
+			}
+			paddedPath := padToWidth(truncated, pathWidth)
 			if isLocked {
 				paddedPath = MutedStyle.Render(paddedPath)
 			} else if isExcluded {
