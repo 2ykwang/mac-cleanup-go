@@ -98,6 +98,14 @@ func TestParseDockerSize_WithWhitespace(t *testing.T) {
 	assert.Equal(t, expected, parseDockerSize(" 1GB"))
 }
 
+func TestDockerHasTag(t *testing.T) {
+	assert.False(t, dockerHasTag(""))
+	assert.True(t, dockerHasTag("repo@sha256:abc"))
+	assert.False(t, dockerHasTag("localhost:5000/repo"))
+	assert.True(t, dockerHasTag("localhost:5000/repo:latest"))
+	assert.True(t, dockerHasTag("repo:tag"))
+}
+
 func TestDockerTarget_Clean_IncludesCategoryInResult(t *testing.T) {
 	cat := types.Category{ID: "docker", Name: "Docker"}
 	s := NewDockerTarget(cat)
@@ -142,12 +150,66 @@ func assertWithinMargin(t *testing.T, input string, result, expected int64, marg
 		input, result, expected, marginPercent*100)
 }
 
-func TestDockerTarget_IsAvailable_ReturnsFalse_WhenDockerNotExists(t *testing.T) {
+type dockerExecFixture struct {
+	commandExists bool
+	versionOK     bool
+	verboseOutput string
+	verboseErr    bool
+	summaryOutput string
+	summaryErr    bool
+}
+
+func withDockerExecFixture(t *testing.T, fixture dockerExecFixture) func() {
+	t.Helper()
+
 	originalCommandExists := utils.CommandExists
-	defer func() { utils.CommandExists = originalCommandExists }()
+	original := execCommand
+
 	utils.CommandExists = func(_ string) bool {
-		return false
+		return fixture.commandExists
 	}
+	execCommand = func(_ string, args ...string) *exec.Cmd {
+		if len(args) > 0 && args[0] == "version" {
+			if fixture.versionOK {
+				return exec.Command("true")
+			}
+			return exec.Command("false")
+		}
+		if len(args) >= 3 && args[0] == "system" && args[1] == "df" && args[2] == "-v" {
+			if fixture.verboseErr {
+				return exec.Command("false")
+			}
+			return exec.Command("echo", fixture.verboseOutput)
+		}
+		if len(args) >= 2 && args[0] == "system" && args[1] == "df" {
+			if fixture.summaryErr {
+				return exec.Command("false")
+			}
+			return exec.Command("echo", fixture.summaryOutput)
+		}
+		return exec.Command("true")
+	}
+
+	return func() {
+		utils.CommandExists = originalCommandExists
+		execCommand = original
+	}
+}
+
+func stubDockerScan(t *testing.T, verboseOutput, summaryOutput string) func() {
+	t.Helper()
+	return withDockerExecFixture(t, dockerExecFixture{
+		commandExists: true,
+		versionOK:     true,
+		verboseOutput: verboseOutput,
+		summaryOutput: summaryOutput,
+	})
+}
+
+func TestDockerTarget_IsAvailable_ReturnsFalse_WhenDockerNotExists(t *testing.T) {
+	defer withDockerExecFixture(t, dockerExecFixture{
+		commandExists: false,
+	})()
 
 	cat := types.Category{ID: "docker", Name: "Docker"}
 	s := NewDockerTarget(cat)
@@ -156,19 +218,10 @@ func TestDockerTarget_IsAvailable_ReturnsFalse_WhenDockerNotExists(t *testing.T)
 }
 
 func TestDockerTarget_IsAvailable_ReturnsFalse_WhenDockerInfoFails(t *testing.T) {
-	originalCommandExists := utils.CommandExists
-	original := execCommand
-	defer func() {
-		utils.CommandExists = originalCommandExists
-		execCommand = original
-	}()
-
-	utils.CommandExists = func(_ string) bool {
-		return true
-	}
-	execCommand = func(_ string, _ ...string) *exec.Cmd {
-		return exec.Command("false")
-	}
+	defer withDockerExecFixture(t, dockerExecFixture{
+		commandExists: true,
+		versionOK:     false,
+	})()
 
 	cat := types.Category{ID: "docker", Name: "Docker"}
 	s := NewDockerTarget(cat)
@@ -177,19 +230,10 @@ func TestDockerTarget_IsAvailable_ReturnsFalse_WhenDockerInfoFails(t *testing.T)
 }
 
 func TestDockerTarget_IsAvailable_ReturnsTrue_WhenDockerWorks(t *testing.T) {
-	originalCommandExists := utils.CommandExists
-	original := execCommand
-	defer func() {
-		utils.CommandExists = originalCommandExists
-		execCommand = original
-	}()
-
-	utils.CommandExists = func(_ string) bool {
-		return true
-	}
-	execCommand = func(_ string, _ ...string) *exec.Cmd {
-		return exec.Command("true")
-	}
+	defer withDockerExecFixture(t, dockerExecFixture{
+		commandExists: true,
+		versionOK:     true,
+	})()
 
 	cat := types.Category{ID: "docker", Name: "Docker"}
 	s := NewDockerTarget(cat)
@@ -198,11 +242,9 @@ func TestDockerTarget_IsAvailable_ReturnsTrue_WhenDockerWorks(t *testing.T) {
 }
 
 func TestDockerTarget_Scan_ReturnsEmpty_WhenNotAvailable(t *testing.T) {
-	originalCommandExists := utils.CommandExists
-	defer func() { utils.CommandExists = originalCommandExists }()
-	utils.CommandExists = func(_ string) bool {
-		return false
-	}
+	defer withDockerExecFixture(t, dockerExecFixture{
+		commandExists: false,
+	})()
 
 	cat := types.Category{ID: "docker", Name: "Docker"}
 	s := NewDockerTarget(cat)
@@ -214,25 +256,11 @@ func TestDockerTarget_Scan_ReturnsEmpty_WhenNotAvailable(t *testing.T) {
 }
 
 func TestDockerTarget_Scan_ReturnsError_WhenCommandFails(t *testing.T) {
-	originalCommandExists := utils.CommandExists
-	original := execCommand
-	defer func() {
-		utils.CommandExists = originalCommandExists
-		execCommand = original
-	}()
-
-	utils.CommandExists = func(_ string) bool {
-		return true
-	}
-	execCommand = func(_ string, args ...string) *exec.Cmd {
-		if len(args) > 0 && args[0] == "version" {
-			return exec.Command("true")
-		}
-		if len(args) >= 3 && args[0] == "system" && args[1] == "df" && args[2] == "-v" {
-			return exec.Command("false")
-		}
-		return exec.Command("true")
-	}
+	defer withDockerExecFixture(t, dockerExecFixture{
+		commandExists: true,
+		versionOK:     true,
+		verboseErr:    true,
+	})()
 
 	cat := types.Category{ID: "docker", Name: "Docker"}
 	s := NewDockerTarget(cat)
@@ -244,30 +272,9 @@ func TestDockerTarget_Scan_ReturnsError_WhenCommandFails(t *testing.T) {
 }
 
 func TestDockerTarget_Scan_ParsesOutput(t *testing.T) {
-	originalCommandExists := utils.CommandExists
-	original := execCommand
-	defer func() {
-		utils.CommandExists = originalCommandExists
-		execCommand = original
-	}()
-
-	utils.CommandExists = func(_ string) bool {
-		return true
-	}
 	verboseOutput := `{"Images":[{"ID":"sha256:img1","Repository":"repo","Tag":"latest","Size":"1GB"}],"Containers":[{"Image":"repo:latest","Names":"web","Mounts":"vol1"}],"Volumes":[{"Name":"vol1","Size":"500MB"}],"BuildCache":[]}`
 	summaryOutput := `{"Type":"Build Cache","TotalCount":"1","Active":"0","Size":"1GB","Reclaimable":"1GB (100%)"}`
-	execCommand = func(_ string, args ...string) *exec.Cmd {
-		if len(args) > 0 && args[0] == "version" {
-			return exec.Command("true")
-		}
-		if len(args) >= 3 && args[0] == "system" && args[1] == "df" && args[2] == "-v" {
-			return exec.Command("echo", verboseOutput)
-		}
-		if len(args) >= 2 && args[0] == "system" && args[1] == "df" {
-			return exec.Command("echo", summaryOutput)
-		}
-		return exec.Command("true")
-	}
+	defer stubDockerScan(t, verboseOutput, summaryOutput)()
 
 	cat := types.Category{ID: "docker", Name: "Docker"}
 	s := NewDockerTarget(cat)
@@ -305,30 +312,42 @@ func TestDockerTarget_Scan_ParsesOutput(t *testing.T) {
 	assert.NotNil(t, cacheItem)
 }
 
-func TestDockerTarget_Scan_EmptyVerboseOutput(t *testing.T) {
-	originalCommandExists := utils.CommandExists
-	original := execCommand
-	defer func() {
-		utils.CommandExists = originalCommandExists
-		execCommand = original
-	}()
+func TestDockerTarget_Scan_UsesUniqueSizeWhenPresent(t *testing.T) {
+	verboseOutput := `{"Images":[{"ID":"sha256:img1","Repository":"repo","Tag":"latest","Size":"1GB","UniqueSize":"200MB"}],"Containers":[],"Volumes":[]}`
+	summaryOutput := `{"Type":"Build Cache","TotalCount":"0","Active":"0","Size":"0B","Reclaimable":"0B"}`
+	defer stubDockerScan(t, verboseOutput, summaryOutput)()
 
-	utils.CommandExists = func(_ string) bool {
-		return true
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	result, err := s.Scan()
+
+	assert.NoError(t, err)
+	if assert.Len(t, result.Items, 1) {
+		assert.Equal(t, parseDockerSize("200MB"), result.Items[0].Size)
+		assert.Equal(t, parseDockerSize("200MB"), result.TotalSize)
 	}
+}
+
+func TestDockerTarget_Scan_FallsBackToSizeWhenUniqueSizeEmpty(t *testing.T) {
+	verboseOutput := `{"Images":[{"ID":"sha256:img1","Repository":"repo","Tag":"latest","Size":"1GB"}],"Containers":[],"Volumes":[]}`
+	summaryOutput := `{"Type":"Build Cache","TotalCount":"0","Active":"0","Size":"0B","Reclaimable":"0B"}`
+	defer stubDockerScan(t, verboseOutput, summaryOutput)()
+
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	result, err := s.Scan()
+
+	assert.NoError(t, err)
+	if assert.Len(t, result.Items, 1) {
+		assert.Equal(t, parseDockerSize("1GB"), result.Items[0].Size)
+	}
+}
+
+func TestDockerTarget_Scan_EmptyVerboseOutput(t *testing.T) {
 	summaryOutput := `{"Type":"Build Cache","TotalCount":"1","Active":"0","Size":"1GB","Reclaimable":"1GB (100%)"}`
-	execCommand = func(_ string, args ...string) *exec.Cmd {
-		if len(args) > 0 && args[0] == "version" {
-			return exec.Command("true")
-		}
-		if len(args) >= 3 && args[0] == "system" && args[1] == "df" && args[2] == "-v" {
-			return exec.Command("echo", "")
-		}
-		if len(args) >= 2 && args[0] == "system" && args[1] == "df" {
-			return exec.Command("echo", summaryOutput)
-		}
-		return exec.Command("true")
-	}
+	defer stubDockerScan(t, "", summaryOutput)()
 
 	cat := types.Category{ID: "docker", Name: "Docker"}
 	s := NewDockerTarget(cat)
@@ -341,26 +360,27 @@ func TestDockerTarget_Scan_EmptyVerboseOutput(t *testing.T) {
 	assert.Equal(t, "docker:build-cache", result.Items[0].Path)
 }
 
-func TestDockerTarget_Scan_InvalidVerboseJSON(t *testing.T) {
-	originalCommandExists := utils.CommandExists
-	original := execCommand
-	defer func() {
-		utils.CommandExists = originalCommandExists
-		execCommand = original
-	}()
+func TestDockerTarget_Scan_RegistryPortImageAddsLatestUsedBy(t *testing.T) {
+	verboseOutput := `{"Images":[{"ID":"sha256:img1","Repository":"localhost:5000/myimage","Tag":"latest","Size":"1GB"}],"Containers":[{"Image":"localhost:5000/myimage","Names":"web","Mounts":""}],"Volumes":[]}`
+	summaryOutput := `{"Type":"Build Cache","TotalCount":"0","Active":"0","Size":"0B","Reclaimable":"0B"}`
+	defer stubDockerScan(t, verboseOutput, summaryOutput)()
 
-	utils.CommandExists = func(_ string) bool {
-		return true
-	}
-	execCommand = func(_ string, args ...string) *exec.Cmd {
-		if len(args) > 0 && args[0] == "version" {
-			return exec.Command("true")
-		}
-		if len(args) >= 3 && args[0] == "system" && args[1] == "df" && args[2] == "-v" {
-			return exec.Command("echo", "not-json")
-		}
-		return exec.Command("true")
-	}
+	cat := types.Category{ID: "docker", Name: "Docker"}
+	s := NewDockerTarget(cat)
+
+	result, err := s.Scan()
+
+	assert.NoError(t, err)
+	assert.Len(t, result.Items, 1)
+	item := result.Items[0]
+	assert.Contains(t, item.DisplayName, "Image: localhost:5000/myimage:latest")
+	assert.Contains(t, item.DisplayName, "Used By: web")
+	assert.Equal(t, "docker:image:sha256:img1", item.Path)
+	assert.Equal(t, types.ItemStatusProcessLocked, item.Status)
+}
+
+func TestDockerTarget_Scan_InvalidVerboseJSON(t *testing.T) {
+	defer stubDockerScan(t, "not-json", "")()
 
 	cat := types.Category{ID: "docker", Name: "Docker"}
 	s := NewDockerTarget(cat)
@@ -373,30 +393,9 @@ func TestDockerTarget_Scan_InvalidVerboseJSON(t *testing.T) {
 }
 
 func TestDockerTarget_Scan_BuildCacheMissing(t *testing.T) {
-	originalCommandExists := utils.CommandExists
-	original := execCommand
-	defer func() {
-		utils.CommandExists = originalCommandExists
-		execCommand = original
-	}()
-
-	utils.CommandExists = func(_ string) bool {
-		return true
-	}
 	verboseOutput := `{"Images":[{"ID":"sha256:img1","Repository":"repo","Tag":"latest","Size":"1GB"}],"Containers":[],"Volumes":[{"Name":"vol1","Size":"500MB"}]}`
 	summaryOutput := `{"Type":"Images","TotalCount":"1","Active":"0","Size":"1GB","Reclaimable":"1GB (100%)"}`
-	execCommand = func(_ string, args ...string) *exec.Cmd {
-		if len(args) > 0 && args[0] == "version" {
-			return exec.Command("true")
-		}
-		if len(args) >= 3 && args[0] == "system" && args[1] == "df" && args[2] == "-v" {
-			return exec.Command("echo", verboseOutput)
-		}
-		if len(args) >= 2 && args[0] == "system" && args[1] == "df" {
-			return exec.Command("echo", summaryOutput)
-		}
-		return exec.Command("true")
-	}
+	defer stubDockerScan(t, verboseOutput, summaryOutput)()
 
 	cat := types.Category{ID: "docker", Name: "Docker"}
 	s := NewDockerTarget(cat)
@@ -412,29 +411,8 @@ func TestDockerTarget_Scan_BuildCacheMissing(t *testing.T) {
 }
 
 func TestDockerTarget_Scan_UntaggedImageLabel(t *testing.T) {
-	originalCommandExists := utils.CommandExists
-	original := execCommand
-	defer func() {
-		utils.CommandExists = originalCommandExists
-		execCommand = original
-	}()
-
-	utils.CommandExists = func(_ string) bool {
-		return true
-	}
 	verboseOutput := `{"Images":[{"ID":"sha256:img1","Repository":"<none>","Tag":"<none>","Size":"1GB"}],"Containers":[{"Image":"sha256:img1","Names":"worker","Mounts":""}],"Volumes":[]}`
-	execCommand = func(_ string, args ...string) *exec.Cmd {
-		if len(args) > 0 && args[0] == "version" {
-			return exec.Command("true")
-		}
-		if len(args) >= 3 && args[0] == "system" && args[1] == "df" && args[2] == "-v" {
-			return exec.Command("echo", verboseOutput)
-		}
-		if len(args) >= 2 && args[0] == "system" && args[1] == "df" {
-			return exec.Command("echo", `{"Type":"Build Cache","TotalCount":"0","Active":"0","Size":"0B","Reclaimable":"0B"}`)
-		}
-		return exec.Command("true")
-	}
+	defer stubDockerScan(t, verboseOutput, `{"Type":"Build Cache","TotalCount":"0","Active":"0","Size":"0B","Reclaimable":"0B"}`)()
 
 	cat := types.Category{ID: "docker", Name: "Docker"}
 	s := NewDockerTarget(cat)
@@ -451,29 +429,8 @@ func TestDockerTarget_Scan_UntaggedImageLabel(t *testing.T) {
 }
 
 func TestDockerTarget_Scan_MultiTagImagesHaveUniquePaths(t *testing.T) {
-	originalCommandExists := utils.CommandExists
-	original := execCommand
-	defer func() {
-		utils.CommandExists = originalCommandExists
-		execCommand = original
-	}()
-
-	utils.CommandExists = func(_ string) bool {
-		return true
-	}
 	verboseOutput := `{"Images":[{"ID":"sha256:img1","Repository":"repo","Tag":"latest","Size":"1GB"},{"ID":"sha256:img1","Repository":"repo","Tag":"dev","Size":"1GB"}],"Containers":[],"Volumes":[]}`
-	execCommand = func(_ string, args ...string) *exec.Cmd {
-		if len(args) > 0 && args[0] == "version" {
-			return exec.Command("true")
-		}
-		if len(args) >= 3 && args[0] == "system" && args[1] == "df" && args[2] == "-v" {
-			return exec.Command("echo", verboseOutput)
-		}
-		if len(args) >= 2 && args[0] == "system" && args[1] == "df" {
-			return exec.Command("echo", `{"Type":"Build Cache","TotalCount":"0","Active":"0","Size":"0B","Reclaimable":"0B"}`)
-		}
-		return exec.Command("true")
-	}
+	defer stubDockerScan(t, verboseOutput, `{"Type":"Build Cache","TotalCount":"0","Active":"0","Size":"0B","Reclaimable":"0B"}`)()
 
 	cat := types.Category{ID: "docker", Name: "Docker"}
 	s := NewDockerTarget(cat)
@@ -482,7 +439,7 @@ func TestDockerTarget_Scan_MultiTagImagesHaveUniquePaths(t *testing.T) {
 
 	assert.NoError(t, err)
 	if assert.Len(t, result.Items, 1) {
-		assert.Contains(t, result.Items[0].DisplayName, "Image: repo:latest")
+		assert.Contains(t, result.Items[0].DisplayName, "Image: repo:dev")
 		assert.Contains(t, result.Items[0].DisplayName, "(+1 tags)")
 		assert.Equal(t, "docker:image:sha256:img1", result.Items[0].Path)
 		assert.Equal(t, parseDockerSize("1GB"), result.TotalSize)
