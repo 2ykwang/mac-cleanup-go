@@ -20,7 +20,7 @@ jobs:
 
     steps:
       # actions/checkout@v6.0.1
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       # actions/setup-go@v6.1.0
       - uses: actions/setup-go@ae252ee6fb24babc50e89fc67c4aa608e69fbf8f
