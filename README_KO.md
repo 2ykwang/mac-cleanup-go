@@ -29,7 +29,7 @@
 Homebrew로 설치:
 
 ```bash
-brew install 2ykwang/2ykwang/mac-cleanup-go
+brew install mac-cleanup-go
 ```
 
 실행:

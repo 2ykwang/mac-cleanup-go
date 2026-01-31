@@ -20,8 +20,8 @@ var (
 )
 
 const (
-	// BrewFormula is the Homebrew formula name for mac-cleanup-go
-	BrewFormula = "2ykwang/2ykwang/mac-cleanup-go"
+	// BrewFormula is the Homebrew formula name for mac-cleanup-go (homebrew-core)
+	BrewFormula = "mac-cleanup-go"
 )
 
 // CheckResult contains version check results
@@ -33,8 +33,7 @@ type CheckResult struct {
 }
 
 // CheckForUpdate checks if a newer version is available via GitHub Releases.
-// TODO(homebrew-core): After migrating to homebrew-core, consider version detection delay.
-// GitHub Release may be published 1-3 days before the formula is updated.
+// Note: GitHub Release may be published 1-3 days before the homebrew-core formula is updated.
 func CheckForUpdate(currentVersion string) CheckResult {
 	result := CheckResult{CurrentVersion: currentVersion}
 

@@ -30,7 +30,7 @@
 Install via Homebrew:
 
 ```bash
-brew install 2ykwang/2ykwang/mac-cleanup-go
+brew install mac-cleanup-go
 ```
 
 Run:
