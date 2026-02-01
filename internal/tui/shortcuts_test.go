@@ -113,26 +113,32 @@ func TestPreviewKeys_FullHelp_ContainsAllKeys(t *testing.T) {
 func TestConfirmKeys_ShortHelp_ReturnsExpectedBindings(t *testing.T) {
 	bindings := ConfirmKeyMap.ShortHelp()
 
-	assert.Len(t, bindings, 3)
-	assert.Equal(t, "y", bindings[0].Help().Key)
-	assert.Equal(t, "n/esc", bindings[1].Help().Key)
-	assert.Equal(t, "?", bindings[2].Help().Key)
+	assert.Len(t, bindings, 5)
+	assert.Equal(t, "↑/↓", bindings[0].Help().Key)
+	assert.Equal(t, "←/→/tab", bindings[1].Help().Key)
+	assert.Equal(t, "enter", bindings[2].Help().Key)
+	assert.Equal(t, "esc", bindings[3].Help().Key)
+	assert.Equal(t, "?", bindings[4].Help().Key)
 }
 
 func TestConfirmKeys_FullHelp_ReturnsGroupedBindings(t *testing.T) {
 	groups := ConfirmKeyMap.FullHelp()
 
 	assert.Len(t, groups, 1)
-	assert.Len(t, groups[0], 3)
+	assert.Len(t, groups[0], 5)
 }
 
 func TestConfirmKeys_FullHelp_ContainsAllKeys(t *testing.T) {
 	groups := ConfirmKeyMap.FullHelp()
 
-	assert.Equal(t, "y", groups[0][0].Help().Key)
-	assert.Equal(t, "confirm", groups[0][0].Help().Desc)
-	assert.Equal(t, "n/esc", groups[0][1].Help().Key)
-	assert.Equal(t, "cancel", groups[0][1].Help().Desc)
+	assert.Equal(t, "↑/↓", groups[0][0].Help().Key)
+	assert.Equal(t, "scroll", groups[0][0].Help().Desc)
+	assert.Equal(t, "←/→/tab", groups[0][1].Help().Key)
+	assert.Equal(t, "switch", groups[0][1].Help().Desc)
+	assert.Equal(t, "enter", groups[0][2].Help().Key)
+	assert.Equal(t, "select", groups[0][2].Help().Desc)
+	assert.Equal(t, "esc", groups[0][3].Help().Key)
+	assert.Equal(t, "cancel", groups[0][3].Help().Desc)
 }
 
 // ReportKeys tests
