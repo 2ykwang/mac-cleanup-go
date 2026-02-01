@@ -66,6 +66,10 @@ test-v: ## Run tests with verbose output
 		$(GO) test -v ./...; \
 	fi
 
+.PHONY: targets-validate
+targets-validate: ## Validate internal/config/targets.yaml
+	$(GO) test ./internal/config -run TestLoadEmbedded -count=1
+
 .PHONY: test-cover
 test-cover: ## Run tests with coverage
 	$(GO) test -cover ./...
