@@ -28,27 +28,25 @@
 
 ## Quick Start
 
-Install via Homebrew:
+**1) Install**
 
 ```bash
 brew install mac-cleanup-go
 ```
 
-Run:
+**2) Optional: Full Disk Access (needed for Trash/restricted locations)**
+System Settings -> Privacy & Security -> Full Disk Access -> add Terminal
+
+**3) Run**
 
 ```bash
 mac-cleanup
-mac-cleanup --update   # update via Homebrew
 ```
 
-Uninstall:
+Tip: Use Enter to preview, then y to proceed with deletion.
 
-```bash
-brew uninstall mac-cleanup-go
-```
-
-> Tip: Grant Full Disk Access to your terminal to clean Trash and restricted locations.  
-> System Settings -> Privacy & Security -> Full Disk Access
+**4) Help**
+Press ? to see key bindings.
 
 ![demo](assets/demo.gif)
 
@@ -84,6 +82,7 @@ brew uninstall mac-cleanup-go
 - Full Disk Access helps scan/clean restricted locations.
 - Version check: `mac-cleanup --version`.
 - Update: `brew upgrade mac-cleanup-go` or `mac-cleanup --update`.
+- Uninstall: `brew uninstall mac-cleanup-go`.
 
 ## Manual install
 

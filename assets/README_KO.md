@@ -27,27 +27,25 @@
 
 ## 빠른 시작
 
-Homebrew로 설치:
+**1) 설치**
 
 ```bash
 brew install mac-cleanup-go
 ```
 
-실행:
+**2) (선택) 전체 디스크 접근 (휴지통/제한 경로 정리에 필요)**
+시스템 설정 -> 개인정보 보호 및 보안 -> 전체 디스크 접근 -> Terminal 추가
+
+**3) 실행**
 
 ```bash
 mac-cleanup
-mac-cleanup --update   # Homebrew로 업데이트
 ```
 
-삭제:
+팁: Enter로 미리보기, y로 삭제 진행.
 
-```bash
-brew uninstall mac-cleanup-go
-```
-
-> 팁: 휴지통과 제한된 위치를 정리하려면 터미널에 전체 디스크 접근 권한을 부여하세요.  
-> 시스템 설정 -> 개인정보 보호 및 보안 -> 전체 디스크 접근
+**4) 도움말**
+키 바인딩은 ? 키로 확인하세요.
 
 ![demo](demo.gif)
 
@@ -84,6 +82,7 @@ brew uninstall mac-cleanup-go
 - 전체 디스크 접근 권한이 있으면 제한된 위치도 스캔/정리할 수 있습니다.
 - 버전 확인: `mac-cleanup --version`.
 - 업데이트: `brew upgrade mac-cleanup-go` 또는 `mac-cleanup --update`.
+- 삭제: `brew uninstall mac-cleanup-go`.
 
 ## 수동 설치
 
