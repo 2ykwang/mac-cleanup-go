@@ -12,14 +12,15 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> | <a href="README_KO.md">한국어</a>
+  <a href="README.md">English</a> | <a href="assets/README_KO.md">한국어</a>
 </p>
 
 ## Overview
 
-- Preview items before delete and exclude what you want.
+- Select items that take up space and delete them yourself.
 - By default, items go to Trash; only the Trash category empties it permanently.
-- Risky items start excluded; manual categories show guides only.
+- Risky categories are unselected by default; even when selected, items are auto-excluded. (Include them in Preview to delete.)
+- Manual categories show guides only.
 - Scope: caches/logs/temp and selected app data (no system optimization or uninstaller).
 
 ![demo](assets/result_view.png)
@@ -27,63 +28,75 @@
 
 ## Quick Start
 
-Install via Homebrew:
+**1) Install**
 
 ```bash
 brew install mac-cleanup-go
 ```
 
-Run:
+**2) Optional: Full Disk Access (needed for Trash/restricted locations)**
+System Settings -> Privacy & Security -> Full Disk Access -> add Terminal
+
+**3) Run**
 
 ```bash
 mac-cleanup
-mac-cleanup --update   # update via Homebrew
 ```
 
-Uninstall:
+Tip: Use Enter to preview, then y to proceed with deletion.
 
-```bash
-brew uninstall mac-cleanup-go
-```
-
-> Tip: Grant Full Disk Access to your terminal to clean Trash and restricted locations.  
-> System Settings -> Privacy & Security -> Full Disk Access
+**4) Help**
+Press ? to see key bindings.
 
 ![demo](assets/demo.gif)
 
-## Safety & deletion policy
+## How it works & safety
 
 - Scans known cache/log/temp paths across apps and tools in parallel.
 - Lets you preview items and exclude what you want to keep.
-- Labels targets by impact level (safe, moderate, risky).
-- Built-in scans for Homebrew, Docker, and old downloads (brew/docker output or last-modified time filtering).
-
-## What it does
-
-- Items are previewed before delete.
 - By default, items go to Trash; only the Trash category empties it permanently.
-- Risky categories start selected with all items excluded.
-- Manual categories never delete automatically and only show guidance.
+- Labels targets by impact level (safe, moderate, risky, manual); manual categories show guides only.
+- Risky categories are unselected by default, and items stay auto-excluded unless included in Preview.
+- SIP-protected paths are excluded from scan/cleanup.
+- Built-in scans for Homebrew, Docker, and old downloads (brew/docker output or last-modified time filtering).
 
 ## Impact levels
 
 - safe: auto-regenerated caches/logs.
 - moderate: may require re-download or re-login.
-- risky: user data possible; category starts selected with all items excluded.
+- risky: user data possible; items start excluded.
 - manual: no automatic deletion; shows an app guide only.
 
-## Targets (v1.3.6)
+## Targets (as of v1.3.6)
 
 - Total targets: 107.
 - Groups: System 7, Browsers 10, Development 35, Applications 52, Storage 3.
 - Cleanup methods: trash 101, permanent 1, builtin 3, manual 2.
 - Builtins: homebrew, docker, old-downloads (built-in scanners using brew/docker output or last-modified time filtering).
 - Manual: telegram, kakaotalk (no automatic deletion; surfaces large data like chat caches).
+- Counts are release-based and may change over time.
 
 ## Usage notes
 
+- Supported: macOS (arm64, amd64).
 - Full Disk Access helps scan/clean restricted locations.
 - Version check: `mac-cleanup --version`.
+- Update: `brew upgrade mac-cleanup-go` or `mac-cleanup --update`.
+- Uninstall: `brew uninstall mac-cleanup-go`.
+
+## Manual install
+
+- If Homebrew isn't available, download the tar.gz from GitHub Releases and run the `mac-cleanup` binary.
+
+## CLI flags
+
+- `--version`, `-v`: print version
+- `--update`: update via Homebrew
+- `--debug`: save debug log (`~/.config/mac-cleanup-go/debug.log`)
+
+## Config file
+
+- User preferences (excluded paths, etc.) are stored at `~/.config/mac-cleanup-go/config.yaml`.
 
 <details>
 <summary><strong>Key bindings</strong></summary>

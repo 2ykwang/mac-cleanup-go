@@ -1,0 +1,42 @@
+name: Bug report
+description: Report unexpected behavior or errors.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please fill what you can. Short info is OK.
+  - type: input
+    id: version
+    attributes:
+      label: mac-cleanup-go version
+      placeholder: "mac-cleanup --version"
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "Sonoma 14.4"
+  - type: input
+    id: command
+    attributes:
+      label: Command you ran
+      placeholder: "mac-cleanup --dry-run"
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened
+      description: Describe the actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: If you had an expectation, share it.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error message or logs
+      description: Short excerpts are enough.
+      render: shell
