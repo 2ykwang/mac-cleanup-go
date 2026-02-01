@@ -63,6 +63,18 @@ type previewState struct {
 	guidePathIndex   int
 }
 
+type confirmChoice int
+
+const (
+	confirmCancel confirmChoice = iota
+	confirmDelete
+)
+
+type confirmState struct {
+	confirmChoice confirmChoice
+	confirmScroll int
+}
+
 type filterStateData struct {
 	filterState FilterState
 	filterText  string

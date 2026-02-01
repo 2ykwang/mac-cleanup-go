@@ -89,25 +89,29 @@ var PreviewKeyMap = PreviewKeys{
 
 // ConfirmKeys defines key bindings for confirm view
 type ConfirmKeys struct {
-	Confirm key.Binding
-	Cancel  key.Binding
-	Help    key.Binding
+	Scroll key.Binding
+	Switch key.Binding
+	Select key.Binding
+	Cancel key.Binding
+	Help   key.Binding
 }
 
 func (k ConfirmKeys) ShortHelp() []key.Binding {
-	return []key.Binding{k.Confirm, k.Cancel, k.Help}
+	return []key.Binding{k.Scroll, k.Switch, k.Select, k.Cancel, k.Help}
 }
 
 func (k ConfirmKeys) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Confirm, k.Cancel, k.Help},
+		{k.Scroll, k.Switch, k.Select, k.Cancel, k.Help},
 	}
 }
 
 var ConfirmKeyMap = ConfirmKeys{
-	Confirm: key.NewBinding(key.WithKeys("y", "enter"), key.WithHelp("y", "confirm")),
-	Cancel:  key.NewBinding(key.WithKeys("n", "esc"), key.WithHelp("n/esc", "cancel")),
-	Help:    key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
+	Scroll: key.NewBinding(key.WithKeys("up", "down", "k", "j", "pgup", "pgdown"), key.WithHelp("↑/↓", "scroll")),
+	Switch: key.NewBinding(key.WithKeys("left", "right", "h", "l", "tab", "shift+tab"), key.WithHelp("←/→/tab", "switch")),
+	Select: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
+	Cancel: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
+	Help:   key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 }
 
 // ReportKeys defines key bindings for report view
