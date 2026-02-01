@@ -36,6 +36,7 @@ type Model struct {
 	layoutState
 	scanState
 	previewState
+	confirmState
 	filterStateData
 	cleaningState
 	reportState
@@ -114,6 +115,9 @@ func NewModel(cfg *types.Config, currentVersion string) *Model {
 			drillDownStack: make([]drillDownState, 0),
 			sortOrder:      types.SortBySize,
 		},
+		confirmState: confirmState{
+			confirmChoice: confirmCancel,
+		},
 		filterStateData: filterStateData{
 			filterState: FilterNone,
 			filterInput: ti,
@@ -148,7 +152,7 @@ func (m *Model) View() string {
 	case ViewPreview:
 		return m.renderCentered(m.viewPreview, maxPreviewContentWidth)
 	case ViewConfirm:
-		return m.renderCentered(m.viewConfirm, maxContentWidth)
+		return m.renderCentered(m.viewConfirm, maxPreviewContentWidth)
 	case ViewCleaning:
 		return m.renderCentered(m.viewCleaning, maxCleaningContentWidth)
 	case ViewReport:

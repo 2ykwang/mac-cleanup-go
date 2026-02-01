@@ -12,35 +12,8 @@ import (
 // Confirm dialog view
 
 func (m *Model) viewConfirm() string {
-	var b strings.Builder
-
-	b.WriteString("\n\n")
-	b.WriteString(HeaderStyle.Render("Confirm Deletion"))
-	b.WriteString("\n\n")
-
-	b.WriteString(SuccessStyle.Render("  → Files will be moved to Trash"))
-	b.WriteString("\n\n")
-
-	b.WriteString(Divider(50) + "\n\n")
-
-	b.WriteString(fmt.Sprintf("  Total %s will be deleted.\n\n",
-		DangerStyle.Render(formatSize(m.getSelectedSize()))))
-
-	selected := m.getSelectedResults()
-	for _, r := range selected {
-		dot := safetyDot(r.Category.Safety)
-		effectiveSize := m.getEffectiveSize(r)
-		size := fmt.Sprintf("%*s", colSize, utils.FormatSize(effectiveSize))
-		b.WriteString(fmt.Sprintf("  %s %-24s %s\n", dot, r.Category.Name, size))
-	}
-
-	b.WriteString("\n" + Divider(50) + "\n\n")
-	b.WriteString(MutedStyle.Render("  Items can be recovered from Trash"))
-	b.WriteString("\n\n")
-	b.WriteString(fmt.Sprintf("  %s Press y or Enter to delete\n", SuccessStyle.Render("▸")))
-	b.WriteString(fmt.Sprintf("  %s Press n or Esc to cancel\n", DangerStyle.Render("▸")))
-
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, b.String())
+	base := lipgloss.NewStyle().Faint(true).Render(m.viewPreview())
+	return m.overlayCentered(base, m.confirmDialog())
 }
 
 // Guide dialog view
@@ -127,4 +100,195 @@ func (m *Model) viewGuide() string {
 
 	content := boxStyle.Render(b.String())
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+}
+
+func (m *Model) confirmDialog() string {
+	boxWidth := minInt(72, m.width-4)
+	if boxWidth < 40 {
+		boxWidth = minInt(m.width-2, 40)
+	}
+	if boxWidth < 24 {
+		boxWidth = m.width
+	}
+	if boxWidth < 0 {
+		boxWidth = m.width
+	}
+	if boxWidth > m.width {
+		boxWidth = m.width
+	}
+	contentWidth := boxWidth - 6
+	if contentWidth < 0 {
+		contentWidth = 0
+	}
+
+	maxBoxHeight := m.height - 2
+	if maxBoxHeight < 0 {
+		maxBoxHeight = 0
+	}
+	contentHeight := maxBoxHeight - 4
+	if contentHeight < 0 {
+		contentHeight = 0
+	}
+
+	buttons := m.confirmButtons()
+	if contentWidth > 0 {
+		buttons = lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, buttons)
+	}
+	help := m.help
+	if contentWidth > 0 {
+		help.Width = contentWidth
+	}
+	helpView := help.View(ConfirmKeyMap)
+
+	buildSections := func(compact bool) ([]string, []string) {
+		var head []string
+		var tail []string
+
+		head = append(head, HeaderStyle.Render("Confirm Deletion"))
+		if !compact {
+			head = append(head, "")
+		}
+		head = append(head, SuccessStyle.Render("Files will be moved to Trash"))
+		if !compact {
+			head = append(head, "")
+		}
+		if contentWidth > 0 && !compact {
+			head = append(head, Divider(contentWidth), "")
+		}
+		head = append(head, fmt.Sprintf("Total %s will be deleted.",
+			DangerStyle.Render(formatSize(m.getSelectedSize()))))
+		if !compact {
+			head = append(head, "")
+		}
+
+		if contentWidth > 0 && !compact {
+			tail = append(tail, Divider(contentWidth), "")
+		}
+		tail = append(tail, MutedStyle.Render("Items can be recovered from Trash"))
+		if !compact {
+			tail = append(tail, "")
+		}
+		tail = append(tail, buttons)
+		tail = append(tail, splitLines(helpView)...)
+
+		return head, tail
+	}
+
+	head, tail := buildSections(false)
+	availableForItems := contentHeight - len(head) - len(tail)
+	if availableForItems < 0 && contentHeight > 0 {
+		head, tail = buildSections(true)
+		availableForItems = contentHeight - len(head) - len(tail)
+	}
+	if availableForItems < 0 {
+		availableForItems = 0
+	}
+
+	var itemLines []string
+	selected := m.getSelectedResults()
+	totalSelected := len(selected)
+	nameWidth, sizeWidth := confirmItemColumns(contentWidth)
+	showScrollInfo := false
+	visibleItems := availableForItems
+	if totalSelected > availableForItems && availableForItems >= 2 {
+		showScrollInfo = true
+		visibleItems = availableForItems - 1
+	}
+	if visibleItems < 0 {
+		visibleItems = 0
+	}
+
+	if nameWidth > 0 && sizeWidth > 0 && visibleItems > 0 {
+		maxScroll := totalSelected - visibleItems
+		if maxScroll < 0 {
+			maxScroll = 0
+		}
+		if m.confirmScroll > maxScroll {
+			m.confirmScroll = maxScroll
+		}
+		if m.confirmScroll < 0 {
+			m.confirmScroll = 0
+		}
+
+		start := m.confirmScroll
+		end := start + visibleItems
+		if end > totalSelected {
+			end = totalSelected
+		}
+
+		for i := start; i < end; i++ {
+			r := selected[i]
+			dot := safetyDot(r.Category.Safety)
+			effectiveSize := m.getEffectiveSize(r)
+			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(effectiveSize))
+			name := padToWidth(truncateToWidth(r.Category.Name, nameWidth, false), nameWidth)
+			itemLines = append(itemLines, fmt.Sprintf("  %s %s %s", dot, name, size))
+		}
+	}
+
+	lines := append([]string{}, head...)
+	lines = append(lines, itemLines...)
+	if showScrollInfo && totalSelected > 0 && visibleItems > 0 && len(itemLines) > 0 {
+		start := m.confirmScroll + 1
+		end := m.confirmScroll + len(itemLines)
+		if end > totalSelected {
+			end = totalSelected
+		}
+		info := fmt.Sprintf("Showing %d-%d of %d", start, end, totalSelected)
+		if contentWidth > 0 {
+			info = truncateToWidth(info, contentWidth, false)
+		}
+		lines = append(lines, MutedStyle.Render(info))
+	}
+	lines = append(lines, tail...)
+	content := strings.Join(lines, "\n")
+
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ColorBorder).
+		Padding(1, 2).
+		Width(boxWidth)
+
+	return boxStyle.Render(content)
+}
+
+func (m *Model) confirmButtons() string {
+	cancelStyle := ButtonStyle
+	if m.confirmChoice == confirmCancel {
+		cancelStyle = ButtonActiveStyle
+	}
+	deleteStyle := ButtonDangerStyle
+	if m.confirmChoice == confirmDelete {
+		deleteStyle = ButtonDangerActiveStyle
+	}
+
+	cancel := cancelStyle.Render("Cancel")
+	del := deleteStyle.Render("Delete")
+	return lipgloss.JoinHorizontal(lipgloss.Top, cancel, "  ", del)
+}
+
+func confirmItemColumns(contentWidth int) (int, int) {
+	if contentWidth <= 0 {
+		return 0, 0
+	}
+
+	indentWidth := 2
+	sizeWidth := colSize
+	nameWidth := contentWidth - indentWidth - 3 - sizeWidth
+	if nameWidth < 8 {
+		nameWidth = 8
+		sizeWidth = contentWidth - indentWidth - 3 - nameWidth
+	}
+	if sizeWidth < 6 {
+		sizeWidth = 6
+		nameWidth = contentWidth - indentWidth - 3 - sizeWidth
+	}
+	if nameWidth < 1 {
+		nameWidth = 1
+	}
+	if sizeWidth < 1 {
+		sizeWidth = 1
+	}
+
+	return nameWidth, sizeWidth
 }

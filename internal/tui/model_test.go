@@ -30,6 +30,7 @@ func newTestModel() *Model {
 	m.view = ViewList
 	m.width = 80
 	m.height = 24
+	m.confirmChoice = confirmCancel
 	m.userConfig = &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)}
 	m.recentDeleted = NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity)
 	return m
@@ -562,6 +563,7 @@ func TestHandlePreviewKey_Confirm(t *testing.T) {
 	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
 
 	assert.Equal(t, ViewConfirm, m.view)
+	assert.Equal(t, confirmCancel, m.confirmChoice)
 }
 
 // Open in Finder tests
@@ -986,6 +988,16 @@ func TestViewConfirm_ContainsWarning(t *testing.T) {
 	assert.Contains(t, output, "Chrome Cache")
 }
 
+func TestView_RendersConfirmOverlay(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewConfirm
+	m.selected["cat1"] = true
+
+	output := m.View()
+
+	assert.Contains(t, output, "Confirm Deletion")
+}
+
 func TestViewReport_ContainsSummary(t *testing.T) {
 	m := newTestModel()
 	m.view = ViewReport
@@ -1353,12 +1365,13 @@ func TestHandleFilterTypingKey_RegularKeyResetsScroll(t *testing.T) {
 	assert.Equal(t, 0, m.previewScroll)
 }
 
-func TestHandleConfirmKey_YesStartsCleaning(t *testing.T) {
+func TestHandleConfirmKey_EnterStartsCleaningWhenDeleteSelected(t *testing.T) {
 	m := newTestModelWithResults()
 	m.view = ViewConfirm
+	m.confirmChoice = confirmDelete
 	beforeTime := time.Now()
 
-	_, cmd := m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	_, cmd := m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyEnter})
 
 	assert.Equal(t, ViewCleaning, m.view)
 	assert.False(t, m.startTime.IsZero())
@@ -1366,20 +1379,12 @@ func TestHandleConfirmKey_YesStartsCleaning(t *testing.T) {
 	assert.NotNil(t, cmd)
 }
 
-func TestHandleConfirmKey_EnterStartsCleaning(t *testing.T) {
+func TestHandleConfirmKey_EnterCancelsWhenCancelSelected(t *testing.T) {
 	m := newTestModelWithResults()
 	m.view = ViewConfirm
+	m.confirmChoice = confirmCancel
 
 	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyEnter})
-
-	assert.Equal(t, ViewCleaning, m.view)
-}
-
-func TestHandleConfirmKey_NoReturnsToPreview(t *testing.T) {
-	m := newTestModelWithResults()
-	m.view = ViewConfirm
-
-	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 
 	assert.Equal(t, ViewPreview, m.view)
 }
@@ -1391,6 +1396,118 @@ func TestHandleConfirmKey_EscReturnsToPreview(t *testing.T) {
 	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyEsc})
 
 	assert.Equal(t, ViewPreview, m.view)
+}
+
+func TestHandleConfirmKey_ScrollAdjusts(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewConfirm
+	m.selected["cat1"] = true
+	m.selected["cat2"] = true
+	m.confirmScroll = 1
+
+	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyUp})
+	assert.Equal(t, 0, m.confirmScroll)
+
+	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyDown})
+	assert.Equal(t, 1, m.confirmScroll)
+}
+
+func TestHandleConfirmKey_LeftSelectsCancel(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewConfirm
+	m.confirmChoice = confirmDelete
+
+	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyLeft})
+
+	assert.Equal(t, confirmCancel, m.confirmChoice)
+}
+
+func TestHandleConfirmKey_RightSelectsDelete(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewConfirm
+	m.confirmChoice = confirmCancel
+
+	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyRight})
+
+	assert.Equal(t, confirmDelete, m.confirmChoice)
+}
+
+func TestHandleConfirmKey_TabTogglesChoice(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewConfirm
+	m.confirmChoice = confirmCancel
+
+	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyTab})
+
+	assert.Equal(t, confirmDelete, m.confirmChoice)
+}
+
+func TestHandleConfirmKey_ShiftTabTogglesChoice(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewConfirm
+	m.confirmChoice = confirmDelete
+
+	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyShiftTab})
+
+	assert.Equal(t, confirmCancel, m.confirmChoice)
+}
+
+func TestHandleConfirmKey_HomeEndScrollsToBounds(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewConfirm
+	m.selected["cat1"] = true
+	m.selected["cat2"] = true
+	m.selected["cat3"] = true
+	m.confirmScroll = 2
+
+	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyHome})
+	assert.Equal(t, 0, m.confirmScroll)
+
+	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyEnd})
+	assert.Equal(t, 2, m.confirmScroll)
+}
+
+func TestHandleConfirmKey_PageScrollClamps(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewConfirm
+	m.height = 12
+	m.selected["cat1"] = true
+	m.selected["cat2"] = true
+	m.selected["cat3"] = true
+
+	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyPgDown})
+	assert.Equal(t, 2, m.confirmScroll)
+
+	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyPgUp})
+	assert.Equal(t, 0, m.confirmScroll)
+}
+
+func TestSetConfirmScroll_ClampsAboveMax(t *testing.T) {
+	m := newTestModelWithResults()
+	m.selected["cat1"] = true
+	m.selected["cat2"] = true
+
+	m.setConfirmScroll(10)
+
+	assert.Equal(t, 1, m.confirmScroll)
+}
+
+func TestSetConfirmScroll_ClampsBelowZero(t *testing.T) {
+	m := newTestModelWithResults()
+	m.selected["cat1"] = true
+	m.selected["cat2"] = true
+
+	m.setConfirmScroll(-1)
+
+	assert.Equal(t, 0, m.confirmScroll)
+}
+
+func TestSetConfirmScroll_NoSelectionStaysZero(t *testing.T) {
+	m := newTestModelWithResults()
+
+	m.setConfirmScroll(5)
+
+	assert.Equal(t, 0, m.confirmScroll)
 }
 
 func newTestModelForPreview() *Model {

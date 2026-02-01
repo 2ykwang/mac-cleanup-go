@@ -208,7 +208,7 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case "y":
-		m.view = ViewConfirm
+		m.enterConfirm()
 	case "a", "A":
 		// Include all items in current category (clear exclusions)
 		if r := m.getPreviewCatResult(); r != nil {
@@ -283,14 +283,67 @@ func (m *Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.toggleHelp()
 	case "ctrl+c", "q":
 		return m, tea.Quit
-	case "y", "Y", "enter":
-		m.view = ViewCleaning
-		m.startTime = time.Now()
-		return m, tea.Batch(m.spinner.Tick, m.doClean())
-	case "n", "N", "esc":
+	case "up", "k":
+		m.moveConfirmScroll(-1)
+	case "down", "j":
+		m.moveConfirmScroll(1)
+	case "pgup":
+		m.moveConfirmScroll(-m.pageSize())
+	case "pgdown":
+		m.moveConfirmScroll(m.pageSize())
+	case "home":
+		m.setConfirmScroll(0)
+	case "end":
+		m.setConfirmScroll(len(m.getSelectedResults()))
+	case "left", "h":
+		m.confirmChoice = confirmCancel
+	case "right", "l":
+		m.confirmChoice = confirmDelete
+	case "tab", "shift+tab":
+		m.toggleConfirmChoice()
+	case "enter":
+		if m.confirmChoice == confirmDelete {
+			m.view = ViewCleaning
+			m.startTime = time.Now()
+			return m, tea.Batch(m.spinner.Tick, m.doClean())
+		}
+		m.view = ViewPreview
+	case "esc":
 		m.view = ViewPreview
 	}
 	return m, nil
+}
+
+func (m *Model) enterConfirm() {
+	m.view = ViewConfirm
+	m.confirmChoice = confirmCancel
+	m.confirmScroll = 0
+}
+
+func (m *Model) toggleConfirmChoice() {
+	if m.confirmChoice == confirmDelete {
+		m.confirmChoice = confirmCancel
+		return
+	}
+	m.confirmChoice = confirmDelete
+}
+
+func (m *Model) moveConfirmScroll(delta int) {
+	m.setConfirmScroll(m.confirmScroll + delta)
+}
+
+func (m *Model) setConfirmScroll(index int) {
+	max := len(m.getSelectedResults()) - 1
+	if max < 0 {
+		max = 0
+	}
+	if index < 0 {
+		index = 0
+	}
+	if index > max {
+		index = max
+	}
+	m.confirmScroll = index
 }
 
 func (m *Model) handleDrillDownKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
