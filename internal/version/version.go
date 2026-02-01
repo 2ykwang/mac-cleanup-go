@@ -1,22 +1,22 @@
 package version
 
 import (
+	"encoding/json"
 	"errors"
-	"io"
+	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
-	"path"
 	"strconv"
 	"strings"
 	"time"
 )
 
 var (
-	execLookPath     = exec.LookPath
-	execCommand      = exec.Command
-	httpClient       = &http.Client{Timeout: 2 * time.Second}
-	latestReleaseURL = "https://github.com/2ykwang/mac-cleanup-go/releases/latest"
+	execLookPath  = exec.LookPath
+	execCommand   = exec.Command
+	httpClient    = &http.Client{Timeout: 2 * time.Second}
+	formulaAPIURL = "https://formulae.brew.sh/api/formula/" + BrewFormula + ".json"
 )
 
 const (
@@ -32,8 +32,14 @@ type CheckResult struct {
 	Error           error
 }
 
-// CheckForUpdate checks if a newer version is available via GitHub Releases.
-// Note: GitHub Release may be published 1-3 days before the homebrew-core formula is updated.
+// brewFormulaResponse is a minimal representation of the Homebrew Formulae API response.
+type brewFormulaResponse struct {
+	Versions struct {
+		Stable string `json:"stable"`
+	} `json:"versions"`
+}
+
+// CheckForUpdate checks if a newer version is available via Homebrew Formulae API.
 func CheckForUpdate(currentVersion string) CheckResult {
 	result := CheckResult{CurrentVersion: currentVersion}
 
@@ -68,7 +74,7 @@ func RunUpdate() error {
 }
 
 func fetchLatestVersion() (string, error) {
-	req, err := http.NewRequest(http.MethodGet, latestReleaseURL, nil)
+	req, err := http.NewRequest(http.MethodGet, formulaAPIURL, nil)
 	if err != nil {
 		return "", err
 	}
@@ -79,18 +85,21 @@ func fetchLatestVersion() (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
 
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusBadRequest {
-		return "", errors.New("latest release request failed")
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("homebrew formula API returned status %d", resp.StatusCode)
 	}
 
-	tag := path.Base(resp.Request.URL.Path)
-	if tag == "" || tag == "latest" {
-		return "", errors.New("latest tag not resolved")
+	var formula brewFormulaResponse
+	if err := json.NewDecoder(resp.Body).Decode(&formula); err != nil {
+		return "", fmt.Errorf("failed to parse formula response: %w", err)
 	}
 
-	return strings.TrimPrefix(tag, "v"), nil
+	if formula.Versions.Stable == "" {
+		return "", errors.New("stable version not found in formula response")
+	}
+
+	return formula.Versions.Stable, nil
 }
 
 // isNewerVersion compares semantic versions

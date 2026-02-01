@@ -2,6 +2,7 @@ package version
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os/exec"
@@ -16,18 +17,25 @@ func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
 
-func setupLatestServer(t *testing.T, handler http.HandlerFunc) {
+func formulaJSONHandler(version string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"versions":{"stable":"%s"}}`, version)
+	}
+}
+
+func setupFormulaServer(t *testing.T, handler http.HandlerFunc) {
 	t.Helper()
 
 	server := httptest.NewServer(handler)
-	originalURL := latestReleaseURL
+	originalURL := formulaAPIURL
 	originalClient := httpClient
 
-	latestReleaseURL = server.URL + "/releases/latest"
+	formulaAPIURL = server.URL + "/api/formula/mac-cleanup-go.json"
 	httpClient = server.Client()
 
 	t.Cleanup(func() {
-		latestReleaseURL = originalURL
+		formulaAPIURL = originalURL
 		httpClient = originalClient
 		server.Close()
 	})
@@ -57,17 +65,8 @@ func stubBrewMissing(t *testing.T) {
 	})
 }
 
-func TestFetchLatestVersion_ResolvesTag(t *testing.T) {
-	setupLatestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/releases/latest":
-			http.Redirect(w, r, "/releases/tag/v2.0.0", http.StatusFound)
-		case "/releases/tag/v2.0.0":
-			w.WriteHeader(http.StatusOK)
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	})
+func TestFetchLatestVersion_ParsesStableVersion(t *testing.T) {
+	setupFormulaServer(t, formulaJSONHandler("2.0.0"))
 
 	got, err := fetchLatestVersion()
 
@@ -75,12 +74,26 @@ func TestFetchLatestVersion_ResolvesTag(t *testing.T) {
 	assert.Equal(t, "2.0.0", got)
 }
 
-func TestFetchLatestVersion_UnresolvedTag(t *testing.T) {
-	setupLatestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/releases/latest" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
+func TestFetchLatestVersion_EmptyStableVersion(t *testing.T) {
+	setupFormulaServer(t, formulaJSONHandler(""))
+
+	_, err := fetchLatestVersion()
+
+	assert.Error(t, err)
+}
+
+func TestFetchLatestVersion_InvalidStatus(t *testing.T) {
+	setupFormulaServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+
+	_, err := fetchLatestVersion()
+
+	assert.Error(t, err)
+}
+
+func TestFetchLatestVersion_FormulaNotFound(t *testing.T) {
+	setupFormulaServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	})
 
@@ -89,9 +102,10 @@ func TestFetchLatestVersion_UnresolvedTag(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestFetchLatestVersion_InvalidStatus(t *testing.T) {
-	setupLatestServer(t, func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
+func TestFetchLatestVersion_InvalidJSON(t *testing.T) {
+	setupFormulaServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{invalid json}`)
 	})
 
 	_, err := fetchLatestVersion()
@@ -126,16 +140,7 @@ func TestIsNewerVersion_WithVPrefix(t *testing.T) {
 }
 
 func TestCheckForUpdate_DevVersion(t *testing.T) {
-	setupLatestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/releases/latest":
-			http.Redirect(w, r, "/releases/tag/v2.0.0", http.StatusFound)
-		case "/releases/tag/v2.0.0":
-			w.WriteHeader(http.StatusOK)
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	})
+	setupFormulaServer(t, formulaJSONHandler("2.0.0"))
 	stubBrewAvailable(t)
 
 	result := CheckForUpdate("dev")
@@ -154,16 +159,7 @@ func TestCheckForUpdate_EmptyVersion(t *testing.T) {
 }
 
 func TestCheckForUpdate_UpdateAvailable(t *testing.T) {
-	setupLatestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/releases/latest":
-			http.Redirect(w, r, "/releases/tag/v2.0.0", http.StatusFound)
-		case "/releases/tag/v2.0.0":
-			w.WriteHeader(http.StatusOK)
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	})
+	setupFormulaServer(t, formulaJSONHandler("2.0.0"))
 	stubBrewAvailable(t)
 
 	result := CheckForUpdate("1.0.0")
@@ -174,16 +170,7 @@ func TestCheckForUpdate_UpdateAvailable(t *testing.T) {
 }
 
 func TestCheckForUpdate_NoUpdateAvailable(t *testing.T) {
-	setupLatestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/releases/latest":
-			http.Redirect(w, r, "/releases/tag/v1.0.0", http.StatusFound)
-		case "/releases/tag/v1.0.0":
-			w.WriteHeader(http.StatusOK)
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	})
+	setupFormulaServer(t, formulaJSONHandler("1.0.0"))
 	stubBrewAvailable(t)
 
 	result := CheckForUpdate("1.0.0")
@@ -194,16 +181,16 @@ func TestCheckForUpdate_NoUpdateAvailable(t *testing.T) {
 }
 
 func TestCheckForUpdate_RequestError(t *testing.T) {
-	originalURL := latestReleaseURL
+	originalURL := formulaAPIURL
 	originalClient := httpClient
-	latestReleaseURL = "https://example.invalid/releases/latest"
+	formulaAPIURL = "https://example.invalid/api/formula/mac-cleanup-go.json"
 	httpClient = &http.Client{
 		Transport: roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			return nil, errors.New("request failed")
 		}),
 	}
 	t.Cleanup(func() {
-		latestReleaseURL = originalURL
+		formulaAPIURL = originalURL
 		httpClient = originalClient
 	})
 
@@ -214,16 +201,7 @@ func TestCheckForUpdate_RequestError(t *testing.T) {
 }
 
 func TestCheckForUpdate_BrewMissing(t *testing.T) {
-	setupLatestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/releases/latest":
-			http.Redirect(w, r, "/releases/tag/v2.0.0", http.StatusFound)
-		case "/releases/tag/v2.0.0":
-			w.WriteHeader(http.StatusOK)
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	})
+	setupFormulaServer(t, formulaJSONHandler("2.0.0"))
 	stubBrewMissing(t)
 
 	result := CheckForUpdate("1.0.0")
