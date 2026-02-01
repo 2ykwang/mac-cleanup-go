@@ -12,17 +12,18 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> | <a href="README_KO.md">한국어</a>
+  <a href="../README.md">English</a> | <a href="README_KO.md">한국어</a>
 </p>
 
 ## 개요
 
-- 삭제될 항목을 미리보기하고 제외할 수 있습니다.
+- 용량을 불필요하게 차지하는 항목을 직접 선택하여 삭제할 수 있습니다.
 - 기본은 휴지통으로 이동하고, '휴지통' 카테고리만 영구 삭제합니다.
-- risky 항목은 기본으로 제외, manual은 삭제 가이드만 표시합니다.
+- risky 카테고리는 기본 미선택이며, 선택해도 항목은 자동 제외됩니다. (삭제하려면 미리보기에서 포함해야 합니다.)
+- manual 카테고리는 삭제 가이드만 표시합니다.
 - 작업 범위: 캐시/로그/임시 파일과 일부 앱 데이터. 시스템 최적화/앱 제거는 하지 않습니다.
 
-![demo](assets/result_view.png)
+![demo](result_view.png)
 
 ## 빠른 시작
 
@@ -48,21 +49,18 @@ brew uninstall mac-cleanup-go
 > 팁: 휴지통과 제한된 위치를 정리하려면 터미널에 전체 디스크 접근 권한을 부여하세요.  
 > 시스템 설정 -> 개인정보 보호 및 보안 -> 전체 디스크 접근
 
-![demo](assets/demo.gif)
+![demo](demo.gif)
 
-## 안전 정책 및 삭제 방식
+## 작동 방식 및 안전 정책
 
 - 앱/도구별 알려진 캐시, 로그, 임시 경로를 병렬로 스캔합니다.
-- 미리보기에서 항목을 제외할 수 있습니다.
-- 영향도 라벨(safe, moderate, risky)을 표시합니다.
-- Homebrew, Docker, 오래된 다운로드 파일에 대한 전용 스캐너가 있습니다 (brew/docker 출력 또는 마지막 수정 시각 기준).
-
-## 무엇을 하는지
-
-- 삭제 전 항목을 미리보기합니다.
-- 기본적으로 항목은 휴지통으로 이동하고, '휴지통' 카테고리만 영구 삭제합니다.
-- risky 카테고리는 선택되어 있지만 모든 항목이 제외된 상태로 시작합니다.
+- 삭제 전 미리보기에서 항목을 제외할 수 있습니다.
+- 기본은 휴지통으로 이동하고, '휴지통' 카테고리만 영구 삭제합니다.
+- 영향도 라벨(safe, moderate, risky, manual)을 표시합니다.
+- risky 카테고리는 기본 미선택이며, 선택해도 항목은 자동 제외됩니다.
 - manual 카테고리는 자동 삭제 없이 가이드만 표시합니다.
+- SIP 보호 경로는 스캔/정리 대상에서 제외됩니다.
+- Homebrew, Docker, 오래된 다운로드 파일에 대한 전용 스캐너가 있습니다 (brew/docker 출력 또는 마지막 수정 시각 기준).
 
 ## 영향도 분류 기준
 
@@ -71,18 +69,35 @@ brew uninstall mac-cleanup-go
 - risky: 사용자 데이터가 포함될 수 있음; 항목 기본 제외.
 - manual: 자동 삭제 없이 앱 가이드만 표시.
 
-## 대상 (v1.3.6)
+## 대상 (v1.3.6 기준)
 
 - 전체 대상: 107개.
 - 그룹: System 7, Browsers 10, Development 35, Applications 52, Storage 3.
 - 처리 방법: trash 101, permanent 1, builtin 3, manual 2.
 - builtin: homebrew, docker, old-downloads (고정 경로가 아닌 명령 결과/마지막 수정 시각 기준 스캔).
 - manual: telegram, kakaotalk (자동 삭제하지 않고, 채팅 데이터 등 대용량 항목 안내 목적).
+- 수치는 릴리스 기준이며 변동될 수 있습니다.
 
 ## 사용 참고
 
+- 지원 환경: macOS (arm64, amd64).
 - 전체 디스크 접근 권한이 있으면 제한된 위치도 스캔/정리할 수 있습니다.
 - 버전 확인: `mac-cleanup --version`.
+- 업데이트: `brew upgrade mac-cleanup-go` 또는 `mac-cleanup --update`.
+
+## 수동 설치
+
+- Homebrew가 없거나 실패하면 GitHub Releases에서 tar.gz를 내려받아 `mac-cleanup` 바이너리를 실행하세요.
+
+## CLI 옵션
+
+- `--version`, `-v`: 버전 출력
+- `--update`: Homebrew로 업데이트
+- `--debug`: 디버그 로그 저장 (`~/.config/mac-cleanup-go/debug.log`)
+
+## 설정 파일
+
+- 제외 목록 등 사용자 설정은 `~/.config/mac-cleanup-go/config.yaml`에 저장됩니다.
 
 <details>
 <summary><strong>키 바인딩</strong></summary>
