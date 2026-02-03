@@ -46,6 +46,42 @@ func TestRunner_Run_DryRun(t *testing.T) {
 	assert.Equal(t, 1, report.CleanedItems)
 }
 
+func TestRunner_Run_DryRun_HonorsExcludedPaths(t *testing.T) {
+	tmpDir := t.TempDir()
+	keepFile := filepath.Join(tmpDir, "keep.log")
+	cleanFile := filepath.Join(tmpDir, "clean.log")
+	data := []byte("cleanup")
+	require.NoError(t, os.WriteFile(keepFile, data, 0o644))
+	require.NoError(t, os.WriteFile(cleanFile, data, 0o644))
+
+	cfg := &types.Config{
+		Categories: []types.Category{
+			{
+				ID:     "logs",
+				Name:   "Logs",
+				Safety: types.SafetyLevelSafe,
+				Method: types.MethodTrash,
+				Paths:  []string{filepath.Join(tmpDir, "*.log")},
+			},
+		},
+	}
+
+	userCfg := &userconfig.UserConfig{
+		ExcludedPaths:   map[string][]string{"logs": {keepFile}},
+		SelectedTargets: []string{"logs"},
+	}
+
+	runner, err := NewRunner(cfg, userCfg)
+	require.NoError(t, err)
+
+	report, warnings, err := runner.Run(true)
+	require.NoError(t, err)
+	assert.Empty(t, warnings)
+	require.NotNil(t, report)
+	assert.Equal(t, 1, report.CleanedItems, "excluded file should not be cleaned")
+	assert.Equal(t, int64(len(data)), report.FreedSpace)
+}
+
 func TestRunner_Run_NoSelection(t *testing.T) {
 	cfg := &types.Config{
 		Categories: []types.Category{

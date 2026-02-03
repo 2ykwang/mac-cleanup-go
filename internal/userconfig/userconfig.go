@@ -111,6 +111,18 @@ func (c *UserConfig) GetExcludedPaths(categoryID string) []string {
 	return c.ExcludedPaths[categoryID]
 }
 
+// ExcludedPathsMap returns excluded paths as a nested bool map
+func (c *UserConfig) ExcludedPathsMap() map[string]map[string]bool {
+	result := make(map[string]map[string]bool, len(c.ExcludedPaths))
+	for catID, paths := range c.ExcludedPaths {
+		result[catID] = make(map[string]bool, len(paths))
+		for _, p := range paths {
+			result[catID][p] = true
+		}
+	}
+	return result
+}
+
 // IsExcluded checks if a path is excluded for a category
 func (c *UserConfig) IsExcluded(categoryID, path string) bool {
 	for _, p := range c.ExcludedPaths[categoryID] {

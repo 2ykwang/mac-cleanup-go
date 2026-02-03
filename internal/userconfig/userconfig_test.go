@@ -115,6 +115,34 @@ func TestLoad_EmptyFile(t *testing.T) {
 	assert.NotNil(t, cfg.SelectedTargets)
 }
 
+func TestUserConfig_ExcludedPathsMap(t *testing.T) {
+	cfg := &UserConfig{
+		ExcludedPaths: map[string][]string{
+			"logs":  {"/path/a", "/path/b"},
+			"cache": {"/path/c"},
+		},
+	}
+
+	result := cfg.ExcludedPathsMap()
+
+	assert.Len(t, result, 2)
+	assert.True(t, result["logs"]["/path/a"])
+	assert.True(t, result["logs"]["/path/b"])
+	assert.True(t, result["cache"]["/path/c"])
+	assert.False(t, result["logs"]["/path/unknown"])
+}
+
+func TestUserConfig_ExcludedPathsMap_Empty(t *testing.T) {
+	cfg := &UserConfig{
+		ExcludedPaths: make(map[string][]string),
+	}
+
+	result := cfg.ExcludedPathsMap()
+
+	assert.NotNil(t, result)
+	assert.Empty(t, result)
+}
+
 func TestUserConfig_IsExcluded_EmptyCategory(t *testing.T) {
 	cfg := &UserConfig{
 		ExcludedPaths: make(map[string][]string),

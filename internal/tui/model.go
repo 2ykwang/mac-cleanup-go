@@ -59,13 +59,7 @@ func NewModel(cfg *types.Config, currentVersion string) *Model {
 	userCfg, _ := userconfig.Load()
 
 	// Initialize excluded from saved config
-	excluded := make(map[string]map[string]bool)
-	for catID, paths := range userCfg.ExcludedPaths {
-		excluded[catID] = make(map[string]bool)
-		for _, path := range paths {
-			excluded[catID][path] = true
-		}
-	}
+	excluded := userCfg.ExcludedPathsMap()
 
 	registry, err := target.DefaultRegistry(cfg)
 	if err != nil {

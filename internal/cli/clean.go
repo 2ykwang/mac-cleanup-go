@@ -106,7 +106,7 @@ func (r *Runner) Run(dryRun bool) (*types.Report, []string, error) {
 	}
 
 	cleanService := cleaner.NewCleanService(r.registry)
-	jobs := cleanService.PrepareJobsWithOrder(resultMap, selected, nil, selectedOrder)
+	jobs := cleanService.PrepareJobsWithOrder(resultMap, selected, r.userCfg.ExcludedPathsMap(), selectedOrder)
 
 	start := time.Now()
 	var report *types.Report
