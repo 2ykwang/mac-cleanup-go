@@ -236,7 +236,7 @@ func (m *Model) viewPreview() string {
 		}
 
 		// Adjust scroll
-		m.previewScroll = m.adjustScrollFor(m.previewItemIndex, m.previewScroll, visible-1, len(sortedItems))
+		m.previewScroll = adjustScrollFor(m.previewItemIndex, m.previewScroll, visible-1, len(sortedItems))
 
 		endIdx := m.previewScroll + visible
 		if endIdx > len(sortedItems) {
@@ -460,7 +460,7 @@ func (m *Model) viewDrillDown() string {
 		sortedItems := m.sortItems(state.items)
 
 		// Adjust scroll
-		state.scroll = m.adjustScrollFor(state.cursor, state.scroll, visible, len(sortedItems))
+		state.scroll = adjustScrollFor(state.cursor, state.scroll, visible, len(sortedItems))
 
 		endIdx := state.scroll + visible
 		if endIdx > len(sortedItems) {

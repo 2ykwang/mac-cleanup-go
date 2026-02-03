@@ -42,7 +42,7 @@ func (m *Model) pageSize() int {
 	return pageSize
 }
 
-func (m *Model) adjustScrollFor(cursor, scroll, visible, total int) int {
+func adjustScrollFor(cursor, scroll, visible, total int) int {
 	if cursor < scroll {
 		return cursor
 	}
