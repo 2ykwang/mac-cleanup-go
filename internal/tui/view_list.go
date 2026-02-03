@@ -315,7 +315,7 @@ func (m *Model) renderListBody(visible int) string {
 
 	if itemsVisible > 0 {
 		// Adjust scroll
-		m.scroll = m.adjustScrollFor(m.cursor, m.scroll, itemsVisible, len(m.results))
+		m.scroll = adjustScrollFor(m.cursor, m.scroll, itemsVisible, len(m.results))
 
 		for i, r := range m.results {
 			if i < m.scroll || i >= m.scroll+itemsVisible {

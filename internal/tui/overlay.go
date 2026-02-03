@@ -7,27 +7,27 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-func (m *Model) overlayCentered(base, overlay string) string {
-	if m.width <= 0 || m.height <= 0 {
+func overlayCentered(base, overlay string, width, height int) string {
+	if width <= 0 || height <= 0 {
 		return base
 	}
 
-	baseLines := normalizeOverlayLines(base, m.width, m.height)
+	baseLines := normalizeOverlayLines(base, width, height)
 	overlayLines := splitLines(overlay)
 	overlayWidth := lipgloss.Width(overlay)
 	overlayHeight := len(overlayLines)
 	if overlayWidth <= 0 || overlayHeight <= 0 {
 		return strings.Join(baseLines, "\n")
 	}
-	if overlayWidth > m.width {
-		overlayWidth = m.width
+	if overlayWidth > width {
+		overlayWidth = width
 	}
-	if overlayHeight > m.height {
-		overlayHeight = m.height
+	if overlayHeight > height {
+		overlayHeight = height
 	}
 
-	x := (m.width - overlayWidth) / 2
-	y := (m.height - overlayHeight) / 2
+	x := (width - overlayWidth) / 2
+	y := (height - overlayHeight) / 2
 	if x < 0 {
 		x = 0
 	}
@@ -44,7 +44,7 @@ func (m *Model) overlayCentered(base, overlay string) string {
 		overlayLine = padToWidth(overlayLine, overlayWidth)
 		line := baseLines[y+i]
 		left := ansi.Cut(line, 0, x)
-		right := ansi.Cut(line, x+overlayWidth, m.width)
+		right := ansi.Cut(line, x+overlayWidth, width)
 		baseLines[y+i] = left + overlayLine + right
 	}
 

@@ -51,7 +51,6 @@ func TestNewCleanService(t *testing.T) {
 	service := NewCleanService(registry)
 
 	require.NotNil(t, service)
-	assert.NotNil(t, service.registry)
 	assert.NotNil(t, service.executor)
 }
 
@@ -419,6 +418,29 @@ func TestPrepareJobs_ResultWithEmptyItems(t *testing.T) {
 	jobs := service.PrepareJobs(resultMap, selected, nil)
 
 	assert.Len(t, jobs, 0, "Category with empty items should not produce a job")
+}
+
+func TestPrepareJobsWithOrder_UsesProvidedOrder(t *testing.T) {
+	service := NewCleanService(target.NewRegistry())
+
+	catA := types.Category{ID: "a", Name: "A", Method: types.MethodTrash}
+	catB := types.Category{ID: "b", Name: "B", Method: types.MethodTrash}
+	catManual := types.Category{ID: "m", Name: "Manual", Method: types.MethodManual}
+
+	resultMap := map[string]*types.ScanResult{
+		"a": {Category: catA, Items: []types.CleanableItem{{Path: "/a", Status: types.ItemStatusAvailable}}},
+		"b": {Category: catB, Items: []types.CleanableItem{{Path: "/b", Status: types.ItemStatusAvailable}}},
+		"m": {Category: catManual, Items: []types.CleanableItem{{Path: "/m", Status: types.ItemStatusAvailable}}},
+	}
+
+	selected := map[string]bool{"a": true, "b": true, "m": true}
+	order := []string{"b", "a", "m"}
+
+	jobs := service.PrepareJobsWithOrder(resultMap, selected, nil, order)
+
+	require.Len(t, jobs, 2)
+	assert.Equal(t, "b", jobs[0].Category.ID)
+	assert.Equal(t, "a", jobs[1].Category.ID)
 }
 
 // =============================================================================

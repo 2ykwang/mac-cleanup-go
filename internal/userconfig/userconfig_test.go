@@ -16,6 +16,7 @@ func TestLoad_NoConfigFile(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, cfg)
 	assert.NotNil(t, cfg.ExcludedPaths, "ExcludedPaths should be initialized")
+	assert.NotNil(t, cfg.SelectedTargets, "SelectedTargets should be initialized")
 }
 
 func TestUserConfig_ExcludedPaths(t *testing.T) {
@@ -49,6 +50,15 @@ func TestUserConfig_SetExcludedPaths_Empty(t *testing.T) {
 	assert.Empty(t, cfg.GetExcludedPaths("chrome-cache"), "paths should be cleared")
 }
 
+func TestUserConfig_SelectedTargets(t *testing.T) {
+	cfg := &UserConfig{
+		ExcludedPaths: make(map[string][]string),
+	}
+
+	cfg.SetSelectedTargets([]string{"system-cache", "browser-chrome"})
+	assert.Equal(t, []string{"system-cache", "browser-chrome"}, cfg.GetSelectedTargets())
+}
+
 func TestUserConfig_SaveAndLoad(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
@@ -57,6 +67,7 @@ func TestUserConfig_SaveAndLoad(t *testing.T) {
 		ExcludedPaths: map[string][]string{
 			"chrome-cache": {"/path/one", "/path/two"},
 		},
+		SelectedTargets: []string{"chrome-cache", "system-cache"},
 	}
 
 	require.NoError(t, cfg.Save())
@@ -68,6 +79,7 @@ func TestUserConfig_SaveAndLoad(t *testing.T) {
 	loaded, err := Load()
 	require.NoError(t, err)
 	assert.True(t, loaded.IsExcluded("chrome-cache", "/path/one"))
+	assert.Equal(t, []string{"chrome-cache", "system-cache"}, loaded.SelectedTargets)
 }
 
 func TestLoad_InvalidYAML(t *testing.T) {
@@ -100,6 +112,35 @@ func TestLoad_EmptyFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
 	assert.NotNil(t, cfg.ExcludedPaths)
+	assert.NotNil(t, cfg.SelectedTargets)
+}
+
+func TestUserConfig_ExcludedPathsMap(t *testing.T) {
+	cfg := &UserConfig{
+		ExcludedPaths: map[string][]string{
+			"logs":  {"/path/a", "/path/b"},
+			"cache": {"/path/c"},
+		},
+	}
+
+	result := cfg.ExcludedPathsMap()
+
+	assert.Len(t, result, 2)
+	assert.True(t, result["logs"]["/path/a"])
+	assert.True(t, result["logs"]["/path/b"])
+	assert.True(t, result["cache"]["/path/c"])
+	assert.False(t, result["logs"]["/path/unknown"])
+}
+
+func TestUserConfig_ExcludedPathsMap_Empty(t *testing.T) {
+	cfg := &UserConfig{
+		ExcludedPaths: make(map[string][]string),
+	}
+
+	result := cfg.ExcludedPathsMap()
+
+	assert.NotNil(t, result)
+	assert.Empty(t, result)
 }
 
 func TestUserConfig_IsExcluded_EmptyCategory(t *testing.T) {

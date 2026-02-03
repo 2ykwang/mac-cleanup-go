@@ -13,7 +13,7 @@ import (
 
 func (m *Model) viewConfirm() string {
 	base := lipgloss.NewStyle().Faint(true).Render(m.viewPreview())
-	return m.overlayCentered(base, m.confirmDialog())
+	return overlayCentered(base, m.confirmDialog(), m.width, m.height)
 }
 
 // Guide dialog view

@@ -675,16 +675,14 @@ func TestAvailableLines_Minimum(t *testing.T) {
 }
 
 func TestAdjustScrollFor(t *testing.T) {
-	m := newTestModel()
-
 	// Cursor at top, scroll should follow
-	assert.Equal(t, 0, m.adjustScrollFor(0, 5, 10, 20))
+	assert.Equal(t, 0, adjustScrollFor(0, 5, 10, 20))
 
 	// Cursor below visible area
-	assert.Equal(t, 6, m.adjustScrollFor(15, 0, 10, 20))
+	assert.Equal(t, 6, adjustScrollFor(15, 0, 10, 20))
 
 	// Cursor within visible area
-	assert.Equal(t, 5, m.adjustScrollFor(10, 5, 10, 20))
+	assert.Equal(t, 5, adjustScrollFor(10, 5, 10, 20))
 }
 
 // View output tests
