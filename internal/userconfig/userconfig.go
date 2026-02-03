@@ -23,6 +23,8 @@ var (
 type UserConfig struct {
 	// ExcludedPaths maps category ID to list of excluded paths
 	ExcludedPaths map[string][]string `yaml:"excluded_paths,omitempty"`
+	// SelectedTargets stores CLI-selected category IDs
+	SelectedTargets []string `yaml:"selected_targets,omitempty"`
 }
 
 // configPath returns the full path to the config file
@@ -57,6 +59,9 @@ func Load() (*UserConfig, error) {
 	if cfg.ExcludedPaths == nil {
 		cfg.ExcludedPaths = make(map[string][]string)
 	}
+	if cfg.SelectedTargets == nil {
+		cfg.SelectedTargets = make([]string, 0)
+	}
 
 	return &cfg, nil
 }
@@ -89,6 +94,16 @@ func (c *UserConfig) SetExcludedPaths(categoryID string, paths []string) {
 	} else {
 		c.ExcludedPaths[categoryID] = paths
 	}
+}
+
+// SetSelectedTargets sets selected target IDs for CLI runs.
+func (c *UserConfig) SetSelectedTargets(targets []string) {
+	c.SelectedTargets = append([]string(nil), targets...)
+}
+
+// GetSelectedTargets returns selected target IDs for CLI runs.
+func (c *UserConfig) GetSelectedTargets() []string {
+	return c.SelectedTargets
 }
 
 // GetExcludedPaths gets excluded paths for a category
