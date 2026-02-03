@@ -1,6 +1,8 @@
 package cleaner
 
 import (
+	"strings"
+
 	"github.com/2ykwang/mac-cleanup-go/internal/logger"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
@@ -15,14 +17,12 @@ type CleanJob struct {
 
 // CleanService orchestrates the cleaning process.
 type CleanService struct {
-	registry *target.Registry
 	executor *Executor
 }
 
 // NewCleanService creates a new CleanService.
 func NewCleanService(registry *target.Registry) *CleanService {
 	return &CleanService{
-		registry: registry,
 		executor: NewExecutor(registry),
 	}
 }
@@ -52,8 +52,6 @@ func (s *CleanService) Clean(jobs []CleanJob, callbacks types.CleanCallbacks) *t
 			result = s.cleanTrashBatch(job, callbacks, &currentItem, totalItems)
 		case types.MethodPermanent:
 			result = s.cleanByItem(job, callbacks, &currentItem, totalItems, s.executor.Permanent)
-		case types.MethodManual:
-			result = s.cleanByItem(job, callbacks, &currentItem, totalItems, s.executor.Manual)
 		default:
 			result = s.cleanUnsupported(job)
 		}
@@ -95,35 +93,68 @@ func (s *CleanService) PrepareJobs(
 		if !sel {
 			continue
 		}
-		r, ok := resultMap[id]
-		if !ok {
-			continue
+		if job, ok := buildJob(resultMap, excluded, id); ok {
+			jobs = append(jobs, job)
 		}
-		if r.Category.Method == types.MethodManual {
-			continue
-		}
-
-		var items []types.CleanableItem
-		excludedMap := excluded[id]
-		for _, item := range r.Items {
-			if item.Status == types.ItemStatusProcessLocked {
-				continue
-			}
-			if excludedMap == nil || !excludedMap[item.Path] {
-				items = append(items, item)
-			}
-		}
-		if len(items) == 0 {
-			continue
-		}
-
-		jobs = append(jobs, CleanJob{
-			Category: r.Category,
-			Items:    items,
-		})
 	}
 
 	return jobs
+}
+
+// PrepareJobsWithOrder prepares clean jobs in a deterministic order.
+func (s *CleanService) PrepareJobsWithOrder(
+	resultMap map[string]*types.ScanResult,
+	selected map[string]bool,
+	excluded map[string]map[string]bool,
+	order []string,
+) []CleanJob {
+	if len(order) == 0 {
+		return s.PrepareJobs(resultMap, selected, excluded)
+	}
+
+	var jobs []CleanJob
+	for _, id := range order {
+		if !selected[id] {
+			continue
+		}
+		if job, ok := buildJob(resultMap, excluded, id); ok {
+			jobs = append(jobs, job)
+		}
+	}
+
+	return jobs
+}
+
+// buildJob creates a CleanJob for the given category ID, filtering out manual,
+// locked, and excluded items. Returns false if no cleanable items remain.
+func buildJob(
+	resultMap map[string]*types.ScanResult,
+	excluded map[string]map[string]bool,
+	id string,
+) (CleanJob, bool) {
+	r, ok := resultMap[id]
+	if !ok {
+		return CleanJob{}, false
+	}
+	if r.Category.Method == types.MethodManual {
+		return CleanJob{}, false
+	}
+
+	excludedMap := excluded[id]
+	var items []types.CleanableItem
+	for _, item := range r.Items {
+		if item.Status == types.ItemStatusProcessLocked {
+			continue
+		}
+		if excludedMap == nil || !excludedMap[item.Path] {
+			items = append(items, item)
+		}
+	}
+	if len(items) == 0 {
+		return CleanJob{}, false
+	}
+
+	return CleanJob{Category: r.Category, Items: items}, true
 }
 
 // cleanBuiltin handles builtin methods (docker, brew) with category-level progress.
@@ -193,7 +224,7 @@ func (s *CleanService) sendBatchItemCallbacks(batch []types.CleanableItem, batch
 	for _, errStr := range batchResult.Errors {
 		for _, item := range batch {
 			prefix := item.Path + ": "
-			if len(errStr) >= len(prefix) && errStr[:len(prefix)] == prefix {
+			if strings.HasPrefix(errStr, prefix) {
 				errorMap[item.Path] = errStr[len(prefix):]
 				break
 			}
@@ -262,6 +293,5 @@ func (s *CleanService) cleanUnsupported(job CleanJob) *types.CleanResult {
 
 	result := types.NewCleanResult(job.Category)
 	result.Errors = append(result.Errors, "unsupported method: "+string(job.Category.Method))
-	result.SkippedItems = len(job.Items)
 	return result
 }

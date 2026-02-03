@@ -46,7 +46,7 @@ func (m *Model) viewReport() string {
 
 	// Adjust scroll
 	totalLines := len(m.reportLines)
-	m.reportScroll = m.adjustScrollFor(m.reportScroll, m.reportScroll, visible, totalLines)
+	m.reportScroll = adjustScrollFor(m.reportScroll, m.reportScroll, visible, totalLines)
 
 	start := m.reportScroll
 	end := start + visible
