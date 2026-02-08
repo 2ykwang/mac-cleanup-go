@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"golang.org/x/sys/unix"
 
-	"github.com/2ykwang/mac-cleanup-go/internal/tui"
+	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
@@ -228,12 +228,12 @@ func newReportStyles() reportStyles {
 	enabled := shouldColorize()
 	return reportStyles{
 		enabled: enabled,
-		title:   lipgloss.NewStyle().Foreground(tui.ColorPrimary).Bold(true),
-		section: lipgloss.NewStyle().Foreground(tui.ColorSecondary).Bold(true),
-		success: lipgloss.NewStyle().Foreground(tui.ColorSuccess).Bold(true),
-		warn:    lipgloss.NewStyle().Foreground(tui.ColorWarning).Bold(true),
-		danger:  lipgloss.NewStyle().Foreground(tui.ColorDanger).Bold(true),
-		muted:   lipgloss.NewStyle().Foreground(tui.ColorMuted),
+		title:   lipgloss.NewStyle().Foreground(styles.ColorPrimary).Bold(true),
+		section: lipgloss.NewStyle().Foreground(styles.ColorSecondary).Bold(true),
+		success: lipgloss.NewStyle().Foreground(styles.ColorSuccess).Bold(true),
+		warn:    lipgloss.NewStyle().Foreground(styles.ColorWarning).Bold(true),
+		danger:  lipgloss.NewStyle().Foreground(styles.ColorDanger).Bold(true),
+		muted:   lipgloss.NewStyle().Foreground(styles.ColorMuted),
 	}
 }
 

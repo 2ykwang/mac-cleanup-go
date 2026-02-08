@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
@@ -123,16 +124,16 @@ func (m *Model) readDirectory(path string) []types.CleanableItem {
 func (m *Model) previewHeader(selected []*types.ScanResult, cat *types.ScanResult) string {
 	var b strings.Builder
 
-	b.WriteString(HeaderStyle.Render("Cleanup Preview"))
+	b.WriteString(styles.HeaderStyle.Render("Cleanup Preview"))
 	b.WriteString("\n")
 
 	b.WriteString(fmt.Sprintf("Selected: %d  │  Estimated: %s  │  Sort: %s\n",
-		m.getSelectedCount(), SizeStyle.Render(formatSize(m.getSelectedSize())), m.sortOrder.Label()))
-	b.WriteString(Divider(60) + "\n")
+		m.getSelectedCount(), styles.SizeStyle.Render(formatSize(m.getSelectedSize())), m.sortOrder.Label()))
+	b.WriteString(styles.Divider(60) + "\n")
 
 	// Tabs
 	catIdx := m.findSelectedCatIndex()
-	b.WriteString(TextStyle.Render("Categories") + "\n")
+	b.WriteString(styles.TextStyle.Render("Categories") + "\n")
 	b.WriteString(m.renderTabs(selected, catIdx))
 	b.WriteString("\n\n")
 
@@ -143,21 +144,21 @@ func (m *Model) previewHeader(selected []*types.ScanResult, cat *types.ScanResul
 		effectiveSize := m.getEffectiveSize(cat)
 		if mBadge != "" {
 			b.WriteString(fmt.Sprintf("%s %s  %s  │  %d files\n",
-				badge, mBadge, SizeStyle.Render(formatSize(effectiveSize)), cat.TotalFileCount))
+				badge, mBadge, styles.SizeStyle.Render(formatSize(effectiveSize)), cat.TotalFileCount))
 		} else {
 			b.WriteString(fmt.Sprintf("%s  %s  │  %d files\n",
-				badge, SizeStyle.Render(formatSize(effectiveSize)), cat.TotalFileCount))
+				badge, styles.SizeStyle.Render(formatSize(effectiveSize)), cat.TotalFileCount))
 		}
 		if cat.Category.Note != "" {
 			// Auto-wrap note text to fit terminal width
-			noteStyle := MutedStyle.Width(m.width - 4)
+			noteStyle := styles.MutedStyle.Width(m.width - 4)
 			b.WriteString(noteStyle.Render(cat.Category.Note) + "\n")
 		}
 		if cat.Category.Method == types.MethodManual && cat.Category.Guide != "" {
-			guideStyle := WarningStyle.Width(m.width - 4)
+			guideStyle := styles.WarningStyle.Width(m.width - 4)
 			b.WriteString(guideStyle.Render("[Manual] "+cat.Category.Guide) + "\n")
 		}
-		b.WriteString(Divider(60) + "\n")
+		b.WriteString(styles.Divider(60) + "\n")
 	}
 
 	return b.String()
@@ -169,26 +170,107 @@ func (m *Model) previewFooter(selected []*types.ScanResult) string {
 	// Warning for risky items
 	for _, r := range selected {
 		if r.Category.Safety == types.SafetyLevelRisky {
-			b.WriteString("\n" + DangerStyle.Render("Warning: Risky items included"))
+			b.WriteString("\n" + styles.DangerStyle.Render("Warning: Risky items included"))
 			break
 		}
 	}
 
 	// Status message (e.g., error messages)
 	if m.statusMessage != "" {
-		b.WriteString("\n" + WarningStyle.Render(m.statusMessage))
+		b.WriteString("\n" + styles.WarningStyle.Render(m.statusMessage))
 	}
 
 	b.WriteString("\n\n")
 
 	// Context-specific footer for filter mode
 	if m.filterState == FilterTyping {
-		b.WriteString(HelpStyle.Render(FormatFooter(FilterTypingShortcuts)))
+		b.WriteString(styles.HelpStyle.Render(FormatFooter(FilterTypingShortcuts)))
 	} else {
 		b.WriteString(m.help.View(PreviewKeyMap))
 	}
 
 	return b.String()
+}
+
+// itemRowOpts holds parameters for rendering a single item row.
+type itemRowOpts struct {
+	item       types.CleanableItem
+	isCurrent  bool
+	isExcluded bool // only relevant when showCheck is true
+	isLocked   bool // only relevant when showCheck is true
+	showCheck  bool // true = preview mode (checkbox + shortenPath), false = drilldown mode
+	pathWidth  int
+	sizeWidth  int
+	ageWidth   int
+}
+
+// renderItemRow renders a single item row for both preview and drilldown views.
+func (m *Model) renderItemRow(opts itemRowOpts) string {
+	item := opts.item
+
+	cursor := "  "
+	if opts.isCurrent {
+		cursor = styles.CursorStyle.Render("▸ ")
+	}
+
+	checkbox := ""
+	if opts.showCheck {
+		switch {
+		case opts.isLocked:
+			checkbox = styles.MutedStyle.Render(" - ")
+		case opts.isExcluded:
+			checkbox = styles.MutedStyle.Render("[ ]")
+		default:
+			checkbox = styles.SuccessStyle.Render("[x]")
+		}
+		checkbox += " "
+	}
+
+	icon := " "
+	if item.IsDirectory {
+		icon = ">"
+	}
+	if opts.showCheck {
+		icon = padToWidth(icon, previewIconWidth)
+		if opts.isLocked {
+			icon = styles.MutedStyle.Render(icon)
+		}
+	}
+
+	var paddedName string
+	if opts.showCheck {
+		displayPath := item.Path
+		if item.DisplayName != "" {
+			displayPath = item.DisplayName
+		}
+		if displayPath == item.Path {
+			paddedName = shortenPath(displayPath, opts.pathWidth)
+		} else {
+			paddedName = truncateToWidth(displayPath, opts.pathWidth, false)
+		}
+	} else {
+		paddedName = truncateToWidth(item.Name, opts.pathWidth, false)
+	}
+	paddedName = padToWidth(paddedName, opts.pathWidth)
+
+	switch {
+	case opts.isLocked || opts.isExcluded:
+		paddedName = styles.MutedStyle.Render(paddedName)
+	case opts.isCurrent:
+		paddedName = styles.SelectedStyle.Render(paddedName)
+	}
+
+	size := fmt.Sprintf("%*s", opts.sizeWidth, utils.FormatSize(item.Size))
+	age := fmt.Sprintf("%*s", opts.ageWidth, utils.FormatAge(item.ModifiedAt))
+	if opts.isLocked || opts.isExcluded {
+		size = styles.MutedStyle.Render(size)
+		age = styles.MutedStyle.Render(age)
+	} else {
+		size = styles.SizeStyle.Render(size)
+		age = styles.MutedStyle.Render(age)
+	}
+
+	return fmt.Sprintf("%s%s%s %s %s %s\n", cursor, checkbox, icon, paddedName, size, age)
 }
 
 func (m *Model) viewPreview() string {
@@ -223,16 +305,16 @@ func (m *Model) viewPreview() string {
 		// Show filter info
 		if filterQuery != "" {
 			filterInfo := fmt.Sprintf("Filter: \"%s\" (%d items)", filterQuery, len(sortedItems))
-			b.WriteString(MutedStyle.Render(filterInfo) + "\n")
+			b.WriteString(styles.MutedStyle.Render(filterInfo) + "\n")
 		}
 
 		colHeader := fmt.Sprintf("%*s%-*s %*s %*s",
 			previewPrefixWidth, "", pathWidth, "Path", sizeWidth, "Size", ageWidth, "Age")
-		b.WriteString(MutedStyle.Render(colHeader) + "\n")
+		b.WriteString(styles.MutedStyle.Render(colHeader) + "\n")
 
 		// Handle empty filter results
 		if len(sortedItems) == 0 && filterQuery != "" {
-			b.WriteString(MutedStyle.Render("  No matching items\n"))
+			b.WriteString(styles.MutedStyle.Render("  No matching items\n"))
 		}
 
 		// Adjust scroll
@@ -245,70 +327,20 @@ func (m *Model) viewPreview() string {
 
 		for i := m.previewScroll; i < endIdx; i++ {
 			item := sortedItems[i]
-			isCurrent := m.previewItemIndex == i
-			isExcluded := m.isExcluded(cat.Category.ID, item.Path)
-			isLocked := item.Status == types.ItemStatusProcessLocked
-
-			cursor := "  "
-			if isCurrent {
-				cursor = CursorStyle.Render("▸ ")
-			}
-
-			checkbox := SuccessStyle.Render("[x]")
-			if isLocked {
-				checkbox = MutedStyle.Render(" - ")
-			} else if isExcluded {
-				checkbox = MutedStyle.Render("[ ]")
-			}
-
-			icon := " "
-			if item.IsDirectory {
-				icon = ">"
-			}
-			icon = padToWidth(icon, previewIconWidth)
-			if isLocked {
-				icon = MutedStyle.Render(icon)
-			}
-
-			// Pad using display width (not byte count) for CJK character alignment
-			displayPath := item.Path
-			if item.DisplayName != "" {
-				displayPath = item.DisplayName
-			}
-
-			var truncated string
-			if displayPath == item.Path {
-				truncated = shortenPath(displayPath, pathWidth)
-			} else {
-				truncated = truncateToWidth(displayPath, pathWidth, false)
-			}
-			paddedPath := padToWidth(truncated, pathWidth)
-			if isLocked {
-				paddedPath = MutedStyle.Render(paddedPath)
-			} else if isExcluded {
-				paddedPath = MutedStyle.Render(paddedPath)
-			} else if isCurrent {
-				paddedPath = SelectedStyle.Render(paddedPath)
-			}
-
-			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(item.Size))
-			age := fmt.Sprintf("%*s", ageWidth, utils.FormatAge(item.ModifiedAt))
-			if isLocked {
-				size = MutedStyle.Render(size)
-				age = MutedStyle.Render(age)
-			} else if isExcluded {
-				size = MutedStyle.Render(size)
-				age = MutedStyle.Render(age)
-			} else {
-				size = SizeStyle.Render(size)
-				age = MutedStyle.Render(age)
-			}
-
-			b.WriteString(fmt.Sprintf("%s%s %s %s %s %s\n", cursor, checkbox, icon, paddedPath, size, age))
+			b.WriteString(m.renderItemRow(itemRowOpts{
+				item:       item,
+				isCurrent:  m.previewItemIndex == i,
+				isExcluded: m.isExcluded(cat.Category.ID, item.Path),
+				isLocked:   item.Status == types.ItemStatusProcessLocked,
+				showCheck:  true,
+				pathWidth:  pathWidth,
+				sizeWidth:  sizeWidth,
+				ageWidth:   ageWidth,
+			}))
 		}
 
 		if len(sortedItems) > visible {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("\n\n  [%d-%d / %d]", m.previewScroll+1, endIdx, len(sortedItems))))
+			b.WriteString(styles.MutedStyle.Render(fmt.Sprintf("\n\n  [%d-%d / %d]", m.previewScroll+1, endIdx, len(sortedItems))))
 		}
 	}
 
@@ -344,14 +376,14 @@ func (m *Model) renderTabs(selected []*types.ScanResult, currentIdx int) string 
 		if isCurrent {
 			tab = lipgloss.NewStyle().
 				Bold(true).
-				Foreground(ColorText).
-				Background(ColorPrimary).
+				Foreground(styles.ColorText).
+				Background(styles.ColorPrimary).
 				Padding(0, 1).
 				Render(tabName)
 		} else {
 			tab = lipgloss.NewStyle().
-				Foreground(ColorText).
-				Background(ColorBorder).
+				Foreground(styles.ColorText).
+				Background(styles.ColorBorder).
 				Padding(0, 1).
 				Render(tabName)
 		}
@@ -361,13 +393,13 @@ func (m *Model) renderTabs(selected []*types.ScanResult, currentIdx int) string 
 	joinTabs := func(start, end int, left, right bool) (string, int) {
 		parts := make([]string, 0, end-start+3)
 		if left {
-			parts = append(parts, MutedStyle.Render("…"))
+			parts = append(parts, styles.MutedStyle.Render("…"))
 		}
 		for i := start; i <= end; i++ {
 			parts = append(parts, items[i].text)
 		}
 		if right {
-			parts = append(parts, MutedStyle.Render("…"))
+			parts = append(parts, styles.MutedStyle.Render("…"))
 		}
 		line := strings.Join(parts, " ")
 		return line, lipgloss.Width(line)
@@ -416,12 +448,12 @@ func (m *Model) renderTabs(selected []*types.ScanResult, currentIdx int) string 
 func (m *Model) drillDownHeader(path string) string {
 	var b strings.Builder
 
-	b.WriteString(HeaderStyle.Render("Directory Browser"))
+	b.WriteString(styles.HeaderStyle.Render("Directory Browser"))
 	b.WriteString("\n\n")
 
-	b.WriteString(MutedStyle.Render("Path: ") + shortenPath(path, m.width-10))
+	b.WriteString(styles.MutedStyle.Render("Path: ") + shortenPath(path, m.width-10))
 	b.WriteString("\n")
-	b.WriteString(Divider(60) + "\n")
+	b.WriteString(styles.Divider(60) + "\n")
 
 	return b.String()
 }
@@ -431,7 +463,7 @@ func (m *Model) drillDownFooter() string {
 
 	// Status message (e.g., error messages)
 	if m.statusMessage != "" {
-		b.WriteString("\n" + WarningStyle.Render(m.statusMessage))
+		b.WriteString("\n" + styles.WarningStyle.Render(m.statusMessage))
 	}
 
 	b.WriteString("\n\n")
@@ -454,7 +486,7 @@ func (m *Model) viewDrillDown() string {
 	b.WriteString(header)
 
 	if len(state.items) == 0 {
-		b.WriteString(MutedStyle.Render("(empty)") + "\n")
+		b.WriteString(styles.MutedStyle.Render("(empty)") + "\n")
 	} else {
 		// Sort items based on current sort order
 		sortedItems := m.sortItems(state.items)
@@ -474,33 +506,18 @@ func (m *Model) viewDrillDown() string {
 		}
 
 		for i := state.scroll; i < endIdx; i++ {
-			item := sortedItems[i]
-			isCurrent := i == state.cursor
-
-			cursor := "  "
-			if isCurrent {
-				cursor = CursorStyle.Render("▸ ")
-			}
-
-			icon := " "
-			if item.IsDirectory {
-				icon = ">"
-			}
-
-			// Truncate and pad using display width for CJK character alignment
-			name := truncateToWidth(item.Name, nameWidth, false)
-			paddedName := padToWidth(name, nameWidth)
-			if isCurrent {
-				paddedName = SelectedStyle.Render(paddedName)
-			}
-
-			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(item.Size))
-			age := fmt.Sprintf("%*s", ageWidth, utils.FormatAge(item.ModifiedAt))
-			b.WriteString(fmt.Sprintf("%s%s %s %s %s\n", cursor, icon, paddedName, SizeStyle.Render(size), MutedStyle.Render(age)))
+			b.WriteString(m.renderItemRow(itemRowOpts{
+				item:      sortedItems[i],
+				isCurrent: i == state.cursor,
+				showCheck: false,
+				pathWidth: nameWidth,
+				sizeWidth: sizeWidth,
+				ageWidth:  ageWidth,
+			}))
 		}
 
 		if len(sortedItems) > visible {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("\n  [%d/%d]", state.cursor+1, len(sortedItems))))
+			b.WriteString(styles.MutedStyle.Render(fmt.Sprintf("\n  [%d/%d]", state.cursor+1, len(sortedItems))))
 		}
 	}
 

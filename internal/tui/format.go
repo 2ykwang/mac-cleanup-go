@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
@@ -22,45 +23,6 @@ const (
 	// previewPrefixWidth: cursor(2) + checkbox(3) + space(1) + icon(2) + space(1)
 	previewPrefixWidth = 9
 )
-
-// Colors
-var (
-	ColorPrimary   = lipgloss.Color("#7C3AED")
-	ColorSecondary = lipgloss.Color("#06B6D4")
-	ColorSuccess   = lipgloss.Color("#10B981")
-	ColorWarning   = lipgloss.Color("#F59E0B")
-	ColorDanger    = lipgloss.Color("#EF4444")
-	ColorMuted     = lipgloss.Color("#6B7280")
-	ColorText      = lipgloss.Color("#F9FAFB")
-	ColorBorder    = lipgloss.Color("#374151")
-)
-
-// Styles
-var (
-	TextStyle               = lipgloss.NewStyle().Foreground(ColorText)
-	MutedStyle              = lipgloss.NewStyle().Foreground(ColorMuted)
-	SuccessStyle            = lipgloss.NewStyle().Foreground(ColorSuccess)
-	WarningStyle            = lipgloss.NewStyle().Foreground(ColorWarning)
-	DangerStyle             = lipgloss.NewStyle().Foreground(ColorDanger)
-	SelectedStyle           = lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
-	CursorStyle             = lipgloss.NewStyle().Foreground(ColorSecondary).Bold(true)
-	SizeStyle               = lipgloss.NewStyle().Foreground(ColorSecondary).Bold(true)
-	HelpStyle               = lipgloss.NewStyle().Foreground(ColorMuted).MarginTop(1)
-	HeaderStyle             = lipgloss.NewStyle().Bold(true).Foreground(ColorText).Background(ColorPrimary).Padding(0, 2).MarginBottom(1)
-	DividerStyle            = lipgloss.NewStyle().Foreground(ColorBorder)
-	ButtonStyle             = lipgloss.NewStyle().Padding(0, 2).Border(lipgloss.RoundedBorder()).BorderForeground(ColorBorder).Foreground(ColorText)
-	ButtonActiveStyle       = ButtonStyle.BorderForeground(ColorPrimary).Foreground(ColorText).Bold(true)
-	ButtonDangerStyle       = ButtonStyle
-	ButtonDangerActiveStyle = ButtonStyle.BorderForeground(ColorDanger).Foreground(ColorDanger).Bold(true)
-)
-
-func Divider(width int) string {
-	line := ""
-	for i := 0; i < width; i++ {
-		line += "─"
-	}
-	return DividerStyle.Render(line)
-}
 
 func splitColumns(available int, weights, caps []int) []int {
 	cols := make([]int, len(weights))
@@ -201,24 +163,24 @@ func formatSize(bytes int64) string {
 func safetyDot(level types.SafetyLevel) string {
 	switch level {
 	case types.SafetyLevelSafe:
-		return SuccessStyle.Render("●")
+		return styles.SuccessStyle.Render("●")
 	case types.SafetyLevelModerate:
-		return WarningStyle.Render("●")
+		return styles.WarningStyle.Render("●")
 	case types.SafetyLevelRisky:
-		return DangerStyle.Render("●")
+		return styles.DangerStyle.Render("●")
 	default:
-		return MutedStyle.Render("●")
+		return styles.MutedStyle.Render("●")
 	}
 }
 
 func safetyBadge(level types.SafetyLevel) string {
 	switch level {
 	case types.SafetyLevelSafe:
-		return SuccessStyle.Render("[Safe]")
+		return styles.SuccessStyle.Render("[Safe]")
 	case types.SafetyLevelModerate:
-		return WarningStyle.Render("[Moderate]")
+		return styles.WarningStyle.Render("[Moderate]")
 	case types.SafetyLevelRisky:
-		return DangerStyle.Render("[Risky]")
+		return styles.DangerStyle.Render("[Risky]")
 	default:
 		return ""
 	}
@@ -227,7 +189,7 @@ func safetyBadge(level types.SafetyLevel) string {
 func (m *Model) methodBadge(method types.CleanupMethod) string {
 	switch method {
 	case types.MethodManual:
-		return WarningStyle.Render("[Manual]")
+		return styles.WarningStyle.Render("[Manual]")
 	case types.MethodBuiltin:
 		return "" // Internal implementation detail, not shown to user
 	default:
@@ -289,13 +251,6 @@ func padToWidth(s string, targetWidth int) string {
 		return s
 	}
 	return s + strings.Repeat(" ", targetWidth-currentWidth)
-}
-
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func indentLines(s, prefix string) string {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
@@ -36,7 +37,7 @@ func (m *Model) viewGuide() string {
 	var b strings.Builder
 
 	// Title
-	b.WriteString(HeaderStyle.Render(cat.Name))
+	b.WriteString(styles.HeaderStyle.Render(cat.Name))
 	b.WriteString("\n\n")
 
 	// Note (warning) - truncate if too long
@@ -45,14 +46,14 @@ func (m *Model) viewGuide() string {
 		if len(note) > contentWidth-4 {
 			note = note[:contentWidth-7] + "..."
 		}
-		b.WriteString(DangerStyle.Render("⚠ " + note))
+		b.WriteString(styles.DangerStyle.Render("⚠ " + note))
 		b.WriteString("\n\n")
 	}
 
-	b.WriteString(Divider(contentWidth) + "\n\n")
+	b.WriteString(styles.Divider(contentWidth) + "\n\n")
 
 	// Guide (deletion method)
-	b.WriteString(TextStyle.Render("How to delete:"))
+	b.WriteString(styles.TextStyle.Render("How to delete:"))
 	b.WriteString("\n")
 	guideText := cat.Guide
 	if guideText == "" {
@@ -60,14 +61,14 @@ func (m *Model) viewGuide() string {
 	}
 	// Render each line of guide text
 	for _, line := range strings.Split(strings.TrimSpace(guideText), "\n") {
-		b.WriteString(MutedStyle.Render(line))
+		b.WriteString(styles.MutedStyle.Render(line))
 		b.WriteString("\n")
 	}
 	b.WriteString("\n")
 
 	// Paths with cursor
 	if len(cat.Paths) > 0 {
-		b.WriteString(TextStyle.Render("Paths:"))
+		b.WriteString(styles.TextStyle.Render("Paths:"))
 		b.WriteString("\n")
 		for i, path := range cat.Paths {
 			// Truncate long paths from the beginning
@@ -77,24 +78,24 @@ func (m *Model) viewGuide() string {
 			}
 
 			if i == m.guidePathIndex {
-				b.WriteString(CursorStyle.Render("▸ ") + MutedStyle.Render(displayPath))
+				b.WriteString(styles.CursorStyle.Render("▸ ") + styles.MutedStyle.Render(displayPath))
 			} else {
-				b.WriteString("  " + MutedStyle.Render(displayPath))
+				b.WriteString("  " + styles.MutedStyle.Render(displayPath))
 			}
 			b.WriteString("\n")
 		}
 		b.WriteString("\n")
 	}
 
-	b.WriteString(Divider(contentWidth) + "\n\n")
+	b.WriteString(styles.Divider(contentWidth) + "\n\n")
 
 	// Key hints
-	b.WriteString(HelpStyle.Render("↑↓ Select • o Open • Esc Close"))
+	b.WriteString(styles.HelpStyle.Render("↑↓ Select • o Open • Esc Close"))
 
 	// Create a fixed-width box
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorBorder).
+		BorderForeground(styles.ColorBorder).
 		Padding(1, 2).
 		Width(boxWidth)
 
@@ -103,9 +104,9 @@ func (m *Model) viewGuide() string {
 }
 
 func (m *Model) confirmDialog() string {
-	boxWidth := minInt(72, m.width-4)
+	boxWidth := min(72, m.width-4)
 	if boxWidth < 40 {
-		boxWidth = minInt(m.width-2, 40)
+		boxWidth = min(m.width-2, 40)
 	}
 	if boxWidth < 24 {
 		boxWidth = m.width
@@ -144,27 +145,27 @@ func (m *Model) confirmDialog() string {
 		var head []string
 		var tail []string
 
-		head = append(head, HeaderStyle.Render("Confirm Deletion"))
+		head = append(head, styles.HeaderStyle.Render("Confirm Deletion"))
 		if !compact {
 			head = append(head, "")
 		}
-		head = append(head, SuccessStyle.Render("Files will be moved to Trash"))
+		head = append(head, styles.SuccessStyle.Render("Files will be moved to Trash"))
 		if !compact {
 			head = append(head, "")
 		}
 		if contentWidth > 0 && !compact {
-			head = append(head, Divider(contentWidth), "")
+			head = append(head, styles.Divider(contentWidth), "")
 		}
 		head = append(head, fmt.Sprintf("Total %s will be deleted.",
-			DangerStyle.Render(formatSize(m.getSelectedSize()))))
+			styles.DangerStyle.Render(formatSize(m.getSelectedSize()))))
 		if !compact {
 			head = append(head, "")
 		}
 
 		if contentWidth > 0 && !compact {
-			tail = append(tail, Divider(contentWidth), "")
+			tail = append(tail, styles.Divider(contentWidth), "")
 		}
-		tail = append(tail, MutedStyle.Render("Items can be recovered from Trash"))
+		tail = append(tail, styles.MutedStyle.Render("Items can be recovered from Trash"))
 		if !compact {
 			tail = append(tail, "")
 		}
@@ -238,14 +239,14 @@ func (m *Model) confirmDialog() string {
 		if contentWidth > 0 {
 			info = truncateToWidth(info, contentWidth, false)
 		}
-		lines = append(lines, MutedStyle.Render(info))
+		lines = append(lines, styles.MutedStyle.Render(info))
 	}
 	lines = append(lines, tail...)
 	content := strings.Join(lines, "\n")
 
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorBorder).
+		BorderForeground(styles.ColorBorder).
 		Padding(1, 2).
 		Width(boxWidth)
 
@@ -253,13 +254,13 @@ func (m *Model) confirmDialog() string {
 }
 
 func (m *Model) confirmButtons() string {
-	cancelStyle := ButtonStyle
+	cancelStyle := styles.ButtonStyle
 	if m.confirmChoice == confirmCancel {
-		cancelStyle = ButtonActiveStyle
+		cancelStyle = styles.ButtonActiveStyle
 	}
-	deleteStyle := ButtonDangerStyle
+	deleteStyle := styles.ButtonDangerStyle
 	if m.confirmChoice == confirmDelete {
-		deleteStyle = ButtonDangerActiveStyle
+		deleteStyle = styles.ButtonDangerActiveStyle
 	}
 
 	cancel := cancelStyle.Render("Cancel")
