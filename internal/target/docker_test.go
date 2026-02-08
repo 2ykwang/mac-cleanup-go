@@ -289,11 +289,11 @@ func TestDockerTarget_Scan_ParsesOutput(t *testing.T) {
 	for i := range result.Items {
 		item := &result.Items[i]
 		switch {
-		case strings.HasPrefix(item.Path, "docker:image:"):
+		case strings.HasPrefix(item.Path, dockerPathPrefixImage):
 			imageItem = item
-		case strings.HasPrefix(item.Path, "docker:volume:"):
+		case strings.HasPrefix(item.Path, dockerPathPrefixVolume):
 			volumeItem = item
-		case item.Path == "docker:build-cache":
+		case item.Path == dockerPathBuildCache:
 			cacheItem = item
 		}
 	}
@@ -301,7 +301,7 @@ func TestDockerTarget_Scan_ParsesOutput(t *testing.T) {
 	if assert.NotNil(t, imageItem) {
 		assert.Contains(t, imageItem.DisplayName, "Image: repo:latest")
 		assert.Contains(t, imageItem.DisplayName, "Used By: web")
-		assert.Equal(t, "docker:image:sha256:img1", imageItem.Path)
+		assert.Equal(t, dockerPathPrefixImage+"sha256:img1", imageItem.Path)
 		assert.Equal(t, types.ItemStatusProcessLocked, imageItem.Status)
 	}
 	if assert.NotNil(t, volumeItem) {
@@ -357,7 +357,7 @@ func TestDockerTarget_Scan_EmptyVerboseOutput(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, result.Error)
 	assert.Len(t, result.Items, 1)
-	assert.Equal(t, "docker:build-cache", result.Items[0].Path)
+	assert.Equal(t, dockerPathBuildCache, result.Items[0].Path)
 }
 
 func TestDockerTarget_Scan_RegistryPortImageAddsLatestUsedBy(t *testing.T) {
@@ -375,7 +375,7 @@ func TestDockerTarget_Scan_RegistryPortImageAddsLatestUsedBy(t *testing.T) {
 	item := result.Items[0]
 	assert.Contains(t, item.DisplayName, "Image: localhost:5000/myimage:latest")
 	assert.Contains(t, item.DisplayName, "Used By: web")
-	assert.Equal(t, "docker:image:sha256:img1", item.Path)
+	assert.Equal(t, dockerPathPrefixImage+"sha256:img1", item.Path)
 	assert.Equal(t, types.ItemStatusProcessLocked, item.Status)
 }
 
@@ -406,7 +406,7 @@ func TestDockerTarget_Scan_BuildCacheMissing(t *testing.T) {
 	assert.Nil(t, result.Error)
 	assert.Len(t, result.Items, 2)
 	for _, item := range result.Items {
-		assert.NotEqual(t, "docker:build-cache", item.Path)
+		assert.NotEqual(t, dockerPathBuildCache, item.Path)
 	}
 }
 
@@ -424,7 +424,7 @@ func TestDockerTarget_Scan_UntaggedImageLabel(t *testing.T) {
 	if assert.Len(t, result.Items, 1) {
 		assert.Contains(t, result.Items[0].DisplayName, "Image: untagged@img1")
 		assert.Contains(t, result.Items[0].DisplayName, "Used By: worker")
-		assert.Equal(t, "docker:image:sha256:img1", result.Items[0].Path)
+		assert.Equal(t, dockerPathPrefixImage+"sha256:img1", result.Items[0].Path)
 	}
 }
 
@@ -441,7 +441,7 @@ func TestDockerTarget_Scan_MultiTagImagesHaveUniquePaths(t *testing.T) {
 	if assert.Len(t, result.Items, 1) {
 		assert.Contains(t, result.Items[0].DisplayName, "Image: repo:dev")
 		assert.Contains(t, result.Items[0].DisplayName, "(+1 tags)")
-		assert.Equal(t, "docker:image:sha256:img1", result.Items[0].Path)
+		assert.Equal(t, dockerPathPrefixImage+"sha256:img1", result.Items[0].Path)
 		assert.Equal(t, parseDockerSize("1GB"), result.TotalSize)
 	}
 }
@@ -458,9 +458,9 @@ func TestDockerTarget_Clean_AllTypes(t *testing.T) {
 	s := NewDockerTarget(cat)
 
 	items := []types.CleanableItem{
-		{Path: "docker:image:sha256:abc", Size: 1000},
-		{Path: "docker:volume:vol1", Size: 3000},
-		{Path: "docker:build-cache", Size: 4000},
+		{Path: dockerPathPrefixImage + "sha256:abc", Size: 1000},
+		{Path: dockerPathPrefixVolume + "vol1", Size: 3000},
+		{Path: dockerPathBuildCache, Size: 4000},
 	}
 
 	result, err := s.Clean(items)
@@ -483,7 +483,7 @@ func TestDockerTarget_Clean_RecordsErrors(t *testing.T) {
 	s := NewDockerTarget(cat)
 
 	items := []types.CleanableItem{
-		{Path: "docker:image:sha256:abc", Size: 1000},
+		{Path: dockerPathPrefixImage + "sha256:abc", Size: 1000},
 	}
 
 	result, err := s.Clean(items)
