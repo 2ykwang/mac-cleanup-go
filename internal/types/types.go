@@ -112,6 +112,14 @@ type CleanResult struct {
 	Errors       []string
 }
 
+// Merge accumulates another CleanResult's counters and errors into this one.
+func (r *CleanResult) Merge(other *CleanResult) {
+	r.CleanedItems += other.CleanedItems
+	r.SkippedItems += other.SkippedItems
+	r.FreedSpace += other.FreedSpace
+	r.Errors = append(r.Errors, other.Errors...)
+}
+
 func NewScanResult(category Category) *ScanResult {
 	return &ScanResult{
 		Category: category,

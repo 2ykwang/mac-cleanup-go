@@ -4,9 +4,13 @@ import "github.com/2ykwang/mac-cleanup-go/internal/types"
 
 type Target interface {
 	Scan() (*types.ScanResult, error)
-	Clean(items []types.CleanableItem) (*types.CleanResult, error)
 	Category() types.Category
 	IsAvailable() bool
+}
+
+// BuiltinCleaner is implemented by targets that have their own cleanup logic (e.g. brew, docker).
+type BuiltinCleaner interface {
+	Clean(items []types.CleanableItem) (*types.CleanResult, error)
 }
 
 type Registry struct {

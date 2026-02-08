@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/mocks"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
@@ -17,7 +16,6 @@ func newMockTarget(id string, available bool) *mocks.MockTarget {
 	m.On("Category").Return(cat)
 	m.On("IsAvailable").Return(available)
 	m.On("Scan").Return(types.NewScanResult(cat), nil)
-	m.On("Clean", mock.Anything).Return(types.NewCleanResult(cat), nil)
 	return m
 }
 

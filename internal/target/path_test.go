@@ -238,32 +238,6 @@ func TestScan_HandlesScanPathError_Gracefully(t *testing.T) {
 	assert.Empty(t, result.Items)
 }
 
-// --- Clean Tests ---
-
-func TestClean_ReturnsEmptyResult(t *testing.T) {
-	cat := types.Category{ID: "test"}
-	s := NewPathTarget(cat)
-
-	items := []types.CleanableItem{
-		{Path: "/fake/1", Size: 100},
-	}
-
-	result, err := s.Clean(items)
-
-	assert.NoError(t, err)
-	assert.Equal(t, 0, result.CleanedItems)
-}
-
-func TestClean_IncludesCategoryInResult(t *testing.T) {
-	cat := types.Category{ID: "my-cat", Name: "My Category"}
-	s := NewPathTarget(cat)
-
-	result, err := s.Clean(nil)
-
-	assert.NoError(t, err)
-	assert.Equal(t, "my-cat", result.Category.ID)
-}
-
 // --- SIP Filtering Tests ---
 func TestScan_ExcludesSIPProtectedPaths(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "path-scanner-test")

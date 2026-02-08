@@ -137,9 +137,3 @@ func (s *PathTarget) scanPath(path string) (types.CleanableItem, error) {
 		ModifiedAt:  info.ModTime(),
 	}, nil
 }
-
-func (s *PathTarget) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
-	result := types.NewCleanResult(s.category)
-
-	return result, nil
-}

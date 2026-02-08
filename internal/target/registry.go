@@ -10,6 +10,15 @@ import (
 // BuiltinFactory is a function that creates a Target from a category and optional categories list.
 type BuiltinFactory func(cat types.Category, categories []types.Category) Target
 
+// builtinIDs is the static set of known builtin target IDs.
+// Used for config validation independent of factory registration.
+var builtinIDs = map[string]struct{}{
+	"homebrew":      {},
+	"docker":        {},
+	"old-downloads": {},
+	"system-cache":  {},
+}
+
 var builtinFactories = map[string]BuiltinFactory{}
 
 // RegisterBuiltin registers a builtin target factory.
@@ -18,11 +27,29 @@ func RegisterBuiltin(id string, factory BuiltinFactory) {
 }
 
 func IsBuiltinID(id string) bool {
-	_, ok := builtinFactories[id]
+	_, ok := builtinIDs[id]
 	return ok
 }
 
+func registerAllBuiltins() {
+	builtinFactories = map[string]BuiltinFactory{}
+
+	RegisterBuiltin("homebrew", func(cat types.Category, _ []types.Category) Target {
+		return NewBrewTarget(cat)
+	})
+	RegisterBuiltin("docker", func(cat types.Category, _ []types.Category) Target {
+		return NewDockerTarget(cat)
+	})
+	RegisterBuiltin("old-downloads", func(cat types.Category, _ []types.Category) Target {
+		return NewOldDownloadTarget(cat, defaultDaysOld)
+	})
+	RegisterBuiltin("system-cache", func(cat types.Category, categories []types.Category) Target {
+		return NewSystemCacheTarget(cat, categories)
+	})
+}
+
 func DefaultRegistry(cfg *types.Config) (*Registry, error) {
+	registerAllBuiltins()
 	r := NewRegistry()
 
 	builtinCount := 0
