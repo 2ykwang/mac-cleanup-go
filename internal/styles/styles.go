@@ -40,5 +40,8 @@ var (
 
 // Divider renders a horizontal line of the given width.
 func Divider(width int) string {
+	if width <= 0 {
+		return ""
+	}
 	return DividerStyle.Render(strings.Repeat("─", width))
 }
