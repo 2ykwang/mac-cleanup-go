@@ -192,9 +192,7 @@ func (s *CleanService) cleanTrashBatch(job CleanJob, callbacks types.CleanCallba
 		}
 
 		batchResult := s.executor.Trash(job.Category, batch)
-		result.FreedSpace += batchResult.FreedSpace
-		result.CleanedItems += batchResult.CleanedItems
-		result.Errors = append(result.Errors, batchResult.Errors...)
+		result.Merge(batchResult)
 
 		s.sendBatchItemCallbacks(batch, batchResult, callbacks)
 		*currentItem += len(batch)
@@ -262,9 +260,7 @@ func (s *CleanService) cleanByItem(job CleanJob, callbacks types.CleanCallbacks,
 		}
 
 		singleResult := exec(job.Category, []types.CleanableItem{item})
-		result.FreedSpace += singleResult.FreedSpace
-		result.CleanedItems += singleResult.CleanedItems
-		result.Errors = append(result.Errors, singleResult.Errors...)
+		result.Merge(singleResult)
 
 		if callbacks.OnItemDone != nil {
 			success := len(singleResult.Errors) == 0

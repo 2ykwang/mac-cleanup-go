@@ -15,12 +15,6 @@ type OldDownloadTarget struct {
 	daysOld int
 }
 
-func init() {
-	RegisterBuiltin("old-downloads", func(cat types.Category, _ []types.Category) Target {
-		return NewOldDownloadTarget(cat, defaultDaysOld)
-	})
-}
-
 func NewOldDownloadTarget(cat types.Category, daysOld int) *OldDownloadTarget {
 	return &OldDownloadTarget{
 		PathTarget: NewPathTarget(cat),
@@ -69,9 +63,7 @@ func (s *OldDownloadTarget) Clean(items []types.CleanableItem) (*types.CleanResu
 		Category: result.Category,
 	})
 
-	result.CleanedItems += batchResult.CleanedItems
-	result.FreedSpace += batchResult.FreedSpace
-	result.Errors = append(result.Errors, batchResult.Errors...)
+	result.Merge(batchResult)
 
 	return result, nil
 }

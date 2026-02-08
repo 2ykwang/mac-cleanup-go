@@ -43,20 +43,28 @@ func (c *Executor) Builtin(cat types.Category, items []types.CleanableItem) *typ
 		return result
 	}
 
-	if s, ok := c.registry.Get(cat.ID); ok {
-		builtinResult, err := s.Clean(items)
-		if err != nil {
-			if builtinResult != nil {
-				builtinResult.Errors = append(builtinResult.Errors, err.Error())
-			} else {
-				result.Errors = append(result.Errors, err.Error())
-			}
-		}
+	t, ok := c.registry.Get(cat.ID)
+	if !ok {
+		result.Errors = append(result.Errors, "target not found: "+cat.ID)
+		return result
+	}
+
+	cleaner, ok := t.(target.BuiltinCleaner)
+	if !ok {
+		result.Errors = append(result.Errors, "target does not support builtin clean: "+cat.ID)
+		return result
+	}
+
+	builtinResult, err := cleaner.Clean(items)
+	if err != nil {
 		if builtinResult != nil {
-			return builtinResult
+			builtinResult.Errors = append(builtinResult.Errors, err.Error())
+		} else {
+			result.Errors = append(result.Errors, err.Error())
 		}
-	} else {
-		result.Errors = append(result.Errors, "scanner not found: "+cat.ID)
+	}
+	if builtinResult != nil {
+		return builtinResult
 	}
 
 	return result
@@ -91,10 +99,7 @@ func (c *Executor) moveToTrash(items []types.CleanableItem, result *types.CleanR
 		},
 	})
 
-	result.CleanedItems += batchResult.CleanedItems
-	result.SkippedItems += batchResult.SkippedItems
-	result.FreedSpace += batchResult.FreedSpace
-	result.Errors = append(result.Errors, batchResult.Errors...)
+	result.Merge(batchResult)
 }
 
 func (c *Executor) removePermanent(items []types.CleanableItem, result *types.CleanResult) {

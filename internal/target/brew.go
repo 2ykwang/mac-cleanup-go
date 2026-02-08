@@ -15,12 +15,6 @@ type BrewTarget struct {
 	cachePath string
 }
 
-func init() {
-	RegisterBuiltin("homebrew", func(cat types.Category, _ []types.Category) Target {
-		return NewBrewTarget(cat)
-	})
-}
-
 func NewBrewTarget(cat types.Category) *BrewTarget {
 	return &BrewTarget{category: cat}
 }
@@ -121,9 +115,7 @@ func (s *BrewTarget) Clean(items []types.CleanableItem) (*types.CleanResult, err
 		},
 	})
 
-	result.CleanedItems += batchResult.CleanedItems
-	result.FreedSpace += batchResult.FreedSpace
-	result.Errors = append(result.Errors, batchResult.Errors...)
+	result.Merge(batchResult)
 
 	logger.Info("brew clean completed",
 		"cleanedItems", result.CleanedItems,
