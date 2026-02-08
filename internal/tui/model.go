@@ -12,6 +12,7 @@ import (
 
 	"github.com/2ykwang/mac-cleanup-go/internal/cleaner"
 	"github.com/2ykwang/mac-cleanup-go/internal/logger"
+	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
@@ -47,7 +48,7 @@ type Model struct {
 func NewModel(cfg *types.Config, currentVersion string) *Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(ColorPrimary)
+	s.Style = lipgloss.NewStyle().Foreground(styles.ColorPrimary)
 
 	// Initialize filter input
 	ti := textinput.New()

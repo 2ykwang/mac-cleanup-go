@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
@@ -1141,8 +1142,8 @@ func TestRenderListItem_ManualItemMuted(t *testing.T) {
 	assert.Contains(t, output, "[Manual]")
 	assert.Contains(t, output, "Telegram DB")
 
-	mutedCheckbox := MutedStyle.Render(" - ")
-	assert.Contains(t, output, mutedCheckbox, "manual item checkbox should be rendered with MutedStyle")
+	mutedCheckbox := styles.MutedStyle.Render(" - ")
+	assert.Contains(t, output, mutedCheckbox, "manual item checkbox should be rendered with styles.MutedStyle")
 
 	m.selected[manualResult.Category.ID] = true
 	outputSelected := m.renderListItem(2, manualResult, nameWidth, sizeWidth, countWidth)
