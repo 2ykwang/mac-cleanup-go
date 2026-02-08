@@ -186,7 +186,7 @@ func TestClean_MethodBuiltin_TargetNotFound(t *testing.T) {
 	result := c.Builtin(cat, items)
 
 	require.Len(t, result.Errors, 1)
-	assert.Contains(t, result.Errors[0], "scanner not found")
+	assert.Contains(t, result.Errors[0], "target not found")
 	assert.Equal(t, 0, result.CleanedItems)
 }
 

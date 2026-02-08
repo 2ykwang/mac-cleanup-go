@@ -26,12 +26,6 @@ const (
 	dockerPathBuildCache   = "docker:build-cache"
 )
 
-func init() {
-	RegisterBuiltin("docker", func(cat types.Category, _ []types.Category) Target {
-		return NewDockerTarget(cat)
-	})
-}
-
 func NewDockerTarget(cat types.Category) *DockerTarget {
 	return &DockerTarget{category: cat}
 }

@@ -45,10 +45,6 @@ func (s testTarget) Scan() (*types.ScanResult, error) {
 	return types.NewScanResult(s.category), nil
 }
 
-func (s testTarget) Clean(_ []types.CleanableItem) (*types.CleanResult, error) {
-	return types.NewCleanResult(s.category), nil
-}
-
 func (s testTarget) Category() types.Category {
 	return s.category
 }

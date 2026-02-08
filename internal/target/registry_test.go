@@ -74,7 +74,8 @@ func TestDefaultRegistry_NonBuiltin_UsesPathTarget(t *testing.T) {
 }
 
 func TestIsBuiltinID_RegisteredBuiltin_ReturnsTrue(t *testing.T) {
-	// docker, homebrew, system-cache, old-downloads are registered in init()
+	registerAllBuiltins()
+
 	assert.True(t, IsBuiltinID("docker"))
 	assert.True(t, IsBuiltinID("homebrew"))
 	assert.True(t, IsBuiltinID("system-cache"))
