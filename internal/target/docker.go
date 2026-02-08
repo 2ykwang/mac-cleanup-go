@@ -20,6 +20,10 @@ type DockerTarget struct {
 const (
 	dockerShortIDLength = 12
 	dockerNameLimit     = 50
+
+	dockerPathPrefixImage  = "docker:image:"
+	dockerPathPrefixVolume = "docker:volume:"
+	dockerPathBuildCache   = "docker:build-cache"
 )
 
 func init() {
@@ -63,6 +67,17 @@ type dockerDfVerbose struct {
 	Volumes    []dockerDfVolume    `json:"Volumes"`
 }
 
+type dockerImageAggregate struct {
+	ID   string
+	Size int64
+	Tags map[string]struct{}
+}
+
+type containerUsage struct {
+	imageUsedBy  map[string]map[string]struct{}
+	volumeUsedBy map[string]map[string]struct{}
+}
+
 type dockerDfImage struct {
 	ID         string `json:"ID"`
 	Repository string `json:"Repository"`
@@ -95,8 +110,19 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 		return result, nil
 	}
 
-	buildCacheSize := s.fetchBuildCacheSize()
+	usage := buildContainerUsage(verbose)
+	appendImageItems(result, verbose.Images, usage.imageUsedBy)
+	appendVolumeItems(result, verbose.Volumes, usage.volumeUsedBy)
+	s.appendBuildCache(result)
 
+	logger.Info("docker scan completed",
+		"resourceTypes", len(result.Items),
+		"totalSize", result.TotalSize)
+
+	return result, nil
+}
+
+func buildContainerUsage(verbose *dockerDfVerbose) containerUsage {
 	volumeSet := make(map[string]struct{}, len(verbose.Volumes))
 	for _, v := range verbose.Volumes {
 		if v.Name != "" {
@@ -104,8 +130,10 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 		}
 	}
 
-	imageUsedBy := make(map[string]map[string]struct{})
-	volumeUsedBy := make(map[string]map[string]struct{})
+	usage := containerUsage{
+		imageUsedBy:  make(map[string]map[string]struct{}),
+		volumeUsedBy: make(map[string]map[string]struct{}),
+	}
 
 	for _, c := range verbose.Containers {
 		name := strings.TrimPrefix(strings.TrimSpace(c.Names), "/")
@@ -114,9 +142,9 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 		}
 		imageRef := strings.TrimSpace(c.Image)
 		if imageRef != "" {
-			addUsedBy(imageUsedBy, imageRef, name)
+			addUsedBy(usage.imageUsedBy, imageRef, name)
 			if !dockerHasTag(imageRef) {
-				addUsedBy(imageUsedBy, imageRef+":latest", name)
+				addUsedBy(usage.imageUsedBy, imageRef+":latest", name)
 			}
 		}
 		if c.Mounts != "" {
@@ -126,20 +154,18 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 					continue
 				}
 				if _, ok := volumeSet[mount]; ok {
-					addUsedBy(volumeUsedBy, mount, name)
+					addUsedBy(usage.volumeUsedBy, mount, name)
 				}
 			}
 		}
 	}
 
-	type dockerImageAggregate struct {
-		ID   string
-		Size int64
-		Tags map[string]struct{}
-	}
+	return usage
+}
 
-	imageAggregates := make(map[string]*dockerImageAggregate, len(verbose.Images))
-	for _, img := range verbose.Images {
+func aggregateImages(images []dockerDfImage) map[string]*dockerImageAggregate {
+	aggregates := make(map[string]*dockerImageAggregate, len(images))
+	for _, img := range images {
 		if img.ID == "" {
 			continue
 		}
@@ -155,14 +181,14 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 			continue
 		}
 
-		agg := imageAggregates[img.ID]
+		agg := aggregates[img.ID]
 		if agg == nil {
 			agg = &dockerImageAggregate{
 				ID:   img.ID,
 				Size: size,
 				Tags: make(map[string]struct{}),
 			}
-			imageAggregates[img.ID] = agg
+			aggregates[img.ID] = agg
 		} else if size > agg.Size {
 			agg.Size = size
 		}
@@ -173,6 +199,11 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 			agg.Tags[repo+":"+tag] = struct{}{}
 		}
 	}
+	return aggregates
+}
+
+func appendImageItems(result *types.ScanResult, images []dockerDfImage, imageUsedBy map[string]map[string]struct{}) {
+	imageAggregates := aggregateImages(images)
 
 	imageIDs := make([]string, 0, len(imageAggregates))
 	for id := range imageAggregates {
@@ -221,23 +252,12 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 		usedBy := usedByList(combined)
 		displayName := appendUsedBy(baseName, usedBy)
 
-		item := types.CleanableItem{
-			Path:        "docker:image:" + imageID,
-			Size:        agg.Size,
-			FileCount:   1,
-			Name:        baseName,
-			DisplayName: displayName,
-			IsDirectory: false,
-		}
-		if len(usedBy) > 0 {
-			item.Status = types.ItemStatusProcessLocked
-		}
-		result.Items = append(result.Items, item)
-		result.TotalSize += agg.Size
-		result.TotalFileCount++
+		appendDockerItem(result, dockerPathPrefixImage+imageID, agg.Size, baseName, displayName, usedBy)
 	}
+}
 
-	for _, v := range verbose.Volumes {
+func appendVolumeItems(result *types.ScanResult, volumes []dockerDfVolume, volumeUsedBy map[string]map[string]struct{}) {
+	for _, v := range volumes {
 		if v.Name == "" {
 			continue
 		}
@@ -249,42 +269,16 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 		usedBy := usedByList(volumeUsedBy[v.Name])
 		displayName := appendUsedBy(baseName, usedBy)
 
-		item := types.CleanableItem{
-			Path:        "docker:volume:" + v.Name,
-			Size:        size,
-			FileCount:   1,
-			Name:        baseName,
-			DisplayName: displayName,
-			IsDirectory: false,
-		}
-		if len(usedBy) > 0 {
-			item.Status = types.ItemStatusProcessLocked
-		}
-		result.Items = append(result.Items, item)
-		result.TotalSize += size
-		result.TotalFileCount++
+		appendDockerItem(result, dockerPathPrefixVolume+v.Name, size, baseName, displayName, usedBy)
 	}
+}
 
+func (s *DockerTarget) appendBuildCache(result *types.ScanResult) {
+	buildCacheSize := s.fetchBuildCacheSize()
 	if buildCacheSize > 0 {
 		name := "Docker Build Cache"
-		item := types.CleanableItem{
-			Path:        "docker:build-cache",
-			Size:        buildCacheSize,
-			FileCount:   1,
-			Name:        name,
-			DisplayName: name,
-			IsDirectory: false,
-		}
-		result.Items = append(result.Items, item)
-		result.TotalSize += buildCacheSize
-		result.TotalFileCount++
+		appendDockerItem(result, dockerPathBuildCache, buildCacheSize, name, name, nil)
 	}
-
-	logger.Info("docker scan completed",
-		"resourceTypes", len(result.Items),
-		"totalSize", result.TotalSize)
-
-	return result, nil
 }
 
 func (s *DockerTarget) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
@@ -293,21 +287,21 @@ func (s *DockerTarget) Clean(items []types.CleanableItem) (*types.CleanResult, e
 	for _, item := range items {
 		var cmd *exec.Cmd
 		switch {
-		case strings.HasPrefix(item.Path, "docker:image:"):
-			imageID := strings.TrimPrefix(item.Path, "docker:image:")
+		case strings.HasPrefix(item.Path, dockerPathPrefixImage):
+			imageID := strings.TrimPrefix(item.Path, dockerPathPrefixImage)
 			if imageID != "" {
 				cmd = execCommand("docker", "image", "rm", imageID)
 			} else {
 				logger.Debug("docker prune skipped empty image id", "path", item.Path)
 			}
-		case strings.HasPrefix(item.Path, "docker:volume:"):
-			volumeName := strings.TrimPrefix(item.Path, "docker:volume:")
+		case strings.HasPrefix(item.Path, dockerPathPrefixVolume):
+			volumeName := strings.TrimPrefix(item.Path, dockerPathPrefixVolume)
 			if volumeName != "" {
 				cmd = execCommand("docker", "volume", "rm", volumeName)
 			} else {
 				logger.Debug("docker prune skipped empty volume name", "path", item.Path)
 			}
-		case item.Path == "docker:build-cache":
+		case item.Path == dockerPathBuildCache:
 			cmd = execCommand("docker", "builder", "prune", "-af")
 		default:
 			logger.Debug("docker prune skipped unknown path", "path", item.Path)
@@ -398,6 +392,23 @@ func usedByList(set map[string]struct{}) []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+func appendDockerItem(result *types.ScanResult, path string, size int64, name, displayName string, usedBy []string) {
+	item := types.CleanableItem{
+		Path:        path,
+		Size:        size,
+		FileCount:   1,
+		Name:        name,
+		DisplayName: displayName,
+		IsDirectory: false,
+	}
+	if len(usedBy) > 0 {
+		item.Status = types.ItemStatusProcessLocked
+	}
+	result.Items = append(result.Items, item)
+	result.TotalSize += size
+	result.TotalFileCount++
 }
 
 func appendUsedBy(name string, usedBy []string) string {
