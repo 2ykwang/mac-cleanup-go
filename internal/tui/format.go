@@ -24,6 +24,8 @@ const (
 	previewPrefixWidth = 9
 )
 
+var SectionActiveNameStyle = lipgloss.NewStyle().Bold(true).Foreground(styles.ColorPrimary)
+
 func splitColumns(available int, weights, caps []int) []int {
 	cols := make([]int, len(weights))
 	if available <= 0 {
@@ -170,30 +172,6 @@ func safetyDot(level types.SafetyLevel) string {
 		return styles.DangerStyle.Render("●")
 	default:
 		return styles.MutedStyle.Render("●")
-	}
-}
-
-func safetyBadge(level types.SafetyLevel) string {
-	switch level {
-	case types.SafetyLevelSafe:
-		return styles.SuccessStyle.Render("[Safe]")
-	case types.SafetyLevelModerate:
-		return styles.WarningStyle.Render("[Moderate]")
-	case types.SafetyLevelRisky:
-		return styles.DangerStyle.Render("[Risky]")
-	default:
-		return ""
-	}
-}
-
-func (m *Model) methodBadge(method types.CleanupMethod) string {
-	switch method {
-	case types.MethodManual:
-		return styles.WarningStyle.Render("[Manual]")
-	case types.MethodBuiltin:
-		return "" // Internal implementation detail, not shown to user
-	default:
-		return "" // Trash is default, no badge needed
 	}
 }
 

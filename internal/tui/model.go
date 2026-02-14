@@ -107,8 +107,9 @@ func NewModel(cfg *types.Config, currentVersion string) *Model {
 			scanErrors: make([]scanErrorInfo, 0),
 		},
 		previewState: previewState{
-			drillDownStack: make([]drillDownState, 0),
-			sortOrder:      types.SortBySize,
+			drillDownStack:   make([]drillDownState, 0),
+			sortOrder:        types.SortBySize,
+			previewCollapsed: make(map[string]bool),
 		},
 		confirmState: confirmState{
 			confirmChoice: confirmCancel,

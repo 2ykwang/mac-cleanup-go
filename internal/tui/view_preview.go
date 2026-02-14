@@ -7,8 +7,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
-
 	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
@@ -23,40 +21,110 @@ func (m *Model) getPreviewCatResult() *types.ScanResult {
 	return m.resultMap[m.previewCatID]
 }
 
-func (m *Model) findSelectedCatIndex() int {
+func (m *Model) ensurePreviewCategory(selected []*types.ScanResult) {
+	if len(selected) == 0 {
+		m.previewCatID = ""
+		return
+	}
+
+	for _, r := range selected {
+		if r.Category.ID == m.previewCatID {
+			return
+		}
+	}
+	m.previewCatID = selected[0].Category.ID
+}
+
+func (m *Model) initializePreviewSections() {
 	selected := m.getSelectedResults()
+	m.previewCollapsed = make(map[string]bool, len(selected))
+	m.ensurePreviewCategory(selected)
+	for _, r := range selected {
+		m.previewCollapsed[r.Category.ID] = true
+	}
+	m.previewItemIndex = -1
+}
+
+func (m *Model) isSectionCollapsed(catID string) bool {
+	if m.previewCollapsed == nil {
+		return false
+	}
+	collapsed, ok := m.previewCollapsed[catID]
+	if !ok {
+		return catID != m.previewCatID
+	}
+	return collapsed
+}
+
+func (m *Model) collapseCurrentSection() {
+	if m.previewCatID == "" {
+		return
+	}
+	if m.previewCollapsed == nil {
+		m.previewCollapsed = make(map[string]bool)
+	}
+	m.previewCollapsed[m.previewCatID] = true
+	m.previewItemIndex = -1
+	m.previewScroll = 0
+}
+
+func (m *Model) expandCurrentSection() {
+	if m.previewCatID == "" {
+		return
+	}
+	if m.previewCollapsed == nil {
+		m.previewCollapsed = make(map[string]bool)
+	}
+	m.previewCollapsed[m.previewCatID] = false
+}
+
+func (m *Model) toggleCurrentSection() {
+	if m.previewCatID == "" {
+		return
+	}
+	if m.isSectionCollapsed(m.previewCatID) {
+		m.expandCurrentSection()
+		return
+	}
+	m.collapseCurrentSection()
+}
+
+func (m *Model) movePreviewSection(delta int) bool {
+	selected := m.getSelectedResults()
+	if len(selected) == 0 || delta == 0 {
+		return false
+	}
+
+	m.ensurePreviewCategory(selected)
+	current := 0
 	for i, r := range selected {
 		if r.Category.ID == m.previewCatID {
-			return i
+			current = i
+			break
 		}
 	}
-	return -1
+	next := clamp(current+delta, 0, len(selected)-1)
+	if next == current {
+		return false
+	}
+
+	m.previewCatID = selected[next].Category.ID
+	m.previewItemIndex = -1
+	return true
 }
 
-func (m *Model) findPrevSelectedCatID() string {
-	selected := m.getSelectedResults()
-	for i, r := range selected {
-		if r.Category.ID == m.previewCatID && i > 0 {
-			return selected[i-1].Category.ID
-		}
-	}
-	return m.previewCatID
-}
-
-func (m *Model) findNextSelectedCatID() string {
-	selected := m.getSelectedResults()
-	for i, r := range selected {
-		if r.Category.ID == m.previewCatID && i < len(selected)-1 {
-			return selected[i+1].Category.ID
-		}
-	}
-	return m.previewCatID
+func (m *Model) previewItemsCount() int {
+	return len(m.getVisiblePreviewItems())
 }
 
 // getVisiblePreviewItems returns the sorted and filtered items for the current preview.
 // This is what the user actually sees on screen.
 func (m *Model) getVisiblePreviewItems() []types.CleanableItem {
-	r := m.getPreviewCatResult()
+	return m.getVisiblePreviewItemsFor(m.previewCatID)
+}
+
+func (m *Model) getVisiblePreviewItemsFor(catID string) []types.CleanableItem {
+	r := m.resultMap[catID]
 	if r == nil {
 		return nil
 	}
@@ -75,6 +143,9 @@ func (m *Model) getVisiblePreviewItems() []types.CleanableItem {
 // getCurrentPreviewItem returns the item at the current cursor position
 // after applying filter and sort. Returns nil if no valid item.
 func (m *Model) getCurrentPreviewItem() *types.CleanableItem {
+	if m.isSectionCollapsed(m.previewCatID) {
+		return nil
+	}
 	items := m.getVisiblePreviewItems()
 	if items == nil || m.previewItemIndex < 0 || m.previewItemIndex >= len(items) {
 		return nil
@@ -121,45 +192,17 @@ func (m *Model) readDirectory(path string) []types.CleanableItem {
 
 // View rendering
 
-func (m *Model) previewHeader(selected []*types.ScanResult, cat *types.ScanResult) string {
+func (m *Model) previewHeader() string {
 	var b strings.Builder
 
 	b.WriteString(styles.HeaderStyle.Render("Cleanup Preview"))
-	b.WriteString("\n")
+	b.WriteString("\n\n")
 
 	b.WriteString(fmt.Sprintf("Selected: %d  │  Estimated: %s  │  Sort: %s\n",
 		m.getSelectedCount(), styles.SizeStyle.Render(formatSize(m.getSelectedSize())), m.sortOrder.Label()))
+	b.WriteString("\n")
+	b.WriteString(styles.MutedStyle.Render("Next: press ") + styles.SelectedStyle.Render("Y") + styles.MutedStyle.Render(" to open delete confirmation") + "\n")
 	b.WriteString(styles.Divider(60) + "\n")
-
-	// Tabs
-	catIdx := m.findSelectedCatIndex()
-	b.WriteString(styles.TextStyle.Render("Categories") + "\n")
-	b.WriteString(m.renderTabs(selected, catIdx))
-	b.WriteString("\n\n")
-
-	// Current category info
-	if cat != nil {
-		badge := safetyBadge(cat.Category.Safety)
-		mBadge := m.methodBadge(cat.Category.Method)
-		effectiveSize := m.getEffectiveSize(cat)
-		if mBadge != "" {
-			b.WriteString(fmt.Sprintf("%s %s  %s  │  %d files\n",
-				badge, mBadge, styles.SizeStyle.Render(formatSize(effectiveSize)), cat.TotalFileCount))
-		} else {
-			b.WriteString(fmt.Sprintf("%s  %s  │  %d files\n",
-				badge, styles.SizeStyle.Render(formatSize(effectiveSize)), cat.TotalFileCount))
-		}
-		if cat.Category.Note != "" {
-			// Auto-wrap note text to fit terminal width
-			noteStyle := styles.MutedStyle.Width(m.width - 4)
-			b.WriteString(noteStyle.Render(cat.Category.Note) + "\n")
-		}
-		if cat.Category.Method == types.MethodManual && cat.Category.Guide != "" {
-			guideStyle := styles.WarningStyle.Width(m.width - 4)
-			b.WriteString(guideStyle.Render("[Manual] "+cat.Category.Guide) + "\n")
-		}
-		b.WriteString(styles.Divider(60) + "\n")
-	}
 
 	return b.String()
 }
@@ -190,6 +233,74 @@ func (m *Model) previewFooter(selected []*types.ScanResult) string {
 	}
 
 	return b.String()
+}
+
+func (m *Model) renderSectionLine(r *types.ScanResult, isCurrentSection bool, isFocused bool) string {
+	nameWidth, badgeWidth, sizeWidth, countWidth := m.previewSectionColumnWidths()
+
+	cursor := "  "
+	if isFocused {
+		cursor = styles.CursorStyle.Render("▸ ")
+	}
+
+	indicator := "▶"
+	if !m.isSectionCollapsed(r.Category.ID) {
+		indicator = "▼"
+	}
+	if isCurrentSection {
+		indicator = styles.CursorStyle.Render(indicator)
+	} else {
+		indicator = styles.MutedStyle.Render(indicator)
+	}
+
+	name := padToWidth(truncateToWidth(r.Category.Name, nameWidth, false), nameWidth)
+	if isCurrentSection {
+		name = SectionActiveNameStyle.Render(name)
+	}
+
+	badgeText := ""
+	switch r.Category.Safety {
+	case types.SafetyLevelSafe:
+		badgeText = "[Safe]"
+	case types.SafetyLevelModerate:
+		badgeText = "[Moderate]"
+	case types.SafetyLevelRisky:
+		badgeText = "[Risky]"
+	}
+	if r.Category.Method == types.MethodManual {
+		badgeText += " [Manual]"
+	}
+	badgeText = padToWidth(truncateToWidth(badgeText, badgeWidth, false), badgeWidth)
+	badge := styles.MutedStyle.Render(badgeText)
+	switch r.Category.Safety {
+	case types.SafetyLevelSafe:
+		badge = styles.SuccessStyle.Render(badgeText)
+	case types.SafetyLevelModerate:
+		badge = styles.WarningStyle.Render(badgeText)
+	case types.SafetyLevelRisky:
+		badge = styles.DangerStyle.Render(badgeText)
+	}
+
+	size := fmt.Sprintf("%*s", sizeWidth, formatSize(m.getEffectiveSize(r)))
+	count := fmt.Sprintf("%*s", countWidth, fmt.Sprintf("%d files", r.TotalFileCount))
+
+	return fmt.Sprintf("%s%s %s %s %s %s", cursor, indicator, name, badge, styles.SizeStyle.Render(size), styles.MutedStyle.Render(count))
+}
+
+func (m *Model) previewSectionColumnWidths() (int, int, int, int) {
+	// sectionPrefixWidth: cursor(2) + indicator(1) + space(1)
+	const sectionPrefixWidth = 4
+	cols := columnWidths(m.width, sectionPrefixWidth, 3, []int{44, 22, 10, 10}, false)
+	return cols[0], cols[1], cols[2], cols[3]
+}
+
+func (m *Model) renderSectionColumnsHeader() string {
+	nameWidth, badgeWidth, sizeWidth, countWidth := m.previewSectionColumnWidths()
+	name := padToWidth("Section", nameWidth)
+	badge := padToWidth("Risk/Mode", badgeWidth)
+	size := fmt.Sprintf("%*s", sizeWidth, "Size")
+	count := fmt.Sprintf("%*s", countWidth, "Files")
+	return styles.MutedStyle.Render(fmt.Sprintf("    %s %s %s %s", name, badge, size, count))
 }
 
 // itemRowOpts holds parameters for rendering a single item row.
@@ -273,6 +384,63 @@ func (m *Model) renderItemRow(opts itemRowOpts) string {
 	return fmt.Sprintf("%s%s%s %s %s %s\n", cursor, checkbox, icon, paddedName, size, age)
 }
 
+func (m *Model) renderPreviewItemLine(catID string, item types.CleanableItem, isCurrent bool, pathWidth, sizeWidth, ageWidth int) string {
+	isExcluded := m.isExcluded(catID, item.Path)
+	isLocked := item.Status == types.ItemStatusProcessLocked
+
+	cursor := "  "
+	if isCurrent {
+		cursor = styles.CursorStyle.Render("▸ ")
+	}
+
+	checkbox := styles.SuccessStyle.Render("[x]")
+	if isLocked {
+		checkbox = styles.MutedStyle.Render(" - ")
+	} else if isExcluded {
+		checkbox = styles.MutedStyle.Render("[ ]")
+	}
+
+	icon := " "
+	if item.IsDirectory {
+		icon = ">"
+	}
+	icon = padToWidth(icon, previewIconWidth)
+	if isLocked {
+		icon = styles.MutedStyle.Render(icon)
+	}
+
+	displayPath := item.Path
+	if item.DisplayName != "" {
+		displayPath = item.DisplayName
+	}
+
+	var truncated string
+	if displayPath == item.Path {
+		truncated = shortenPath(displayPath, pathWidth)
+	} else {
+		truncated = truncateToWidth(displayPath, pathWidth, false)
+	}
+
+	paddedPath := padToWidth(truncated, pathWidth)
+	if isLocked || isExcluded {
+		paddedPath = styles.MutedStyle.Render(paddedPath)
+	} else if isCurrent {
+		paddedPath = styles.SelectedStyle.Render(paddedPath)
+	}
+
+	size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(item.Size))
+	age := fmt.Sprintf("%*s", ageWidth, utils.FormatAge(item.ModifiedAt))
+	if isLocked || isExcluded {
+		size = styles.MutedStyle.Render(size)
+		age = styles.MutedStyle.Render(age)
+	} else {
+		size = styles.SizeStyle.Render(size)
+		age = styles.MutedStyle.Render(age)
+	}
+
+	return fmt.Sprintf("%s%s %s %s %s %s", cursor, checkbox, icon, paddedPath, size, age)
+}
+
 func (m *Model) viewPreview() string {
 	if len(m.drillDownStack) > 0 {
 		return m.viewDrillDown()
@@ -282,167 +450,91 @@ func (m *Model) viewPreview() string {
 	if len(selected) == 0 {
 		return "No items selected."
 	}
+	m.ensurePreviewCategory(selected)
+	if len(m.previewCollapsed) == 0 {
+		m.initializePreviewSections()
+	}
 
-	cat := m.getPreviewCatResult()
-	header := m.previewHeader(selected, cat)
+	header := m.previewHeader()
 	footer := m.previewFooter(selected)
 	visible := m.availableLines(header, footer)
 
+	pathWidth, sizeWidth, ageWidth := m.previewColumnWidths()
+	filterQuery := m.currentFilterQuery()
+
+	bodyLines := make([]string, 0, 64)
+	focusLine := -1
+	addLine := func(line string, focused bool) {
+		bodyLines = append(bodyLines, line)
+		if focused {
+			focusLine = len(bodyLines) - 1
+		}
+	}
+
+	if m.filterState == FilterTyping {
+		addLine("Search: "+m.filterInput.View(), false)
+	}
+	if filterQuery != "" {
+		addLine(styles.MutedStyle.Render(fmt.Sprintf("Filter: \"%s\"", filterQuery)), false)
+	}
+	addLine(m.renderSectionColumnsHeader(), false)
+
+	for _, r := range selected {
+		isCurrentSection := r.Category.ID == m.previewCatID
+		if isCurrentSection && m.isSectionCollapsed(r.Category.ID) {
+			m.previewItemIndex = -1
+		}
+
+		sectionFocus := isCurrentSection && (m.previewItemIndex < 0 || m.isSectionCollapsed(r.Category.ID))
+		addLine(m.renderSectionLine(r, isCurrentSection, sectionFocus), sectionFocus)
+
+		if m.isSectionCollapsed(r.Category.ID) {
+			continue
+		}
+
+		items := m.getVisiblePreviewItemsFor(r.Category.ID)
+		if isCurrentSection {
+			if len(items) == 0 {
+				m.previewItemIndex = -1
+			} else if m.previewItemIndex >= len(items) {
+				m.previewItemIndex = len(items) - 1
+			}
+		}
+
+		if len(items) == 0 {
+			addLine(styles.MutedStyle.Render("    (no items)"), false)
+			continue
+		}
+
+		for itemIdx, item := range items {
+			isCurrentItem := isCurrentSection && m.previewItemIndex == itemIdx
+			addLine("  "+m.renderPreviewItemLine(r.Category.ID, item, isCurrentItem, pathWidth, sizeWidth, ageWidth), isCurrentItem)
+		}
+	}
+
+	if focusLine < 0 {
+		focusLine = 0
+	}
+
+	m.previewScroll = adjustScrollFor(focusLine, m.previewScroll, visible, len(bodyLines))
+	start := m.previewScroll
+	end := start + visible
+	if end > len(bodyLines) {
+		end = len(bodyLines)
+	}
+
 	var b strings.Builder
 	b.WriteString(header)
-
-	if cat != nil {
-		pathWidth, sizeWidth, ageWidth := m.previewColumnWidths()
-
-		// Show search input if in typing mode
-		if m.filterState == FilterTyping {
-			b.WriteString("Search: " + m.filterInput.View() + "\n")
-		}
-
-		filterQuery := m.currentFilterQuery()
-		sortedItems := m.getVisiblePreviewItems()
-
-		// Show filter info
-		if filterQuery != "" {
-			filterInfo := fmt.Sprintf("Filter: \"%s\" (%d items)", filterQuery, len(sortedItems))
-			b.WriteString(styles.MutedStyle.Render(filterInfo) + "\n")
-		}
-
-		colHeader := fmt.Sprintf("%*s%-*s %*s %*s",
-			previewPrefixWidth, "", pathWidth, "Path", sizeWidth, "Size", ageWidth, "Age")
-		b.WriteString(styles.MutedStyle.Render(colHeader) + "\n")
-
-		// Handle empty filter results
-		if len(sortedItems) == 0 && filterQuery != "" {
-			b.WriteString(styles.MutedStyle.Render("  No matching items\n"))
-		}
-
-		// Adjust scroll
-		m.previewScroll = adjustScrollFor(m.previewItemIndex, m.previewScroll, visible-1, len(sortedItems))
-
-		endIdx := m.previewScroll + visible
-		if endIdx > len(sortedItems) {
-			endIdx = len(sortedItems)
-		}
-
-		for i := m.previewScroll; i < endIdx; i++ {
-			item := sortedItems[i]
-			b.WriteString(m.renderItemRow(itemRowOpts{
-				item:       item,
-				isCurrent:  m.previewItemIndex == i,
-				isExcluded: m.isExcluded(cat.Category.ID, item.Path),
-				isLocked:   item.Status == types.ItemStatusProcessLocked,
-				showCheck:  true,
-				pathWidth:  pathWidth,
-				sizeWidth:  sizeWidth,
-				ageWidth:   ageWidth,
-			}))
-		}
-
-		if len(sortedItems) > visible {
-			b.WriteString(styles.MutedStyle.Render(fmt.Sprintf("\n\n  [%d-%d / %d]", m.previewScroll+1, endIdx, len(sortedItems))))
-		}
+	for i := start; i < end; i++ {
+		b.WriteString(bodyLines[i])
+		b.WriteString("\n")
 	}
-
+	if len(bodyLines) > visible {
+		b.WriteString(styles.MutedStyle.Render(fmt.Sprintf("  … [%d-%d / %d]\n", start+1, end, len(bodyLines))))
+	}
+	m.updatePreviewStatusMessage()
 	b.WriteString(footer)
 	return b.String()
-}
-
-func (m *Model) renderTabs(selected []*types.ScanResult, currentIdx int) string {
-	if len(selected) == 0 {
-		return ""
-	}
-
-	maxWidth := m.width - 2
-	if maxWidth < 10 {
-		maxWidth = 10
-	}
-
-	if currentIdx < 0 || currentIdx >= len(selected) {
-		currentIdx = 0
-	}
-
-	type tabItem struct {
-		text  string
-		width int
-	}
-
-	items := make([]tabItem, 0, len(selected))
-	for _, r := range selected {
-		name := r.Category.Name
-		isCurrent := r.Category.ID == m.previewCatID
-		tabName := truncateToWidth(name, maxWidth-2, false)
-		var tab string
-		if isCurrent {
-			tab = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(styles.ColorText).
-				Background(styles.ColorPrimary).
-				Padding(0, 1).
-				Render(tabName)
-		} else {
-			tab = lipgloss.NewStyle().
-				Foreground(styles.ColorText).
-				Background(styles.ColorBorder).
-				Padding(0, 1).
-				Render(tabName)
-		}
-		items = append(items, tabItem{text: tab, width: lipgloss.Width(tab)})
-	}
-
-	joinTabs := func(start, end int, left, right bool) (string, int) {
-		parts := make([]string, 0, end-start+3)
-		if left {
-			parts = append(parts, styles.MutedStyle.Render("…"))
-		}
-		for i := start; i <= end; i++ {
-			parts = append(parts, items[i].text)
-		}
-		if right {
-			parts = append(parts, styles.MutedStyle.Render("…"))
-		}
-		line := strings.Join(parts, " ")
-		return line, lipgloss.Width(line)
-	}
-
-	start := currentIdx
-	end := currentIdx
-	for {
-		expanded := false
-		if start > 0 {
-			_, width := joinTabs(start-1, end, start-1 > 0, end < len(items)-1)
-			if width <= maxWidth {
-				start--
-				expanded = true
-			}
-		}
-		if end < len(items)-1 {
-			_, width := joinTabs(start, end+1, start > 0, end+1 < len(items)-1)
-			if width <= maxWidth {
-				end++
-				expanded = true
-			}
-		}
-		if !expanded {
-			break
-		}
-	}
-
-	left := start > 0
-	right := end < len(items)-1
-	line, width := joinTabs(start, end, left, right)
-	for width > maxWidth && start < end {
-		if currentIdx-start > end-currentIdx {
-			start++
-		} else {
-			end--
-		}
-		left = start > 0
-		right = end < len(items)-1
-		line, width = joinTabs(start, end, left, right)
-	}
-
-	return line
 }
 
 func (m *Model) drillDownHeader(path string) string {

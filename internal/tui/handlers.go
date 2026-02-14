@@ -109,10 +109,10 @@ func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.clearSelections()
 	case "enter", "p":
 		if m.hasSelection() {
-			m.previewScroll = 0
-			m.previewCatID = ""
-			m.previewItemIndex = 0
 			m.drillDownStack = m.drillDownStack[:0]
+			m.previewCatID = ""
+			m.resetPreviewSelection()
+			m.clearFilter()
 			// Find first selected category
 			for _, r := range m.results {
 				if m.selected[r.Category.ID] {
@@ -120,6 +120,7 @@ func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					break
 				}
 			}
+			m.initializePreviewSections()
 			m.view = ViewPreview
 		}
 	}
@@ -166,20 +167,28 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "down", "j":
 		m.movePreviewCursor(1)
 	case "left", "h":
-		prevID := m.findPrevSelectedCatID()
-		if prevID != m.previewCatID {
-			m.previewCatID = prevID
-			m.resetPreviewSelection()
+		m.collapseCurrentSection()
+	case "right", "l":
+		m.expandCurrentSection()
+	case "tab", "]":
+		if m.filterState != FilterNone {
 			m.clearFilter()
 		}
-	case "right", "l":
-		nextID := m.findNextSelectedCatID()
-		if nextID != m.previewCatID {
-			m.previewCatID = nextID
-			m.resetPreviewSelection()
+		if m.movePreviewSection(1) {
+			m.previewScroll = 0
+		}
+	case "shift+tab", "[":
+		if m.filterState != FilterNone {
 			m.clearFilter()
+		}
+		if m.movePreviewSection(-1) {
+			m.previewScroll = 0
 		}
 	case " ":
+		if m.previewItemIndex < 0 {
+			m.toggleCurrentSection()
+			return m, nil
+		}
 		// Toggle exclusion for current item (use visible items after filter/sort)
 		r := m.getPreviewCatResult()
 		item := m.getCurrentPreviewItem()
@@ -194,6 +203,10 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case "enter":
+		if m.previewItemIndex < 0 {
+			m.toggleCurrentSection()
+			return m, nil
+		}
 		// Drill down into directory (use visible items after filter/sort)
 		item := m.getCurrentPreviewItem()
 		if item != nil && item.IsDirectory {
@@ -239,14 +252,30 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "pgup":
 		// Page up
 		m.movePreviewCursor(-m.pageSize())
+	case "shift+down", "J":
+		// Page down via Shift modifier
+		m.movePreviewCursor(m.pageSize())
+	case "shift+up", "K":
+		// Page up via Shift modifier
+		m.movePreviewCursor(-m.pageSize())
 	case "home":
 		// Go to first item
-		m.setPreviewCursor(0, 0)
+		if m.isSectionCollapsed(m.previewCatID) {
+			m.previewItemIndex = -1
+			m.previewScroll = 0
+			m.updatePreviewStatusMessage()
+		} else {
+			m.setPreviewCursor(0, 0)
+		}
 	case "end":
 		// Go to last item
-		r := m.getPreviewCatResult()
-		if r != nil && len(r.Items) > 0 {
-			m.setPreviewCursor(len(r.Items)-1, len(r.Items)-1)
+		total := m.previewItemsCount()
+		if m.isSectionCollapsed(m.previewCatID) || total == 0 {
+			m.previewItemIndex = -1
+			m.previewScroll = 0
+			m.updatePreviewStatusMessage()
+		} else {
+			m.setPreviewCursor(total-1, total-1)
 		}
 	case "/":
 		// Enter search mode
@@ -454,6 +483,8 @@ func (m *Model) resetForRescan() {
 	m.resultMap = make(map[string]*types.ScanResult)
 	m.cursor = 0
 	m.scroll = 0
+	m.previewCatID = ""
+	m.previewCollapsed = make(map[string]bool)
 	m.reportScroll = 0
 	m.reportLines = nil
 	m.scanning = true
@@ -532,12 +563,116 @@ func moveCursor(delta int, max int, cursor *int, scroll *int) {
 }
 
 func (m *Model) movePreviewCursor(delta int) {
-	r := m.getPreviewCatResult()
-	if r == nil || len(r.Items) == 0 {
+	if delta == 0 {
 		return
 	}
-	moveCursor(delta, len(r.Items)-1, &m.previewItemIndex, &m.previewScroll)
+
+	step := 1
+	if delta < 0 {
+		step = -1
+		delta = -delta
+	}
+	for i := 0; i < delta; i++ {
+		if !m.movePreviewCursorStep(step) {
+			break
+		}
+	}
 	m.updatePreviewStatusMessage()
+}
+
+func (m *Model) movePreviewCursorStep(step int) bool {
+	selected := m.getSelectedResults()
+	currentSection, itemCount, ok := m.normalizePreviewCursorState(selected)
+	if !ok {
+		return false
+	}
+	if step > 0 {
+		return m.movePreviewForward(selected, currentSection, itemCount)
+	}
+	return m.movePreviewBackward(selected, currentSection)
+}
+
+func (m *Model) normalizePreviewCursorState(selected []*types.ScanResult) (int, int, bool) {
+	if len(selected) == 0 {
+		return 0, 0, false
+	}
+
+	m.ensurePreviewCategory(selected)
+	currentSection := 0
+	for i, r := range selected {
+		if r.Category.ID == m.previewCatID {
+			currentSection = i
+			break
+		}
+	}
+
+	itemCount := m.previewItemsCount()
+	switch {
+	case m.isSectionCollapsed(m.previewCatID), itemCount == 0:
+		m.previewItemIndex = -1
+	case m.previewItemIndex >= itemCount:
+		m.previewItemIndex = itemCount - 1
+	case m.previewItemIndex < -1:
+		m.previewItemIndex = -1
+	}
+
+	return currentSection, itemCount, true
+}
+
+func (m *Model) movePreviewForward(selected []*types.ScanResult, currentSection, itemCount int) bool {
+	if m.previewItemIndex < 0 {
+		if !m.isSectionCollapsed(m.previewCatID) && itemCount > 0 {
+			m.previewItemIndex = 0
+			return true
+		}
+		if currentSection >= len(selected)-1 {
+			return false
+		}
+		m.jumpToPreviewSection(selected, currentSection+1)
+		return true
+	}
+
+	if m.previewItemIndex < itemCount-1 {
+		m.previewItemIndex++
+		return true
+	}
+	if currentSection >= len(selected)-1 {
+		return false
+	}
+	m.jumpToPreviewSection(selected, currentSection+1)
+	return true
+}
+
+func (m *Model) movePreviewBackward(selected []*types.ScanResult, currentSection int) bool {
+	if m.previewItemIndex > 0 {
+		m.previewItemIndex--
+		return true
+	}
+	if m.previewItemIndex == 0 {
+		m.previewItemIndex = -1
+		return true
+	}
+
+	// Section-level focus: jump to previous section.
+	if currentSection > 0 {
+		m.jumpToPreviewSection(selected, currentSection-1)
+		prevCount := m.previewItemsCount()
+		if !m.isSectionCollapsed(m.previewCatID) && prevCount > 0 {
+			m.previewItemIndex = prevCount - 1
+		}
+		return true
+	}
+
+	m.previewItemIndex = -1
+	return false
+}
+
+func (m *Model) jumpToPreviewSection(selected []*types.ScanResult, sectionIndex int) {
+	if sectionIndex < 0 || sectionIndex >= len(selected) {
+		return
+	}
+	m.previewCatID = selected[sectionIndex].Category.ID
+	m.previewItemIndex = -1
 }
 
 func (m *Model) setPreviewCursor(index int, max int) {
@@ -546,6 +681,12 @@ func (m *Model) setPreviewCursor(index int, max int) {
 }
 
 func (m *Model) updatePreviewStatusMessage() {
+	if m.isSectionCollapsed(m.previewCatID) {
+		if m.statusMessage == lockedItemStatusMessage {
+			m.statusMessage = ""
+		}
+		return
+	}
 	item := m.getCurrentPreviewItem()
 	if item != nil && item.Status == types.ItemStatusProcessLocked {
 		m.statusMessage = lockedItemStatusMessage

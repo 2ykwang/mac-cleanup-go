@@ -3,6 +3,8 @@ package tui
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -530,6 +532,7 @@ func TestHandleListKey_EnterPreview(t *testing.T) {
 
 	assert.Equal(t, ViewPreview, m.view)
 	assert.Equal(t, "cat1", m.previewCatID)
+	assert.True(t, m.isSectionCollapsed("cat1"))
 }
 
 func TestHandleListKey_EnterPreview_NoSelection(t *testing.T) {
@@ -609,35 +612,6 @@ func TestHandleDrillDownKey_OpenInFinder_NonExistentPath(t *testing.T) {
 	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
 
 	assert.Equal(t, "Path not found", m.statusMessage)
-}
-
-// Preview navigation tests
-
-func TestFindPrevSelectedCatID(t *testing.T) {
-	m := newTestModelWithResults()
-	m.selected["cat1"] = true
-	m.selected["cat2"] = true
-	m.previewCatID = "cat2"
-
-	assert.Equal(t, "cat1", m.findPrevSelectedCatID())
-}
-
-func TestFindNextSelectedCatID(t *testing.T) {
-	m := newTestModelWithResults()
-	m.selected["cat1"] = true
-	m.selected["cat2"] = true
-	m.previewCatID = "cat1"
-
-	assert.Equal(t, "cat2", m.findNextSelectedCatID())
-}
-
-func TestFindSelectedCatIndex(t *testing.T) {
-	m := newTestModelWithResults()
-	m.selected["cat1"] = true
-	m.selected["cat3"] = true
-	m.previewCatID = "cat3"
-
-	assert.Equal(t, 1, m.findSelectedCatIndex())
 }
 
 // Layout helper tests
@@ -897,7 +871,10 @@ func TestViewPreview_ContainsCategoryInfo(t *testing.T) {
 	m := newTestModelWithResults()
 	m.view = ViewPreview
 	m.selected["cat1"] = true
+	m.selected["cat2"] = true
 	m.previewCatID = "cat1"
+	m.initializePreviewSections()
+	m.expandCurrentSection()
 
 	output := m.viewPreview()
 
@@ -905,11 +882,68 @@ func TestViewPreview_ContainsCategoryInfo(t *testing.T) {
 	assert.Contains(t, output, "[Safe]")
 }
 
+func TestViewPreview_ShowsDeleteNextStepHint(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewPreview
+	m.selected["cat1"] = true
+	m.selected["cat2"] = true
+	m.previewCatID = "cat1"
+	m.initializePreviewSections()
+
+	output := m.viewPreview()
+
+	assert.Contains(t, output, "Next: press")
+	assert.Contains(t, output, "delete confirmation")
+	assert.NotContains(t, output, "All sections are collapsed")
+}
+
+func TestViewPreview_ShowsAccordionIndicators(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewPreview
+	m.selected["cat1"] = true
+	m.selected["cat2"] = true
+	m.previewCatID = "cat1"
+	m.initializePreviewSections()
+	m.expandCurrentSection()
+	m.previewCollapsed["cat2"] = true
+
+	output := m.viewPreview()
+
+	assert.Contains(t, output, "▼", "expanded section indicator should be rendered")
+	assert.Contains(t, output, "▶", "collapsed section indicator should be rendered")
+}
+
+func TestRenderSectionLine_ColumnsAligned(t *testing.T) {
+	m := newTestModelWithResults()
+	m.selected["cat1"] = true
+	m.selected["cat2"] = true
+	m.previewCatID = "cat1"
+	m.initializePreviewSections()
+
+	r1 := m.resultMap["cat1"]
+	r2 := m.resultMap["cat2"]
+	require.NotNil(t, r1)
+	require.NotNil(t, r2)
+
+	line1 := m.renderSectionLine(r1, true, false)
+	line2 := m.renderSectionLine(r2, false, false)
+
+	size1 := formatSize(m.getEffectiveSize(r1))
+	size2 := formatSize(m.getEffectiveSize(r2))
+	count1 := fmt.Sprintf("%d files", r1.TotalFileCount)
+	count2 := fmt.Sprintf("%d files", r2.TotalFileCount)
+
+	assert.Equal(t, strings.Index(line1, size1), strings.Index(line2, size2), "size column should start at same position")
+	assert.Equal(t, strings.Index(line1, count1), strings.Index(line2, count2), "count column should start at same position")
+}
+
 func TestViewPreview_ContainsItems(t *testing.T) {
 	m := newTestModelWithResults()
 	m.view = ViewPreview
 	m.selected["cat1"] = true
 	m.previewCatID = "cat1"
+	m.initializePreviewSections()
+	m.expandCurrentSection()
 
 	output := m.viewPreview()
 
@@ -922,6 +956,8 @@ func TestViewPreview_UsesDisplayNameWhenPresent(t *testing.T) {
 	m.view = ViewPreview
 	m.selected["cat1"] = true
 	m.previewCatID = "cat1"
+	m.initializePreviewSections()
+	m.expandCurrentSection()
 	m.results[0].Items = []types.CleanableItem{
 		{Path: "/path/1", DisplayName: "Pretty Name", Size: 500},
 	}
@@ -937,6 +973,8 @@ func TestViewPreview_ShowsLockedItemIndicator(t *testing.T) {
 	m.view = ViewPreview
 	m.selected["cat1"] = true
 	m.previewCatID = "cat1"
+	m.initializePreviewSections()
+	m.expandCurrentSection()
 	m.results[0].Items[0].Status = types.ItemStatusProcessLocked
 
 	output := m.viewPreview()
@@ -949,6 +987,8 @@ func TestViewPreview_ShowsPaginationWhenOverflow(t *testing.T) {
 	m.view = ViewPreview
 	m.selected["cat1"] = true
 	m.previewCatID = "cat1"
+	m.initializePreviewSections()
+	m.expandCurrentSection()
 	m.height = 10
 
 	items := make([]types.CleanableItem, 30)
@@ -959,7 +999,32 @@ func TestViewPreview_ShowsPaginationWhenOverflow(t *testing.T) {
 
 	output := m.viewPreview()
 
-	assert.Contains(t, output, "[1-")
+	assert.Contains(t, output, "… [", "overflowed preview should show range indicator")
+	assert.Contains(t, output, " / ", "range indicator should include total count")
+}
+
+func TestViewPreview_ShowsSectionOverflowIndicator(t *testing.T) {
+	m := newTestModel()
+	m.view = ViewPreview
+	m.height = 16
+	for i := 0; i < 8; i++ {
+		id := fmt.Sprintf("cat%d", i)
+		result := &types.ScanResult{
+			Category:       types.Category{ID: id, Name: fmt.Sprintf("Category %d", i), Safety: types.SafetyLevelSafe},
+			TotalSize:      int64(100 + i),
+			TotalFileCount: 1,
+			Items:          []types.CleanableItem{{Path: fmt.Sprintf("/tmp/%d", i), Size: 100}},
+		}
+		m.results = append(m.results, result)
+		m.resultMap[id] = result
+		m.selected[id] = true
+	}
+	m.previewCatID = "cat4"
+	m.initializePreviewSections()
+
+	output := m.viewPreview()
+
+	assert.Contains(t, output, "…", "overflowed sections should show ellipsis indicator")
 }
 
 func TestViewPreview_NoSelection(t *testing.T) {
@@ -1511,6 +1576,9 @@ func newTestModelForPreview() *Model {
 	m.previewCatID = "cat1"
 	m.selected["cat1"] = true
 	m.selected["cat2"] = true
+	m.initializePreviewSections()
+	m.expandCurrentSection()
+	m.previewItemIndex = 0
 	return m
 }
 
@@ -1523,11 +1591,20 @@ func TestHandlePreviewKey_CursorUpDecreases(t *testing.T) {
 	assert.Equal(t, 0, m.previewItemIndex)
 }
 
-func TestHandlePreviewKey_CursorUpBoundsAtZero(t *testing.T) {
+func TestHandlePreviewKey_CursorUpMovesToSectionHeader(t *testing.T) {
 	m := newTestModelForPreview()
 	m.previewItemIndex = 0
 
 	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyUp})
+
+	assert.Equal(t, -1, m.previewItemIndex)
+}
+
+func TestHandlePreviewKey_CursorDownFromSectionMovesToFirstItem(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewItemIndex = -1
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyDown})
 
 	assert.Equal(t, 0, m.previewItemIndex)
 }
@@ -1550,7 +1627,7 @@ func TestHandlePreviewKey_CursorDownIgnoresEmptyItems(t *testing.T) {
 
 	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyDown})
 
-	assert.Equal(t, 0, m.previewItemIndex)
+	assert.Equal(t, -1, m.previewItemIndex)
 	assert.Equal(t, 0, m.previewScroll)
 }
 
@@ -1692,38 +1769,49 @@ func TestHandleConfirmKey_QQuits(t *testing.T) {
 	assert.IsType(t, tea.QuitMsg{}, msg)
 }
 
-func TestHandlePreviewKey_LeftSwitchesCategory(t *testing.T) {
+func TestHandlePreviewKey_LeftCollapsesSection(t *testing.T) {
 	m := newTestModelForPreview()
-	m.previewCatID = "cat2"
-	m.previewItemIndex = 5
-	m.previewScroll = 10
-	m.filterState = FilterApplied
-	m.filterText = "test"
+	m.expandCurrentSection()
 
 	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyLeft})
 
-	assert.Equal(t, "cat1", m.previewCatID)
-	assert.Equal(t, 0, m.previewItemIndex)
-	assert.Equal(t, 0, m.previewScroll)
-	assert.Equal(t, FilterNone, m.filterState)
-	assert.Equal(t, "", m.filterText)
+	assert.True(t, m.isSectionCollapsed("cat1"))
 }
 
-func TestHandlePreviewKey_RightSwitchesCategory(t *testing.T) {
+func TestHandlePreviewKey_RightExpandsSection(t *testing.T) {
 	m := newTestModelForPreview()
-	m.previewCatID = "cat1"
+	m.collapseCurrentSection()
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRight})
+
+	assert.False(t, m.isSectionCollapsed("cat1"))
+}
+
+func TestHandlePreviewKey_TabSwitchesToNextSection(t *testing.T) {
+	m := newTestModelForPreview()
 	m.previewItemIndex = 5
 	m.previewScroll = 10
 	m.filterState = FilterApplied
 	m.filterText = "test"
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRight})
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyTab})
 
 	assert.Equal(t, "cat2", m.previewCatID)
-	assert.Equal(t, 0, m.previewItemIndex)
+	assert.Equal(t, -1, m.previewItemIndex)
 	assert.Equal(t, 0, m.previewScroll)
-	assert.Equal(t, FilterNone, m.filterState)
+	assert.Equal(t, FilterNone, m.filterState, "section switch should clear active filter")
 	assert.Equal(t, "", m.filterText)
+	assert.True(t, m.isSectionCollapsed("cat2"), "new section should stay collapsed until explicitly expanded")
+}
+
+func TestHandlePreviewKey_ShiftTabSwitchesToPrevSection(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewCatID = "cat2"
+	m.expandCurrentSection()
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyShiftTab})
+
+	assert.Equal(t, "cat1", m.previewCatID)
 }
 
 func TestHandlePreviewKey_SpaceTogglesExclusion(t *testing.T) {
@@ -1747,11 +1835,68 @@ func TestHandlePreviewKey_SpaceSkipsLockedItem(t *testing.T) {
 	assert.Equal(t, lockedItemStatusMessage, m.statusMessage)
 }
 
+func TestHandlePreviewKey_SpaceAtCollapsedSectionExpandsSection(t *testing.T) {
+	m := newTestModelForPreview()
+	m.collapseCurrentSection()
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeySpace})
+
+	assert.False(t, m.isSectionCollapsed("cat1"))
+}
+
+func TestHandlePreviewKey_SpaceAtSectionFocusCollapsesSection(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewItemIndex = -1
+	m.expandCurrentSection()
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeySpace})
+
+	assert.True(t, m.isSectionCollapsed("cat1"))
+}
+
+func TestHandlePreviewKey_EnterAtSectionFocusTogglesSection(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewItemIndex = -1
+	m.expandCurrentSection()
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyEnter})
+	assert.True(t, m.isSectionCollapsed("cat1"))
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyEnter})
+	assert.False(t, m.isSectionCollapsed("cat1"))
+}
+
+func TestHandlePreviewKey_EnterDrillsDownOnDirectory(t *testing.T) {
+	m := newTestModelForPreview()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "file.txt"), []byte("x"), 0o644))
+	m.results[0].Items = []types.CleanableItem{
+		{Path: dir, DisplayName: "test-dir", IsDirectory: true, Size: 1},
+	}
+	m.previewItemIndex = 0
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyEnter})
+
+	require.Len(t, m.drillDownStack, 1)
+	assert.Equal(t, dir, m.drillDownStack[0].path)
+	assert.NotEmpty(t, m.drillDownStack[0].items)
+}
+
+func TestHandlePreviewKey_EnterOnFileDoesNotDrillDown(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewItemIndex = 0
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyEnter})
+
+	assert.Empty(t, m.drillDownStack)
+}
+
 func TestHandlePreviewKey_MoveShowsLockedStatusMessage(t *testing.T) {
 	m := newTestModelForPreview()
 	m.results[0].Items[0].Status = types.ItemStatusProcessLocked
+	m.previewItemIndex = -1
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyUp})
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyDown})
 
 	assert.Equal(t, lockedItemStatusMessage, m.statusMessage)
 }
@@ -1793,7 +1938,7 @@ func TestHandlePreviewKey_PageDown(t *testing.T) {
 
 	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyPgDown})
 
-	assert.Greater(t, m.previewItemIndex, 0)
+	assert.True(t, m.previewCatID != "cat1" || m.previewItemIndex > 0, "page down should move to a later position")
 }
 
 func TestHandlePreviewKey_PageUp(t *testing.T) {
@@ -1802,7 +1947,25 @@ func TestHandlePreviewKey_PageUp(t *testing.T) {
 
 	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyPgUp})
 
-	assert.Equal(t, 0, m.previewItemIndex)
+	assert.LessOrEqual(t, m.previewItemIndex, 0)
+}
+
+func TestHandlePreviewKey_ShiftPageDown(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewItemIndex = 0
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'J'}})
+
+	assert.True(t, m.previewCatID != "cat1" || m.previewItemIndex > 0)
+}
+
+func TestHandlePreviewKey_ShiftPageUp(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewItemIndex = 1
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'K'}})
+
+	assert.LessOrEqual(t, m.previewItemIndex, 0)
 }
 
 func TestHandlePreviewKey_AIncludesAll(t *testing.T) {
@@ -1877,4 +2040,413 @@ func TestHandleDrillDownKey_SortToggle(t *testing.T) {
 	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
 
 	assert.Equal(t, expectedSort, m.sortOrder)
+}
+
+func TestEnsurePreviewCategory_EmptyClearsCurrentID(t *testing.T) {
+	m := newTestModelWithResults()
+	m.previewCatID = "cat1"
+
+	m.ensurePreviewCategory(nil)
+
+	assert.Equal(t, "", m.previewCatID)
+}
+
+func TestIsSectionCollapsed_MissingEntryFollowsCurrentCategory(t *testing.T) {
+	m := newTestModelWithResults()
+	m.previewCatID = "cat1"
+	m.previewCollapsed = map[string]bool{}
+
+	assert.False(t, m.isSectionCollapsed("cat1"))
+	assert.True(t, m.isSectionCollapsed("cat2"))
+}
+
+func TestCollapseCurrentSection_NoCurrentCategoryNoop(t *testing.T) {
+	m := newTestModel()
+	m.previewItemIndex = 3
+	m.previewScroll = 4
+
+	m.collapseCurrentSection()
+
+	assert.Nil(t, m.previewCollapsed)
+	assert.Equal(t, 3, m.previewItemIndex)
+	assert.Equal(t, 4, m.previewScroll)
+}
+
+func TestExpandCurrentSection_InitializesCollapseMap(t *testing.T) {
+	m := newTestModel()
+	m.previewCatID = "cat1"
+
+	m.expandCurrentSection()
+
+	require.NotNil(t, m.previewCollapsed)
+	assert.False(t, m.previewCollapsed["cat1"])
+}
+
+func TestToggleCurrentSection_NoCurrentCategoryNoop(t *testing.T) {
+	m := newTestModel()
+
+	m.toggleCurrentSection()
+
+	assert.Nil(t, m.previewCollapsed)
+}
+
+func TestMovePreviewSection_NoSelectionOrZeroDelta(t *testing.T) {
+	m := newTestModel()
+	assert.False(t, m.movePreviewSection(1))
+
+	m2 := newTestModelWithResults()
+	m2.addSelected("cat1")
+	m2.previewCatID = "cat1"
+	assert.False(t, m2.movePreviewSection(0))
+}
+
+func TestMovePreviewSection_BoundaryNoop(t *testing.T) {
+	m := newTestModelWithResults()
+	m.addSelected("cat1")
+	m.addSelected("cat2")
+	m.previewCatID = "cat2"
+
+	moved := m.movePreviewSection(1)
+
+	assert.False(t, moved)
+	assert.Equal(t, "cat2", m.previewCatID)
+}
+
+func TestMovePreviewSection_CurrentMissingStartsFromFirst(t *testing.T) {
+	m := newTestModelWithResults()
+	m.addSelected("cat1")
+	m.addSelected("cat2")
+	m.previewCatID = "missing"
+
+	moved := m.movePreviewSection(1)
+
+	assert.True(t, moved)
+	assert.Equal(t, "cat2", m.previewCatID)
+	assert.Equal(t, -1, m.previewItemIndex)
+}
+
+func TestGetCurrentPreviewItem_CollapsedOrOutOfRangeReturnsNil(t *testing.T) {
+	m := newTestModelForPreview()
+
+	m.collapseCurrentSection()
+	assert.Nil(t, m.getCurrentPreviewItem())
+
+	m.expandCurrentSection()
+	m.previewItemIndex = 99
+	assert.Nil(t, m.getCurrentPreviewItem())
+}
+
+func TestNormalizePreviewCursorState_NoSelection(t *testing.T) {
+	m := newTestModel()
+
+	section, count, ok := m.normalizePreviewCursorState(nil)
+
+	assert.False(t, ok)
+	assert.Equal(t, 0, section)
+	assert.Equal(t, 0, count)
+}
+
+func TestNormalizePreviewCursorState_CurrentMissingAndIndexClamped(t *testing.T) {
+	m := newTestModelWithResults()
+	m.addSelected("cat1")
+	m.addSelected("cat2")
+	selected := m.getSelectedResults()
+	m.previewCatID = "missing"
+	m.previewItemIndex = 99
+
+	section, count, ok := m.normalizePreviewCursorState(selected)
+
+	assert.True(t, ok)
+	assert.Equal(t, 0, section)
+	assert.Equal(t, 2, count)
+	assert.Equal(t, "cat1", m.previewCatID)
+	assert.Equal(t, 1, m.previewItemIndex)
+}
+
+func TestNormalizePreviewCursorState_NegativeIndexAndZeroItemsBecomeSectionFocus(t *testing.T) {
+	m := newTestModelWithResults()
+	m.addSelected("cat1")
+	selected := m.getSelectedResults()
+	m.previewCatID = "cat1"
+	m.previewItemIndex = -9
+	m.resultMap["cat1"].Items = nil
+
+	_, _, ok := m.normalizePreviewCursorState(selected)
+
+	assert.True(t, ok)
+	assert.Equal(t, -1, m.previewItemIndex)
+}
+
+func TestMovePreviewForward_StopsAtLastSection(t *testing.T) {
+	m := newTestModelWithResults()
+	m.addSelected("cat1")
+	m.addSelected("cat2")
+	selected := m.getSelectedResults()
+
+	m.previewCatID = "cat2"
+	m.previewCollapsed = map[string]bool{"cat1": true, "cat2": true}
+	m.previewItemIndex = -1
+	assert.False(t, m.movePreviewForward(selected, 1, 0))
+
+	m.previewCollapsed["cat2"] = false
+	m.previewItemIndex = 0
+	assert.False(t, m.movePreviewForward(selected, 1, 1))
+}
+
+func TestMovePreviewBackward_JumpsToPreviousExpandedSectionLastItem(t *testing.T) {
+	m := newTestModelWithResults()
+	m.addSelected("cat1")
+	m.addSelected("cat2")
+	selected := m.getSelectedResults()
+
+	m.previewCollapsed = map[string]bool{"cat1": false, "cat2": false}
+	m.previewCatID = "cat2"
+	m.previewItemIndex = -1
+
+	moved := m.movePreviewBackward(selected, 1)
+
+	assert.True(t, moved)
+	assert.Equal(t, "cat1", m.previewCatID)
+	assert.Equal(t, 1, m.previewItemIndex)
+}
+
+func TestMovePreviewBackward_PreviousCollapsedKeepsSectionFocus(t *testing.T) {
+	m := newTestModelWithResults()
+	m.addSelected("cat1")
+	m.addSelected("cat2")
+	selected := m.getSelectedResults()
+
+	m.previewCollapsed = map[string]bool{"cat1": true, "cat2": false}
+	m.previewCatID = "cat2"
+	m.previewItemIndex = -1
+
+	moved := m.movePreviewBackward(selected, 1)
+
+	assert.True(t, moved)
+	assert.Equal(t, "cat1", m.previewCatID)
+	assert.Equal(t, -1, m.previewItemIndex)
+}
+
+func TestJumpToPreviewSection_InvalidIndexNoop(t *testing.T) {
+	m := newTestModelWithResults()
+	m.addSelected("cat1")
+	selected := m.getSelectedResults()
+	m.previewCatID = "cat1"
+	m.previewItemIndex = 0
+
+	m.jumpToPreviewSection(selected, -1)
+	assert.Equal(t, "cat1", m.previewCatID)
+	assert.Equal(t, 0, m.previewItemIndex)
+
+	m.jumpToPreviewSection(selected, 10)
+	assert.Equal(t, "cat1", m.previewCatID)
+	assert.Equal(t, 0, m.previewItemIndex)
+}
+
+func TestResetForRescan_ResetsPreviewState(t *testing.T) {
+	m := newTestModelWithResults()
+	m.view = ViewPreview
+	m.addSelected("cat1")
+	m.excluded["cat1"] = map[string]bool{"/path/1": true}
+	m.cursor = 2
+	m.scroll = 3
+	m.previewCatID = "cat1"
+	m.previewCollapsed = map[string]bool{"cat1": true}
+	m.reportScroll = 4
+	m.reportLines = []string{"line"}
+	m.scanning = false
+
+	m.resetForRescan()
+
+	assert.Equal(t, ViewList, m.view)
+	assert.Empty(t, m.selected)
+	assert.Empty(t, m.selectedOrder)
+	assert.Empty(t, m.excluded)
+	assert.Equal(t, 0, m.cursor)
+	assert.Equal(t, 0, m.scroll)
+	assert.Equal(t, "", m.previewCatID)
+	assert.Empty(t, m.previewCollapsed)
+	assert.Equal(t, 0, m.reportScroll)
+	assert.Nil(t, m.reportLines)
+	assert.True(t, m.scanning)
+}
+
+func TestHandlePreviewKey_HomeOnCollapsedSectionResetsHeaderFocus(t *testing.T) {
+	m := newTestModelForPreview()
+	m.collapseCurrentSection()
+	m.previewItemIndex = 1
+	m.previewScroll = 7
+	m.statusMessage = lockedItemStatusMessage
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyHome})
+
+	assert.Equal(t, -1, m.previewItemIndex)
+	assert.Equal(t, 0, m.previewScroll)
+	assert.Empty(t, m.statusMessage)
+}
+
+func TestHandlePreviewKey_EndOnExpandedEmptySectionResetsHeaderFocus(t *testing.T) {
+	m := newTestModelForPreview()
+	m.expandCurrentSection()
+	m.resultMap["cat1"].Items = nil
+	m.previewItemIndex = 1
+	m.previewScroll = 3
+
+	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyEnd})
+
+	assert.Equal(t, -1, m.previewItemIndex)
+	assert.Equal(t, 0, m.previewScroll)
+}
+
+func TestViewPreview_ShowsSectionColumnsHeader(t *testing.T) {
+	m := newTestModelForPreview()
+
+	output := m.viewPreview()
+
+	assert.Contains(t, output, "Section")
+	assert.Contains(t, output, "Risk/Mode")
+	assert.Contains(t, output, "Files")
+}
+
+func TestViewPreview_FilterTypingShowsSearchAndFilter(t *testing.T) {
+	m := newTestModelForPreview()
+	ti := textinput.New()
+	ti.SetValue("path")
+	m.filterInput = ti
+	m.filterState = FilterTyping
+
+	output := m.viewPreview()
+
+	assert.Contains(t, output, "Search:")
+	assert.Contains(t, output, `Filter: "path"`)
+}
+
+func TestViewPreview_ExpandedEmptySectionShowsNoItems(t *testing.T) {
+	m := newTestModelForPreview()
+	m.resultMap["cat1"].Items = nil
+	m.expandCurrentSection()
+
+	output := m.viewPreview()
+
+	assert.Contains(t, output, "(no items)")
+}
+
+func TestRenderSectionLine_RiskyManualBadge(t *testing.T) {
+	m := newTestModel()
+	m.width = 120
+	m.previewCatID = "manual"
+	r := &types.ScanResult{
+		Category: types.Category{
+			ID:     "manual",
+			Name:   "Telegram",
+			Safety: types.SafetyLevelRisky,
+			Method: types.MethodManual,
+		},
+		Items:          []types.CleanableItem{{Path: "/tmp/telegram", Size: 10}},
+		TotalFileCount: 1,
+	}
+
+	line := m.renderSectionLine(r, true, true)
+
+	assert.Contains(t, line, "[Risky]")
+	assert.Contains(t, line, "[Manual]")
+}
+
+func TestRenderPreviewItemLine_ExcludedDirectoryAndCurrentItem(t *testing.T) {
+	m := newTestModel()
+	m.excluded["cat1"] = map[string]bool{"/tmp/dir": true}
+	now := time.Now()
+
+	lineExcluded := m.renderPreviewItemLine("cat1", types.CleanableItem{
+		Path:        "/tmp/dir",
+		Name:        "dir",
+		IsDirectory: true,
+		Size:        42,
+		ModifiedAt:  now,
+	}, false, 24, 8, 6)
+
+	lineCurrent := m.renderPreviewItemLine("cat1", types.CleanableItem{
+		Path:       "/tmp/file",
+		Name:       "file",
+		Size:       21,
+		ModifiedAt: now,
+	}, true, 24, 8, 6)
+
+	assert.Contains(t, lineExcluded, "[ ]")
+	assert.Contains(t, lineExcluded, ">")
+	assert.Contains(t, lineCurrent, "[x]")
+	assert.Contains(t, lineCurrent, "/tmp/file")
+}
+
+func TestExpandCurrentSection_NoCurrentCategoryNoop(t *testing.T) {
+	m := newTestModel()
+
+	m.expandCurrentSection()
+
+	assert.Nil(t, m.previewCollapsed)
+}
+
+func TestCollapseCurrentSection_InitializesCollapseMap(t *testing.T) {
+	m := newTestModel()
+	m.previewCatID = "cat1"
+	m.previewItemIndex = 2
+	m.previewScroll = 5
+
+	m.collapseCurrentSection()
+
+	require.NotNil(t, m.previewCollapsed)
+	assert.True(t, m.previewCollapsed["cat1"])
+	assert.Equal(t, -1, m.previewItemIndex)
+	assert.Equal(t, 0, m.previewScroll)
+}
+
+func TestMovePreviewCursorStep_NoSelectionReturnsFalse(t *testing.T) {
+	m := newTestModel()
+
+	moved := m.movePreviewCursorStep(1)
+
+	assert.False(t, moved)
+}
+
+func TestNormalizePreviewCursorState_NegativeIndexWithItemsClampsToSectionFocus(t *testing.T) {
+	m := newTestModelWithResults()
+	m.addSelected("cat1")
+	selected := m.getSelectedResults()
+	m.previewCatID = "cat1"
+	m.previewItemIndex = -9
+	m.previewCollapsed = map[string]bool{"cat1": false}
+
+	_, _, ok := m.normalizePreviewCursorState(selected)
+
+	assert.True(t, ok)
+	assert.Equal(t, -1, m.previewItemIndex)
+}
+
+func TestRenderSectionLine_ModerateBadge(t *testing.T) {
+	m := newTestModel()
+	m.width = 120
+	m.previewCatID = "moderate"
+	r := &types.ScanResult{
+		Category: types.Category{
+			ID:     "moderate",
+			Name:   "Some Cache",
+			Safety: types.SafetyLevelModerate,
+		},
+		Items:          []types.CleanableItem{{Path: "/tmp/some-cache", Size: 10}},
+		TotalFileCount: 1,
+	}
+
+	line := m.renderSectionLine(r, false, false)
+
+	assert.Contains(t, line, "[Moderate]")
+}
+
+func TestViewPreview_ClampsCurrentIndexWhenItemCountShrinks(t *testing.T) {
+	m := newTestModelForPreview()
+	m.previewItemIndex = 9
+	m.resultMap["cat1"].Items = []types.CleanableItem{{Path: "/path/1", Size: 500}}
+
+	_ = m.viewPreview()
+
+	assert.Equal(t, 0, m.previewItemIndex)
 }

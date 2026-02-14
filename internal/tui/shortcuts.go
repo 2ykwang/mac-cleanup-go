@@ -41,29 +41,35 @@ var ListKeyMap = ListKeys{
 
 // PreviewKeys defines key bindings for preview view
 type PreviewKeys struct {
-	Up     key.Binding
-	Down   key.Binding
-	Left   key.Binding
-	Right  key.Binding
-	Select key.Binding
-	Enter  key.Binding
-	Back   key.Binding
-	Delete key.Binding
-	Open   key.Binding
-	Search key.Binding
-	Sort   key.Binding
-	Quit   key.Binding
-	Help   key.Binding
+	Up          key.Binding
+	Down        key.Binding
+	PageUp      key.Binding
+	PageDown    key.Binding
+	PrevSection key.Binding
+	NextSection key.Binding
+	Collapse    key.Binding
+	Expand      key.Binding
+	Select      key.Binding
+	Enter       key.Binding
+	Back        key.Binding
+	Delete      key.Binding
+	Open        key.Binding
+	Search      key.Binding
+	Sort        key.Binding
+	Quit        key.Binding
+	Help        key.Binding
 }
 
 func (k PreviewKeys) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Left, k.Select, k.Delete, k.Open, k.Search, k.Enter}
+	return []key.Binding{k.Up, k.NextSection, k.Enter, k.Delete, k.Help}
 }
 
 func (k PreviewKeys) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down},
-		{k.Left, k.Right},
+		{k.PageUp, k.PageDown},
+		{k.PrevSection, k.NextSection},
+		{k.Collapse, k.Expand},
 		{k.Select, k.Delete},
 		{k.Open, k.Search},
 		{k.Enter, k.Sort, k.Back},
@@ -72,19 +78,23 @@ func (k PreviewKeys) FullHelp() [][]key.Binding {
 }
 
 var PreviewKeyMap = PreviewKeys{
-	Up:     key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
-	Down:   key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
-	Left:   key.NewBinding(key.WithKeys("left", "h"), key.WithHelp("←/h", "prev tab")),
-	Right:  key.NewBinding(key.WithKeys("right", "l"), key.WithHelp("→/l", "next tab")),
-	Select: key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "toggle")),
-	Enter:  key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "drill down")),
-	Back:   key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
-	Delete: key.NewBinding(key.WithKeys("y"), key.WithHelp("y", "delete")),
-	Open:   key.NewBinding(key.WithKeys("o"), key.WithHelp("o", "open")),
-	Search: key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
-	Sort:   key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "sort")),
-	Quit:   key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
-	Help:   key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
+	Up:          key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
+	Down:        key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
+	PageUp:      key.NewBinding(key.WithKeys("shift+up", "K"), key.WithHelp("shift+↑/K", "page up")),
+	PageDown:    key.NewBinding(key.WithKeys("shift+down", "J"), key.WithHelp("shift+↓/J", "page down")),
+	PrevSection: key.NewBinding(key.WithKeys("shift+tab", "["), key.WithHelp("shift+tab/[", "prev section")),
+	NextSection: key.NewBinding(key.WithKeys("tab", "]"), key.WithHelp("tab/]", "next section")),
+	Collapse:    key.NewBinding(key.WithKeys("left", "h"), key.WithHelp("←/h", "collapse")),
+	Expand:      key.NewBinding(key.WithKeys("right", "l"), key.WithHelp("→/l", "expand")),
+	Select:      key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "toggle")),
+	Enter:       key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
+	Back:        key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
+	Delete:      key.NewBinding(key.WithKeys("y"), key.WithHelp("y", "delete")),
+	Open:        key.NewBinding(key.WithKeys("o"), key.WithHelp("o", "open")),
+	Search:      key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
+	Sort:        key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "sort")),
+	Quit:        key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+	Help:        key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 }
 
 // ConfirmKeys defines key bindings for confirm view
