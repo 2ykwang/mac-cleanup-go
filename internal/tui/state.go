@@ -57,6 +57,7 @@ type previewState struct {
 	previewCatID     string
 	previewItemIndex int
 	previewScroll    int
+	previewCollapsed map[string]bool
 	drillDownStack   []drillDownState
 	sortOrder        types.SortOrder
 	guideCategory    *types.Category
