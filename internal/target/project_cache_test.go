@@ -197,16 +197,19 @@ func TestScan_RespectsMaxDepth(t *testing.T) {
 func TestScan_FiltersStaleCachesOnly(t *testing.T) {
 	root := t.TempDir()
 
-	// Stale project (30 days old)
+	// Stale project (30 days old) — file inside .venv is also old
 	staleProject := filepath.Join(root, "stale")
-	require.NoError(t, os.MkdirAll(filepath.Join(staleProject, ".venv"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(staleProject, ".venv", "lib"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(staleProject, "requirements.txt"), []byte(""), 0o644))
-	makeStale(t, filepath.Join(staleProject, ".venv"))
+	staleFile := filepath.Join(staleProject, ".venv", "lib", "site.py")
+	require.NoError(t, os.WriteFile(staleFile, []byte(""), 0o644))
+	makeStale(t, staleFile)
 
-	// Active project (just created)
+	// Active project — file inside .venv is recent
 	activeProject := filepath.Join(root, "active")
-	require.NoError(t, os.MkdirAll(filepath.Join(activeProject, ".venv"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(activeProject, ".venv", "lib"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(activeProject, "requirements.txt"), []byte(""), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(activeProject, ".venv", "lib", "site.py"), []byte(""), 0o644))
 
 	target := newTestProjectCacheTarget(root)
 	target.staleDays = 7

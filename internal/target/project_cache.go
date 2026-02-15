@@ -182,10 +182,6 @@ func (t *ProjectCacheTarget) calculateSizes(found []foundCache) ([]types.Cleanab
 			if err != nil {
 				return
 			}
-			info, err := os.Stat(fc.path)
-			if err != nil {
-				return
-			}
 
 			item := types.CleanableItem{
 				Path:        fc.path,
@@ -194,7 +190,7 @@ func (t *ProjectCacheTarget) calculateSizes(found []foundCache) ([]types.Cleanab
 				Name:        filepath.Base(fc.path),
 				DisplayName: formatDisplayName(t.scanRoot, fc.path),
 				IsDirectory: true,
-				ModifiedAt:  info.ModTime(),
+				ModifiedAt:  newestFileTime(fc.path),
 			}
 
 			mu.Lock()
@@ -220,6 +216,27 @@ func hasMarker(parentDir string, markers []string) bool {
 		}
 	}
 	return false
+}
+
+// newestFileTime walks dir and returns the most recent file mtime.
+// Directory mtime only reflects direct child add/remove, not deeper file updates,
+// so we must check actual file mtimes to determine staleness.
+func newestFileTime(dir string) time.Time {
+	var newest time.Time
+	_ = filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+		if mt := info.ModTime(); mt.After(newest) {
+			newest = mt
+		}
+		return nil
+	})
+	return newest
 }
 
 func formatDisplayName(scanRoot, cachePath string) string {
