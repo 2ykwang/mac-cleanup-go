@@ -102,9 +102,10 @@ func NewModel(cfg *types.Config, currentVersion string) *Model {
 			help: help.New(),
 		},
 		scanState: scanState{
-			scanning:   true,
-			spinner:    s,
-			scanErrors: make([]scanErrorInfo, 0),
+			scanning:    true,
+			spinner:     s,
+			scanDoneIDs: make(map[string]bool),
+			scanErrors:  make([]scanErrorInfo, 0),
 		},
 		previewState: previewState{
 			drillDownStack:   make([]drillDownState, 0),

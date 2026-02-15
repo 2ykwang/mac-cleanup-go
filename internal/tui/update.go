@@ -168,6 +168,8 @@ func (m *Model) handleCleanDone(msg cleanDoneMsg) {
 
 func (m *Model) handleScanResult(result *types.ScanResult) {
 	if result != nil {
+		m.scanDoneIDs[result.Category.ID] = true
+
 		// Collect scan errors for display
 		if result.Error != nil {
 			m.scanErrors = append(m.scanErrors, scanErrorInfo{

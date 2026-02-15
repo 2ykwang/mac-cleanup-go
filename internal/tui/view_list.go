@@ -71,15 +71,40 @@ func formatGroupStats(stats []GroupStat) string {
 	return styles.MutedStyle.Render(strings.Join(parts, "  "))
 }
 
+func (m *Model) pendingScanNames() string {
+	const maxShow = 3
+	var names []string
+	remaining := 0
+	for _, r := range m.results {
+		if !m.scanDoneIDs[r.Category.ID] {
+			if len(names) < maxShow {
+				names = append(names, r.Category.Name)
+			} else {
+				remaining++
+			}
+		}
+	}
+	result := strings.Join(names, ", ")
+	if remaining > 0 {
+		result += fmt.Sprintf(" +%d more", remaining)
+	}
+	return result
+}
+
 func (m *Model) listHeader(showSummary bool) string {
 	var b strings.Builder
 
 	b.WriteString(styles.HeaderStyle.Render("Mac Cleanup"))
-	if m.scanning {
-		b.WriteString(fmt.Sprintf("  %s Scanning... (%d/%d available, %d total)",
-			m.spinner.View(), m.scanCompleted, m.scanTotal, m.scanRegistered))
-	}
 	b.WriteString("\n")
+	if m.scanning {
+		b.WriteString(fmt.Sprintf("%s Scanning...  %s\n",
+			m.spinner.View(),
+			styles.MutedStyle.Render(fmt.Sprintf("%d/%d", m.scanCompleted, m.scanTotal))))
+		if pending := m.pendingScanNames(); pending != "" {
+			b.WriteString(styles.MutedStyle.Render(fmt.Sprintf("  └ %s", pending)))
+			b.WriteString("\n")
+		}
+	}
 
 	// Update available notification
 	if m.updateAvailable && m.latestVersion != "" {
