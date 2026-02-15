@@ -17,6 +17,7 @@ var builtinIDs = map[string]struct{}{
 	"docker":        {},
 	"old-downloads": {},
 	"system-cache":  {},
+	"project-cache": {},
 }
 
 var builtinFactories = map[string]BuiltinFactory{}
@@ -45,6 +46,9 @@ func registerAllBuiltins() {
 	})
 	RegisterBuiltin("system-cache", func(cat types.Category, categories []types.Category) Target {
 		return NewSystemCacheTarget(cat, categories)
+	})
+	RegisterBuiltin("project-cache", func(cat types.Category, _ []types.Category) Target {
+		return NewProjectCacheTarget(cat)
 	})
 }
 
