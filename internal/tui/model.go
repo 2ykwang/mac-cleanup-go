@@ -142,22 +142,29 @@ func (m *Model) View() string {
 		}, maxContentWidth)
 	}
 
+	var output string
 	switch m.view {
 	case ViewList:
-		return m.renderCentered(m.viewList, maxListContentWidth)
+		output = m.renderCentered(m.viewList, maxListContentWidth)
 	case ViewPreview:
-		return m.renderCentered(m.viewPreview, maxPreviewContentWidth)
+		output = m.renderCentered(m.viewPreview, maxPreviewContentWidth)
 	case ViewConfirm:
-		return m.renderCentered(m.viewConfirm, maxPreviewContentWidth)
+		output = m.renderCentered(m.viewConfirm, maxPreviewContentWidth)
 	case ViewCleaning:
-		return m.renderCentered(m.viewCleaning, maxCleaningContentWidth)
+		output = m.renderCentered(m.viewCleaning, maxCleaningContentWidth)
 	case ViewReport:
-		return m.renderCentered(m.viewReport, maxReportContentWidth)
+		output = m.renderCentered(m.viewReport, maxReportContentWidth)
 	case ViewGuide:
-		return m.renderCentered(m.viewGuide, maxContentWidth)
+		output = m.renderCentered(m.viewGuide, maxContentWidth)
 	default:
-		return m.renderCentered(m.viewList, maxListContentWidth)
+		output = m.renderCentered(m.viewList, maxListContentWidth)
 	}
+
+	if m.showHelp {
+		base := lipgloss.NewStyle().Faint(true).Render(output)
+		return overlayCentered(base, m.helpDialog(), m.width, m.height)
+	}
+	return output
 }
 
 func (m *Model) renderCentered(render func() string, maxWidth int) string {

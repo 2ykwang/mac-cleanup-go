@@ -103,7 +103,7 @@ func (m *Model) movePreviewSection(delta int) bool {
 			break
 		}
 	}
-	next := clamp(current+delta, 0, len(selected)-1)
+	next := clamp(current+delta, len(selected)-1)
 	if next == current {
 		return false
 	}

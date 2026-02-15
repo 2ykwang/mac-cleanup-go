@@ -12,7 +12,6 @@ type ListKeys struct {
 	Down   key.Binding
 	Select key.Binding
 	Enter  key.Binding
-	Delete key.Binding
 	Quit   key.Binding
 	Help   key.Binding
 }
@@ -21,20 +20,13 @@ func (k ListKeys) ShortHelp() []key.Binding {
 	return []key.Binding{k.Up, k.Select, k.Enter, k.Quit, k.Help}
 }
 
-func (k ListKeys) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		{k.Up, k.Down},
-		{k.Select, k.Enter},
-		{k.Quit, k.Help},
-	}
-}
+func (k ListKeys) FullHelp() [][]key.Binding { return nil }
 
 var ListKeyMap = ListKeys{
 	Up:     key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
 	Down:   key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
 	Select: key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "select")),
 	Enter:  key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "preview")),
-	Delete: key.NewBinding(key.WithKeys("y"), key.WithHelp("y", "delete")),
 	Quit:   key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
 	Help:   key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 }
@@ -64,18 +56,7 @@ func (k PreviewKeys) ShortHelp() []key.Binding {
 	return []key.Binding{k.Up, k.NextSection, k.Enter, k.Delete, k.Help}
 }
 
-func (k PreviewKeys) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		{k.Up, k.Down},
-		{k.PageUp, k.PageDown},
-		{k.PrevSection, k.NextSection},
-		{k.Collapse, k.Expand},
-		{k.Select, k.Delete},
-		{k.Open, k.Search},
-		{k.Enter, k.Sort, k.Back},
-		{k.Quit, k.Help},
-	}
-}
+func (k PreviewKeys) FullHelp() [][]key.Binding { return nil }
 
 var PreviewKeyMap = PreviewKeys{
 	Up:          key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
@@ -110,11 +91,7 @@ func (k ConfirmKeys) ShortHelp() []key.Binding {
 	return []key.Binding{k.Scroll, k.Switch, k.Select, k.Cancel, k.Help}
 }
 
-func (k ConfirmKeys) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		{k.Scroll, k.Switch, k.Select, k.Cancel, k.Help},
-	}
-}
+func (k ConfirmKeys) FullHelp() [][]key.Binding { return nil }
 
 var ConfirmKeyMap = ConfirmKeys{
 	Scroll: key.NewBinding(key.WithKeys("up", "down", "k", "j", "pgup", "pgdown"), key.WithHelp("↑/↓", "scroll")),
@@ -137,12 +114,7 @@ func (k ReportKeys) ShortHelp() []key.Binding {
 	return []key.Binding{k.Up, k.Enter, k.Quit, k.Help}
 }
 
-func (k ReportKeys) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		{k.Up, k.Down},
-		{k.Enter, k.Quit, k.Help},
-	}
-}
+func (k ReportKeys) FullHelp() [][]key.Binding { return nil }
 
 var ReportKeyMap = ReportKeys{
 	Up:    key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
