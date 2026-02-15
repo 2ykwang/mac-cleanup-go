@@ -18,6 +18,7 @@ func (m *Model) startScan() tea.Cmd {
 	scanners := m.registry.Available()
 	m.scanTotal = len(scanners)
 	m.scanCompleted = 0
+	clear(m.scanDoneIDs)
 
 	logger.Info("scan started", "registered", m.scanRegistered, "available", m.scanTotal)
 
