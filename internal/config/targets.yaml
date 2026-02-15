@@ -370,6 +370,13 @@ categories:
     paths:
       - "~/.nuget/packages/*"
 
+  - id: project-cache
+    name: Project Build Cache
+    group: dev
+    safety: moderate
+    method: builtin
+    note: "Stale build caches (7+ days) in project directories (.venv, node_modules, .tox)"
+
   - id: homebrew
     name: Homebrew Cache
     group: dev
