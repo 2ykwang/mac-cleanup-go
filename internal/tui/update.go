@@ -18,6 +18,7 @@ func (m *Model) startScan() tea.Cmd {
 	scanners := m.registry.Available()
 	m.scanTotal = len(scanners)
 	m.scanCompleted = 0
+	clear(m.scanDoneIDs)
 
 	logger.Info("scan started", "registered", m.scanRegistered, "available", m.scanTotal)
 
@@ -168,6 +169,8 @@ func (m *Model) handleCleanDone(msg cleanDoneMsg) {
 
 func (m *Model) handleScanResult(result *types.ScanResult) {
 	if result != nil {
+		m.scanDoneIDs[result.Category.ID] = true
+
 		// Collect scan errors for display
 		if result.Error != nil {
 			m.scanErrors = append(m.scanErrors, scanErrorInfo{

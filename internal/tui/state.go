@@ -52,6 +52,7 @@ type scanState struct {
 	scanRegistered int
 	scanning       bool
 	spinner        spinner.Model
+	scanDoneIDs    map[string]bool
 	scanErrors     []scanErrorInfo
 }
 

@@ -34,6 +34,7 @@ func newTestModel() *Model {
 	m.width = 80
 	m.height = 24
 	m.confirmChoice = confirmCancel
+	m.scanDoneIDs = make(map[string]bool)
 	m.userConfig = &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)}
 	m.recentDeleted = NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity)
 	return m
