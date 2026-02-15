@@ -42,6 +42,8 @@ type layoutState struct {
 	scroll        int
 	statusMessage string
 	help          help.Model
+	showHelp      bool
+	helpScroll    int
 }
 
 type scanState struct {

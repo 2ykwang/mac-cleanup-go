@@ -12,6 +12,10 @@ import (
 const lockedItemStatusMessage = "In use by another process. Can't select."
 
 func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.showHelp {
+		return m.handleHelpKey(msg)
+	}
+
 	switch m.view {
 	case ViewList:
 		return m.handleListKey(msg)
@@ -38,9 +42,9 @@ func (m *Model) handleReportKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+c", "q":
 		return m, tea.Quit
 	case "up", "k":
-		m.reportScroll = clamp(m.reportScroll-1, 0, m.maxReportScroll())
+		m.reportScroll = clamp(m.reportScroll-1, m.maxReportScroll())
 	case "down", "j":
-		m.reportScroll = clamp(m.reportScroll+1, 0, m.maxReportScroll())
+		m.reportScroll = clamp(m.reportScroll+1, m.maxReportScroll())
 	case "enter", " ":
 		// Return to main screen and rescan
 		return m, m.startRescanCmd()
@@ -529,9 +533,9 @@ func (m *Model) maxReportScroll() int {
 	return maxScroll
 }
 
-func clamp(value, min, max int) int {
-	if value < min {
-		return min
+func clamp(value, max int) int {
+	if value < 0 {
+		return 0
 	}
 	if value > max {
 		return max
@@ -540,7 +544,8 @@ func clamp(value, min, max int) int {
 }
 
 func (m *Model) toggleHelp() (tea.Model, tea.Cmd) {
-	m.help.ShowAll = !m.help.ShowAll
+	m.showHelp = !m.showHelp
+	m.helpScroll = 0
 	return m, nil
 }
 
