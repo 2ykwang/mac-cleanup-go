@@ -282,7 +282,7 @@ func (m *Model) renderSectionLine(r *types.ScanResult, isCurrentSection bool, is
 	}
 
 	size := fmt.Sprintf("%*s", sizeWidth, formatSize(m.getEffectiveSize(r)))
-	count := fmt.Sprintf("%*s", countWidth, fmt.Sprintf("%d files", r.TotalFileCount))
+	count := fmt.Sprintf("%*s", countWidth, fmt.Sprintf("%d", r.TotalFileCount))
 
 	return fmt.Sprintf("%s%s %s %s %s %s", cursor, indicator, name, badge, styles.SizeStyle.Render(size), styles.MutedStyle.Render(count))
 }
