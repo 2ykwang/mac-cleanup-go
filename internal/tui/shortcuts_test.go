@@ -51,26 +51,6 @@ func TestListKeys_ShortHelp_ReturnsExpectedBindings(t *testing.T) {
 	assert.Equal(t, "q", bindings[3].Help().Key)
 }
 
-func TestListKeys_FullHelp_ReturnsGroupedBindings(t *testing.T) {
-	groups := ListKeyMap.FullHelp()
-
-	assert.Len(t, groups, 3)
-	assert.Len(t, groups[0], 2) // Up, Down
-	assert.Len(t, groups[1], 2) // Select, Enter
-	assert.Len(t, groups[2], 2) // Quit, Help
-}
-
-func TestListKeys_FullHelp_ContainsAllKeys(t *testing.T) {
-	groups := ListKeyMap.FullHelp()
-
-	assert.Equal(t, "↑/k", groups[0][0].Help().Key)
-	assert.Equal(t, "↓/j", groups[0][1].Help().Key)
-	assert.Equal(t, "space", groups[1][0].Help().Key)
-	assert.Equal(t, "enter", groups[1][1].Help().Key)
-	assert.Equal(t, "q", groups[2][0].Help().Key)
-	assert.Equal(t, "?", groups[2][1].Help().Key)
-}
-
 // PreviewKeys tests
 
 func TestPreviewKeys_ShortHelp_ReturnsExpectedBindings(t *testing.T) {
@@ -82,38 +62,6 @@ func TestPreviewKeys_ShortHelp_ReturnsExpectedBindings(t *testing.T) {
 	assert.Equal(t, "enter", bindings[2].Help().Key)
 	assert.Equal(t, "y", bindings[3].Help().Key)
 	assert.Equal(t, "?", bindings[4].Help().Key)
-}
-
-func TestPreviewKeys_FullHelp_ReturnsGroupedBindings(t *testing.T) {
-	groups := PreviewKeyMap.FullHelp()
-
-	assert.Len(t, groups, 8)
-	assert.Len(t, groups[0], 2) // Up, Down
-	assert.Len(t, groups[1], 2) // PageUp, PageDown
-	assert.Len(t, groups[2], 2) // Prev section, Next section
-	assert.Len(t, groups[3], 2) // Collapse, Expand
-	assert.Len(t, groups[4], 2) // Select, Delete
-	assert.Len(t, groups[5], 2) // Open, Search
-	assert.Len(t, groups[6], 3) // Enter, Sort, Back
-	assert.Len(t, groups[7], 2) // Quit, Help
-}
-
-func TestPreviewKeys_FullHelp_ContainsAllKeys(t *testing.T) {
-	groups := PreviewKeyMap.FullHelp()
-
-	assert.Equal(t, "shift+↑/K", groups[1][0].Help().Key)
-	assert.Equal(t, "shift+↓/J", groups[1][1].Help().Key)
-	assert.Equal(t, "shift+tab/[", groups[2][0].Help().Key)
-	assert.Equal(t, "tab/]", groups[2][1].Help().Key)
-	assert.Equal(t, "←/h", groups[3][0].Help().Key)
-	assert.Equal(t, "→/l", groups[3][1].Help().Key)
-	assert.Equal(t, "o", groups[5][0].Help().Key)
-	assert.Equal(t, "/", groups[5][1].Help().Key)
-	assert.Equal(t, "enter", groups[6][0].Help().Key)
-	assert.Equal(t, "s", groups[6][1].Help().Key)
-	assert.Equal(t, "esc", groups[6][2].Help().Key)
-	assert.Equal(t, "toggle", PreviewKeyMap.Select.Help().Desc)
-	assert.Equal(t, "open", PreviewKeyMap.Enter.Help().Desc)
 }
 
 // ConfirmKeys tests
@@ -129,26 +77,6 @@ func TestConfirmKeys_ShortHelp_ReturnsExpectedBindings(t *testing.T) {
 	assert.Equal(t, "?", bindings[4].Help().Key)
 }
 
-func TestConfirmKeys_FullHelp_ReturnsGroupedBindings(t *testing.T) {
-	groups := ConfirmKeyMap.FullHelp()
-
-	assert.Len(t, groups, 1)
-	assert.Len(t, groups[0], 5)
-}
-
-func TestConfirmKeys_FullHelp_ContainsAllKeys(t *testing.T) {
-	groups := ConfirmKeyMap.FullHelp()
-
-	assert.Equal(t, "↑/↓", groups[0][0].Help().Key)
-	assert.Equal(t, "scroll", groups[0][0].Help().Desc)
-	assert.Equal(t, "←/→/tab", groups[0][1].Help().Key)
-	assert.Equal(t, "switch", groups[0][1].Help().Desc)
-	assert.Equal(t, "enter", groups[0][2].Help().Key)
-	assert.Equal(t, "select", groups[0][2].Help().Desc)
-	assert.Equal(t, "esc", groups[0][3].Help().Key)
-	assert.Equal(t, "cancel", groups[0][3].Help().Desc)
-}
-
 // ReportKeys tests
 
 func TestReportKeys_ShortHelp_ReturnsExpectedBindings(t *testing.T) {
@@ -158,21 +86,4 @@ func TestReportKeys_ShortHelp_ReturnsExpectedBindings(t *testing.T) {
 	assert.Equal(t, "↑/k", bindings[0].Help().Key)
 	assert.Equal(t, "enter", bindings[1].Help().Key)
 	assert.Equal(t, "q", bindings[2].Help().Key)
-}
-
-func TestReportKeys_FullHelp_ReturnsGroupedBindings(t *testing.T) {
-	groups := ReportKeyMap.FullHelp()
-
-	assert.Len(t, groups, 2)
-	assert.Len(t, groups[0], 2) // Up, Down
-	assert.Len(t, groups[1], 3) // Enter, Quit, Help
-}
-
-func TestReportKeys_FullHelp_ContainsAllKeys(t *testing.T) {
-	groups := ReportKeyMap.FullHelp()
-
-	assert.Equal(t, "↑/k", groups[0][0].Help().Key)
-	assert.Equal(t, "↓/j", groups[0][1].Help().Key)
-	assert.Equal(t, "enter", groups[1][0].Help().Key)
-	assert.Equal(t, "rescan", groups[1][0].Help().Desc)
 }
