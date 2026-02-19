@@ -774,13 +774,13 @@ func TestInitScanResults_UsesAvailableTargetsWhenNoConfig(t *testing.T) {
 	assert.NotNil(t, m.resultMap["cat1"])
 }
 
-func TestHandleListKey_Scanning_DisablesSelection(t *testing.T) {
+func TestHandleListKey_Scanning_AllowsSelection(t *testing.T) {
 	m := newTestModelWithResults()
 	m.scanning = true
 
 	m.handleListKey(tea.KeyMsg{Type: tea.KeySpace})
 
-	assert.False(t, m.selected["cat1"])
+	assert.True(t, m.selected["cat1"])
 }
 
 func TestListColumnWidths_CappedAtMax(t *testing.T) {
