@@ -85,7 +85,7 @@ func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 
 			// Auto-exclude all items for risky categories when newly selected
-			if !wasSelected && r.Category.Safety == types.SafetyLevelRisky {
+			if m.selected[id] && !wasSelected && r.Category.Safety == types.SafetyLevelRisky {
 				m.autoExcludeCategory(id, r)
 			}
 		}
@@ -100,7 +100,7 @@ func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.addSelected(r.Category.ID)
 
 			// Auto-exclude all items for risky categories when newly selected
-			if !wasSelected && r.Category.Safety == types.SafetyLevelRisky {
+			if m.selected[r.Category.ID] && !wasSelected && r.Category.Safety == types.SafetyLevelRisky {
 				m.autoExcludeCategory(r.Category.ID, r)
 			}
 		}
