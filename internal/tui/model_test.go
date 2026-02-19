@@ -783,6 +783,33 @@ func TestHandleListKey_Scanning_AllowsSelection(t *testing.T) {
 	assert.True(t, m.selected["cat1"])
 }
 
+func TestAddSelected_Scanning_BlocksRiskyCategory(t *testing.T) {
+	m := newTestModelWithResults()
+	m.scanning = true
+
+	m.addSelected("cat3") // cat3 is risky
+
+	assert.False(t, m.selected["cat3"])
+}
+
+func TestAddSelected_Scanning_AllowsSafeCategory(t *testing.T) {
+	m := newTestModelWithResults()
+	m.scanning = true
+
+	m.addSelected("cat1") // cat1 is safe
+
+	assert.True(t, m.selected["cat1"])
+}
+
+func TestAddSelected_NotScanning_AllowsRiskyCategory(t *testing.T) {
+	m := newTestModelWithResults()
+	m.scanning = false
+
+	m.addSelected("cat3") // cat3 is risky
+
+	assert.True(t, m.selected["cat3"])
+}
+
 func TestListColumnWidths_CappedAtMax(t *testing.T) {
 	m := newTestModel()
 	m.width = 200

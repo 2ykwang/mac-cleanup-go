@@ -83,6 +83,11 @@ func (m *Model) addSelected(id string) {
 	if m.selected[id] {
 		return
 	}
+	if m.scanning {
+		if r, ok := m.resultMap[id]; ok && r.Category.Safety == types.SafetyLevelRisky {
+			return
+		}
+	}
 	m.selected[id] = true
 	m.selectedOrder = append(m.selectedOrder, id)
 }
