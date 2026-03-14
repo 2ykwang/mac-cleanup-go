@@ -56,12 +56,13 @@ func TestListKeys_ShortHelp_ReturnsExpectedBindings(t *testing.T) {
 func TestPreviewKeys_ShortHelp_ReturnsExpectedBindings(t *testing.T) {
 	bindings := PreviewKeyMap.ShortHelp()
 
-	assert.Len(t, bindings, 5)
+	assert.Len(t, bindings, 6)
 	assert.Equal(t, "↑/k", bindings[0].Help().Key)
 	assert.Equal(t, "tab/]", bindings[1].Help().Key)
 	assert.Equal(t, "enter", bindings[2].Help().Key)
-	assert.Equal(t, "y", bindings[3].Help().Key)
-	assert.Equal(t, "?", bindings[4].Help().Key)
+	assert.Equal(t, "o", bindings[3].Help().Key)
+	assert.Equal(t, "y", bindings[4].Help().Key)
+	assert.Equal(t, "?", bindings[5].Help().Key)
 }
 
 // ConfirmKeys tests
