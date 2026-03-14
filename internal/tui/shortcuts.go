@@ -53,7 +53,7 @@ type PreviewKeys struct {
 }
 
 func (k PreviewKeys) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.NextSection, k.Enter, k.Delete, k.Help}
+	return []key.Binding{k.Up, k.NextSection, k.Enter, k.Open, k.Delete, k.Help}
 }
 
 func (k PreviewKeys) FullHelp() [][]key.Binding { return nil }
@@ -68,7 +68,7 @@ var PreviewKeyMap = PreviewKeys{
 	Collapse:    key.NewBinding(key.WithKeys("left", "h"), key.WithHelp("←/h", "collapse")),
 	Expand:      key.NewBinding(key.WithKeys("right", "l"), key.WithHelp("→/l", "expand")),
 	Select:      key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "toggle")),
-	Enter:       key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
+	Enter:       key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "drill down")),
 	Back:        key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
 	Delete:      key.NewBinding(key.WithKeys("y"), key.WithHelp("y", "delete")),
 	Open:        key.NewBinding(key.WithKeys("o"), key.WithHelp("o", "open")),

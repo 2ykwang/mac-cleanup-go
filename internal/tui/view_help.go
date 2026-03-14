@@ -81,7 +81,7 @@ func (m *Model) helpContent(contentWidth int) string {
 		{"space", "Toggle exclusion"},
 		{"/", "Search files"},
 		{"s", "Sort order"},
-		{"enter", "Open directory"},
+		{"enter", "Drill down directory"},
 		{"o", "Open in Finder"},
 		{"y", "Proceed to delete"},
 		{"esc", "Back to list"},
