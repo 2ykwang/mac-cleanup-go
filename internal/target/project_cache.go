@@ -36,6 +36,20 @@ var defaultPatterns = []cachePattern{
 	{"target", []string{"Cargo.toml"}},                                                            // cargo build
 	{"target", []string{"pom.xml"}},                                                               // mvn compile
 	{".gradle", []string{"build.gradle", "build.gradle.kts", "settings.gradle"}},                  // gradle build
+	{"dist", []string{"package.json", "tsconfig.json"}},                                           // JS/TS build output
+	{".nox", []string{"noxfile.py"}},                                                              // python nox
+	{".ruff_cache", []string{"pyproject.toml", "ruff.toml"}},                                      // ruff linter cache
+	{"vendor", []string{"composer.json"}},                                                         // PHP composer install
+	{"Pods", []string{"Podfile"}},                                                                 // iOS pod install
+	{".expo", []string{"app.json", "app.config.js"}},                                              // expo prebuild
+	{".angular", []string{"angular.json"}},                                                        // angular build cache
+	{".svelte-kit", []string{"svelte.config.js", "svelte.config.ts"}},                             // sveltekit build
+	{".nuxt", []string{"nuxt.config.ts", "nuxt.config.js"}},                                       // nuxt build
+	{".astro", []string{"astro.config.mjs", "astro.config.ts"}},                                   // astro build
+	{"coverage", []string{"jest.config.js", "jest.config.ts", "vitest.config.ts"}},                // test coverage output
+	{".zig-cache", []string{"build.zig"}},                                                         // zig build cache
+	{".dart_tool", []string{"pubspec.yaml"}},                                                      // dart/flutter tooling
+	{"build", []string{"build.gradle", "build.gradle.kts"}},                                       // gradle build output
 }
 
 // excludeDirs: top-level directories under $HOME to skip during walk.

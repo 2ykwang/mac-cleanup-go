@@ -242,6 +242,47 @@ func TestScan_EmptyDirectory_ReturnsEmpty(t *testing.T) {
 	assert.Empty(t, result.Items)
 }
 
+func TestScan_DetectsPodsWithPodfile(t *testing.T) {
+	root := t.TempDir()
+	project := filepath.Join(root, "iosapp")
+	require.NoError(t, os.MkdirAll(filepath.Join(project, "Pods", "AFNetworking"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(project, "Podfile"), []byte(""), 0o644))
+
+	target := newTestProjectCacheTarget(root)
+	result, err := target.Scan()
+
+	require.NoError(t, err)
+	require.Len(t, result.Items, 1)
+	assert.Equal(t, "iosapp/Pods", result.Items[0].DisplayName)
+}
+
+func TestScan_DetectsDistWithPackageJson(t *testing.T) {
+	root := t.TempDir()
+	project := filepath.Join(root, "webapp")
+	require.NoError(t, os.MkdirAll(filepath.Join(project, "dist", "assets"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(project, "package.json"), []byte("{}"), 0o644))
+
+	target := newTestProjectCacheTarget(root)
+	result, err := target.Scan()
+
+	require.NoError(t, err)
+	require.Len(t, result.Items, 1)
+	assert.Equal(t, "webapp/dist", result.Items[0].DisplayName)
+}
+
+func TestScan_IgnoresBuildWithoutGradleMarker(t *testing.T) {
+	root := t.TempDir()
+	project := filepath.Join(root, "generic")
+	require.NoError(t, os.MkdirAll(filepath.Join(project, "build"), 0o755))
+	// no build.gradle or build.gradle.kts
+
+	target := newTestProjectCacheTarget(root)
+	result, err := target.Scan()
+
+	require.NoError(t, err)
+	assert.Empty(t, result.Items)
+}
+
 // --- hasMarker ---
 
 func TestHasMarker_ReturnsTrue_WhenMarkerExists(t *testing.T) {
