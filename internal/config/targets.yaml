@@ -515,6 +515,100 @@ categories:
     paths:
       - "~/Library/Caches/Google/AndroidStudio*/*"
 
+  - id: huggingface
+    name: Hugging Face Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: ML model cache - re-downloaded when needed
+    paths:
+      - "~/.cache/huggingface/*"
+
+  - id: pytorch
+    name: PyTorch Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: PyTorch model and hub cache - re-downloaded when needed
+    paths:
+      - "~/.cache/torch/*"
+
+  - id: tensorflow
+    name: TensorFlow Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: TensorFlow and Keras model cache - re-downloaded when needed
+    paths:
+      - "~/.cache/tensorflow/*"
+      - "~/.keras/models/*"
+
+  - id: conda
+    name: Conda Packages
+    group: dev
+    safety: moderate
+    method: trash
+    note: Conda package cache - requires re-download after deletion
+    paths:
+      - "~/.conda/pkgs/*"
+      - "~/anaconda3/pkgs/*"
+      - "~/miniconda3/pkgs/*"
+
+  - id: wandb
+    name: W&B Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Weights & Biases experiment cache and logs
+    paths:
+      - "~/.wandb/*"
+      - "~/.cache/wandb/*"
+
+  - id: pyenv
+    name: pyenv Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: pyenv download cache - re-downloaded when needed
+    paths:
+      - "~/.pyenv/cache/*"
+
+  - id: node-gyp
+    name: node-gyp Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Node.js native addon build cache - regenerated on install
+    paths:
+      - "~/.node-gyp/*"
+
+  - id: electron-cache
+    name: Electron Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Electron framework download cache - re-downloaded when needed
+    paths:
+      - "~/.electron/*"
+
+  - id: webpack
+    name: Webpack Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Webpack persistent build cache - regenerated on build
+    paths:
+      - "~/.cache/webpack/*"
+
+  - id: xcode-doc-cache
+    name: Xcode Documentation Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Xcode documentation index cache - regenerated on use
+    paths:
+      - "~/Library/Developer/Xcode/DocumentationCache/*"
+
   - id: xcode-device-logs
     name: Xcode Device Logs
     group: dev
@@ -1043,6 +1137,159 @@ categories:
     note: TeamViewer remote desktop cache - regenerated on use
     paths:
       - "~/Library/Caches/com.teamviewer.*/*"
+
+  - id: apple-podcasts
+    name: Apple Podcasts Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Apple Podcasts streaming and artwork cache - regenerated on use
+    paths:
+      - "~/Library/Caches/com.apple.podcasts/*"
+
+  - id: apple-tv
+    name: Apple TV Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Apple TV app cache - regenerated on use
+    paths:
+      - "~/Library/Caches/com.apple.tv/*"
+
+  - id: plex
+    name: Plex Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Plex media server cache - regenerated on use
+    paths:
+      - "~/Library/Caches/com.plexapp.plexmediaserver/*"
+
+  - id: transmission
+    name: Transmission Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Transmission torrent client cache - regenerated on use
+    paths:
+      - "~/Library/Caches/org.m0k.transmission/*"
+
+  - id: qbittorrent
+    name: qBittorrent Cache
+    group: app
+    safety: safe
+    method: trash
+    note: qBittorrent torrent client cache - regenerated on use
+    paths:
+      - "~/Library/Caches/qBittorrent/*"
+
+  - id: downie
+    name: Downie Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Downie video downloader cache - regenerated on use
+    paths:
+      - "~/Library/Caches/com.charliemonroe.Downie*/*"
+
+  - id: legcord
+    name: Legcord Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Legcord Discord client cache - regenerated on use
+    paths:
+      - "~/Library/Caches/legcord/*"
+
+  - id: sublime-text
+    name: Sublime Text Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Sublime Text editor cache - regenerated on use
+    paths:
+      - "~/Library/Caches/com.sublimetext.*/*"
+
+  - id: spark
+    name: Spark Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Spark email client cache - regenerated on use
+    paths:
+      - "~/Library/Caches/com.readdle.smartemail*/*"
+
+  - id: airmail
+    name: Airmail Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Airmail email client cache - regenerated on use
+    paths:
+      - "~/Library/Caches/it.bloop.airmail*/*"
+
+  - id: anydesk
+    name: AnyDesk Cache
+    group: app
+    safety: safe
+    method: trash
+    note: AnyDesk remote desktop cache - regenerated on use
+    paths:
+      - "~/Library/Caches/com.anydesk.*/*"
+
+  - id: ea-origin
+    name: EA App Cache
+    group: app
+    safety: safe
+    method: trash
+    note: EA app launcher cache - regenerated on use
+    paths:
+      - "~/Library/Caches/com.ea.*/*"
+
+  - id: riot-games
+    name: Riot Games Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Riot Games launcher cache - regenerated on use
+    paths:
+      - "~/Library/Caches/com.riotgames.*/*"
+
+  - id: cleanshot
+    name: CleanShot Cache
+    group: app
+    safety: safe
+    method: trash
+    note: CleanShot screenshot tool cache - regenerated on use
+    paths:
+      - "~/Library/Caches/pl.maketheweb.cleanshotx/*"
+
+  - id: onedrive
+    name: OneDrive Cache
+    group: app
+    safety: safe
+    method: trash
+    note: OneDrive sync cache - regenerated on use
+    paths:
+      - "~/Library/Caches/com.microsoft.OneDrive/*"
+
+  - id: unarchiver
+    name: The Unarchiver Cache
+    group: app
+    safety: safe
+    method: trash
+    note: The Unarchiver cache - regenerated on use
+    paths:
+      - "~/Library/Caches/cx.c-command.TheUnarchiver/*"
+
+  - id: lunar-client
+    name: Lunar Client Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Lunar Client Minecraft launcher cache - regenerated on use
+    paths:
+      - "~/Library/Caches/com.moonsworth.*/*"
 
   # ===== Storage (Risky) =====
   - id: ios-backups
