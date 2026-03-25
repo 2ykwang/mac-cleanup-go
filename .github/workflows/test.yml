@@ -53,7 +53,7 @@ jobs:
           echo '</details>' >> $GITHUB_STEP_SUMMARY
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5.5.2
+        uses: codecov/codecov-action@v5.5.3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: 2ykwang/mac-cleanup-go
