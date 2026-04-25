@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
+	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
 // --- Category Tests ---
@@ -89,6 +90,38 @@ func TestIsAvailable_ReturnsTrue_WhenPathsHaveMatchingFiles(t *testing.T) {
 	cat := types.Category{
 		ID:    "test",
 		Paths: []string{filepath.Join(tmpDir, "*")},
+	}
+
+	s := NewPathTarget(cat)
+
+	assert.True(t, s.IsAvailable())
+}
+
+func TestIsAvailable_ReturnsFalse_WhenBlockedProcessRunning(t *testing.T) {
+	original := utils.IsProcessRunning
+	defer func() { utils.IsProcessRunning = original }()
+	utils.IsProcessRunning = func(name string) bool { return name == "Xcode" }
+
+	cat := types.Category{
+		ID:                 "test",
+		CheckCmd:           "ls",
+		BlockedByProcesses: []string{"Xcode"},
+	}
+
+	s := NewPathTarget(cat)
+
+	assert.False(t, s.IsAvailable())
+}
+
+func TestIsAvailable_ReturnsTrue_WhenBlockedProcessNotRunning(t *testing.T) {
+	original := utils.IsProcessRunning
+	defer func() { utils.IsProcessRunning = original }()
+	utils.IsProcessRunning = func(name string) bool { return false }
+
+	cat := types.Category{
+		ID:                 "test",
+		CheckCmd:           "ls",
+		BlockedByProcesses: []string{"Xcode"},
 	}
 
 	s := NewPathTarget(cat)
