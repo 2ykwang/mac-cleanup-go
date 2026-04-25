@@ -146,7 +146,8 @@ func (m *Model) View() tea.View {
 			Content: m.renderCentered(func() string {
 				return "Error: " + m.err.Error() + "\n\nPress q to quit."
 			}, maxContentWidth),
-			AltScreen: true,
+			AltScreen:       true,
+			ForegroundColor: m.styles.Text,
 		}
 	}
 
@@ -172,7 +173,7 @@ func (m *Model) View() tea.View {
 		base := lipgloss.NewStyle().Faint(true).Render(output)
 		output = overlayCentered(base, m.helpDialog(), m.width, m.height)
 	}
-	return tea.View{Content: output, AltScreen: true}
+	return tea.View{Content: output, AltScreen: true, ForegroundColor: m.styles.Text}
 }
 
 func (m *Model) renderCentered(render func() string, maxWidth int) string {

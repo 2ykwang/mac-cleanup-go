@@ -221,8 +221,9 @@ func (m *ConfigModel) saveSelection() error {
 func (m *ConfigModel) View() tea.View {
 	if m.err != nil {
 		return tea.View{
-			Content:   "Error: " + m.err.Error() + "\n\nPress q to quit.",
-			AltScreen: true,
+			Content:         "Error: " + m.err.Error() + "\n\nPress q to quit.",
+			AltScreen:       true,
+			ForegroundColor: m.styles.Text,
 		}
 	}
 
@@ -230,7 +231,7 @@ func (m *ConfigModel) View() tea.View {
 	if m.showIntro {
 		content = overlayCentered(content, m.introDialog(), m.width, m.height)
 	}
-	return tea.View{Content: content, AltScreen: true}
+	return tea.View{Content: content, AltScreen: true, ForegroundColor: m.styles.Text}
 }
 
 func (m *ConfigModel) viewList() string {
