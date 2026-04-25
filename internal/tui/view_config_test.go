@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -115,7 +115,7 @@ func TestConfigModel_IntroAlwaysShown(t *testing.T) {
 	m := NewConfigModel(cfg)
 	require.True(t, m.showIntro)
 
-	_, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.False(t, m.showIntro, "intro dismissed after keypress")
 
 	// Intro should always show on next launch regardless of prior dismissal

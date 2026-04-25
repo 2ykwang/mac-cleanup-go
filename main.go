@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/cli"
 	"github.com/2ykwang/mac-cleanup-go/internal/config"
@@ -70,7 +70,6 @@ func main() {
 	if *selectTargets {
 		p := tea.NewProgram(
 			tui.NewConfigModel(cfg),
-			tea.WithAltScreen(),
 		)
 
 		if _, err := p.Run(); err != nil {
@@ -119,7 +118,6 @@ func main() {
 
 	p := tea.NewProgram(
 		tui.NewModel(cfg, version),
-		tea.WithAltScreen(),
 	)
 
 	if _, err := p.Run(); err != nil {

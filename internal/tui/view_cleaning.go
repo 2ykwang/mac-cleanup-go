@@ -69,7 +69,7 @@ func (m *Model) viewCleaning() string {
 	b.WriteString("\n")
 
 	if m.cleaningTotal > 0 {
-		m.cleaningProgress.Width = rowWidth
+		m.cleaningProgress.SetWidth(rowWidth)
 		b.WriteString(m.cleaningProgress.View())
 		b.WriteString("\n")
 		percent := 0

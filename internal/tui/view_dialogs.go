@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
@@ -137,7 +137,7 @@ func (m *Model) confirmDialog() string {
 	}
 	help := m.help
 	if contentWidth > 0 {
-		help.Width = contentWidth
+		help.SetWidth(contentWidth)
 	}
 	helpView := help.View(ConfirmKeyMap)
 

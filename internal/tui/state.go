@@ -3,10 +3,10 @@ package tui
 import (
 	"time"
 
-	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/progress"
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textinput"
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/progress"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/cleaner"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
@@ -128,7 +128,7 @@ func (m *ConfigModel) startScan() tea.Cmd {
 // Update implements tea.Model.
 func (m *ConfigModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.showIntro {
 			return m.handleIntroKey(msg)
 		}
@@ -148,15 +148,15 @@ func (m *ConfigModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *ConfigModel) handleIntroKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *ConfigModel) handleIntroKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "enter", " ", "esc", "q":
+	case "enter", "space", "esc", "q":
 		m.showIntro = false
 	}
 	return m, nil
 }
 
-func (m *ConfigModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *ConfigModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c", "q", "esc":
 		return m, tea.Quit
@@ -172,7 +172,7 @@ func (m *ConfigModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.status = ""
 	case "?":
 		m.showIntro = true
-	case " ":
+	case "space":
 		m.toggleSelection()
 	case "enter", "s":
 		if err := m.saveSelection(); err != nil {
@@ -213,16 +213,19 @@ func (m *ConfigModel) saveSelection() error {
 }
 
 // View implements tea.Model.
-func (m *ConfigModel) View() string {
+func (m *ConfigModel) View() tea.View {
 	if m.err != nil {
-		return "Error: " + m.err.Error() + "\n\nPress q to quit."
+		return tea.View{
+			Content:   "Error: " + m.err.Error() + "\n\nPress q to quit.",
+			AltScreen: true,
+		}
 	}
 
-	base := m.viewList()
+	content := m.viewList()
 	if m.showIntro {
-		return overlayCentered(base, m.introDialog(), m.width, m.height)
+		content = overlayCentered(content, m.introDialog(), m.width, m.height)
 	}
-	return base
+	return tea.View{Content: content, AltScreen: true}
 }
 
 func (m *ConfigModel) viewList() string {

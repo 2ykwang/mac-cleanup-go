@@ -4,8 +4,8 @@ import (
 	"os/exec"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 )
@@ -197,7 +197,7 @@ func (m *Model) maxHelpScroll() int {
 	return maxScroll
 }
 
-func (m *Model) handleHelpKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) handleHelpKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc", "?", "enter":
 		m.showHelp = false

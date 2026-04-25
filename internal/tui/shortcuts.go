@@ -3,7 +3,7 @@ package tui
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
+	"charm.land/bubbles/v2/key"
 )
 
 // ListKeys defines key bindings for list view
@@ -25,7 +25,7 @@ func (k ListKeys) FullHelp() [][]key.Binding { return nil }
 var ListKeyMap = ListKeys{
 	Up:     key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
 	Down:   key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
-	Select: key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "select")),
+	Select: key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "select")),
 	Enter:  key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "preview")),
 	Quit:   key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
 	Help:   key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
@@ -67,7 +67,7 @@ var PreviewKeyMap = PreviewKeys{
 	NextSection: key.NewBinding(key.WithKeys("tab", "]"), key.WithHelp("tab/]", "next section")),
 	Collapse:    key.NewBinding(key.WithKeys("left", "h"), key.WithHelp("←/h", "collapse")),
 	Expand:      key.NewBinding(key.WithKeys("right", "l"), key.WithHelp("→/l", "expand")),
-	Select:      key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "toggle")),
+	Select:      key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "toggle")),
 	Enter:       key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "drill down")),
 	Back:        key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
 	Delete:      key.NewBinding(key.WithKeys("y"), key.WithHelp("y", "delete")),
