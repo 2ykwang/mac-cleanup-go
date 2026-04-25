@@ -38,6 +38,7 @@ func newTestModel() *Model {
 	m.scanDoneIDs = make(map[string]bool)
 	m.userConfig = &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)}
 	m.recentDeleted = NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity)
+	m.styles = styles.New(true)
 	return m
 }
 
@@ -1236,8 +1237,8 @@ func TestRenderListItem_ManualItemMuted(t *testing.T) {
 	assert.Contains(t, output, "[Manual]")
 	assert.Contains(t, output, "Telegram DB")
 
-	mutedCheckbox := styles.MutedStyle.Render(" - ")
-	assert.Contains(t, output, mutedCheckbox, "manual item checkbox should be rendered with styles.MutedStyle")
+	mutedCheckbox := m.styles.MutedStyle.Render(" - ")
+	assert.Contains(t, output, mutedCheckbox, "manual item checkbox should be rendered with the muted style")
 
 	m.selected[manualResult.Category.ID] = true
 	outputSelected := m.renderListItem(2, manualResult, nameWidth, sizeWidth, countWidth)

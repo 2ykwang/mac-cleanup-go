@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
@@ -18,7 +19,7 @@ func TestFormatReport_DryRunNoItems(t *testing.T) {
 		Duration:   50 * time.Millisecond,
 	}
 
-	output := FormatReport(report, true)
+	output := FormatReport(report, true, styles.New(true))
 
 	assert.Contains(t, output, "Dry Run Report")
 	assert.Contains(t, output, "Summary")
@@ -48,7 +49,7 @@ func TestFormatReport_IncludesGroups(t *testing.T) {
 		},
 	}
 
-	output := FormatReport(report, false)
+	output := FormatReport(report, false, styles.New(true))
 
 	assert.Contains(t, output, "Cleanup Report")
 	assert.Contains(t, output, "Summary")

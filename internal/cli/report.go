@@ -22,12 +22,12 @@ const (
 )
 
 // FormatReport renders a plain-text report for CLI output.
-func FormatReport(report *types.Report, dryRun bool) string {
+func FormatReport(report *types.Report, dryRun bool, theme styles.Styles) string {
 	if report == nil {
 		return "No report available.\n"
 	}
 
-	styles := newReportStyles()
+	styles := newReportStyles(theme)
 
 	title := "Cleanup Report"
 	if dryRun {
@@ -224,16 +224,16 @@ type reportStyles struct {
 	muted   lipgloss.Style
 }
 
-func newReportStyles() reportStyles {
+func newReportStyles(theme styles.Styles) reportStyles {
 	enabled := shouldColorize()
 	return reportStyles{
 		enabled: enabled,
-		title:   lipgloss.NewStyle().Foreground(styles.ColorPrimary).Bold(true),
-		section: lipgloss.NewStyle().Foreground(styles.ColorSecondary).Bold(true),
-		success: lipgloss.NewStyle().Foreground(styles.ColorSuccess).Bold(true),
-		warn:    lipgloss.NewStyle().Foreground(styles.ColorWarning).Bold(true),
-		danger:  lipgloss.NewStyle().Foreground(styles.ColorDanger).Bold(true),
-		muted:   lipgloss.NewStyle().Foreground(styles.ColorMuted),
+		title:   lipgloss.NewStyle().Foreground(theme.Primary).Bold(true),
+		section: lipgloss.NewStyle().Foreground(theme.Secondary).Bold(true),
+		success: lipgloss.NewStyle().Foreground(theme.Success).Bold(true),
+		warn:    lipgloss.NewStyle().Foreground(theme.Warning).Bold(true),
+		danger:  lipgloss.NewStyle().Foreground(theme.Danger).Bold(true),
+		muted:   lipgloss.NewStyle().Foreground(theme.Muted),
 	}
 }
 

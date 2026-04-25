@@ -42,6 +42,8 @@ type ConfigModel struct {
 	showIntro bool
 	status    string
 	err       error
+
+	styles styles.Styles
 }
 
 // NewConfigModel creates a new config TUI model.
@@ -60,6 +62,7 @@ func NewConfigModel(cfg *types.Config) *ConfigModel {
 		items:    make([]configItem, 0),
 		selected: make(map[string]bool),
 		err:      err,
+		styles:   styles.New(true),
 	}
 
 	m.initItems()
@@ -99,7 +102,7 @@ func (m *ConfigModel) initSelection() {
 
 // Init implements tea.Model.
 func (m *ConfigModel) Init() tea.Cmd {
-	return m.startScan()
+	return tea.Batch(m.startScan(), tea.RequestBackgroundColor)
 }
 
 func (m *ConfigModel) startScan() tea.Cmd {
@@ -136,6 +139,8 @@ func (m *ConfigModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+	case tea.BackgroundColorMsg:
+		m.styles = styles.New(msg.IsDark())
 	case configScanResultMsg:
 		for i, item := range m.items {
 			if item.category.ID == msg.categoryID {
@@ -238,21 +243,21 @@ func (m *ConfigModel) viewList() string {
 	nameWidth := max(min(width-listPrefixWidth-sizeWidth-1, colName), 10)
 
 	var header strings.Builder
-	header.WriteString(styles.HeaderStyle.Render("Target Selection") + "\n")
-	header.WriteString(styles.MutedStyle.Render("Select cleanup targets") + "\n")
-	header.WriteString(styles.Divider(clampWidth(width-4, 30)) + "\n")
+	header.WriteString(m.styles.HeaderStyle.Render("Target Selection") + "\n")
+	header.WriteString(m.styles.MutedStyle.Render("Select cleanup targets") + "\n")
+	header.WriteString(m.styles.Divider(clampWidth(width-4, 30)) + "\n")
 	colHeader := fmt.Sprintf("%*s%-*s %*s",
 		listPrefixWidth, "", nameWidth, "Name", sizeWidth, "Size")
-	header.WriteString(styles.MutedStyle.Render(colHeader) + "\n")
+	header.WriteString(m.styles.MutedStyle.Render(colHeader) + "\n")
 	headerStr := header.String()
 
 	var footer strings.Builder
-	footer.WriteString(styles.Divider(clampWidth(width-4, 30)) + "\n")
-	footer.WriteString(styles.MutedStyle.Render(fmt.Sprintf("Selected: %d", m.selectedCount())) + "\n")
+	footer.WriteString(m.styles.Divider(clampWidth(width-4, 30)) + "\n")
+	footer.WriteString(m.styles.MutedStyle.Render(fmt.Sprintf("Selected: %d", m.selectedCount())) + "\n")
 	if m.status != "" {
-		footer.WriteString(styles.WarningStyle.Render(m.status) + "\n")
+		footer.WriteString(m.styles.WarningStyle.Render(m.status) + "\n")
 	}
-	footer.WriteString(styles.HelpStyle.Render(FormatFooter(configShortcuts)))
+	footer.WriteString(m.styles.HelpStyle.Render(FormatFooter(configShortcuts)))
 	footerStr := footer.String()
 
 	visible := m.height - countLines(headerStr) - countLines(footerStr)
@@ -272,7 +277,7 @@ func (m *ConfigModel) viewList() string {
 	b.WriteString(headerStr)
 
 	if total == 0 {
-		b.WriteString(styles.MutedStyle.Render("No available targets found.") + "\n")
+		b.WriteString(m.styles.MutedStyle.Render("No available targets found.") + "\n")
 	} else {
 		end := min(m.scroll+visible, total)
 		for i := m.scroll; i < end; i++ {
@@ -281,7 +286,7 @@ func (m *ConfigModel) viewList() string {
 		}
 		if total > visible+1 {
 			info := fmt.Sprintf("  %d-%d of %d", m.scroll+1, end, total)
-			b.WriteString(styles.MutedStyle.Render(info) + "\n")
+			b.WriteString(m.styles.MutedStyle.Render(info) + "\n")
 		}
 	}
 
@@ -292,33 +297,33 @@ func (m *ConfigModel) viewList() string {
 func (m *ConfigModel) renderItemLine(index int, item configItem, width int) string {
 	cursor := "  "
 	if index == m.cursor {
-		cursor = styles.CursorStyle.Render("▸ ")
+		cursor = m.styles.CursorStyle.Render("▸ ")
 	}
 
-	checkbox := styles.MutedStyle.Render("[ ]")
+	checkbox := m.styles.MutedStyle.Render("[ ]")
 	if item.disabled {
-		checkbox = styles.MutedStyle.Render(" - ")
+		checkbox = m.styles.MutedStyle.Render(" - ")
 	} else if m.selected[item.category.ID] {
-		checkbox = styles.SuccessStyle.Render("[✓]")
+		checkbox = m.styles.SuccessStyle.Render("[✓]")
 	}
 
-	dot := safetyDot(item.category.Safety)
+	dot := m.styles.SafetyDot(item.category.Safety)
 
 	sizeWidth := colSize
 	nameWidth := max(min(width-listPrefixWidth-sizeWidth-1, colName), 10)
 
 	name := padToWidth(truncateToWidth(item.category.Name, nameWidth, false), nameWidth)
 	if item.disabled {
-		name = styles.MutedStyle.Render(name)
+		name = m.styles.MutedStyle.Render(name)
 	}
 
 	var sizeText string
 	if !item.scanned {
-		sizeText = styles.MutedStyle.Render(fmt.Sprintf("%*s", sizeWidth, "..."))
+		sizeText = m.styles.MutedStyle.Render(fmt.Sprintf("%*s", sizeWidth, "..."))
 	} else if item.size > 0 {
-		sizeText = styles.SizeStyle.Render(fmt.Sprintf("%*s", sizeWidth, formatSize(item.size)))
+		sizeText = m.styles.SizeStyle.Render(fmt.Sprintf("%*s", sizeWidth, formatSize(item.size)))
 	} else {
-		sizeText = styles.MutedStyle.Render(fmt.Sprintf("%*s", sizeWidth, "0 B"))
+		sizeText = m.styles.MutedStyle.Render(fmt.Sprintf("%*s", sizeWidth, "0 B"))
 	}
 
 	return fmt.Sprintf("%s%s %s %s %s", cursor, checkbox, dot, name, sizeText)
@@ -365,45 +370,45 @@ func (m *ConfigModel) introDialog() string {
 
 	sectionStyle := lipgloss.NewStyle().
 		Bold(true).
-		Foreground(styles.ColorSecondary)
+		Foreground(m.styles.Secondary)
 
 	var b strings.Builder
 
 	// Title
-	b.WriteString(styles.HeaderStyle.Render("Getting Started"))
+	b.WriteString(m.styles.HeaderStyle.Render("Getting Started"))
 	b.WriteString("\n\n")
 
 	// Description
-	b.WriteString(styles.TextStyle.Render("Configure cleanup targets for CLI mode."))
+	b.WriteString(m.styles.TextStyle.Render("Configure cleanup targets for CLI mode."))
 	b.WriteString("\n")
-	b.WriteString(styles.TextStyle.Render("Selected targets run with ") + styles.SelectedStyle.Render("--clean") + styles.TextStyle.Render(" flag."))
+	b.WriteString(m.styles.TextStyle.Render("Selected targets run with ") + m.styles.SelectedStyle.Render("--clean") + m.styles.TextStyle.Render(" flag."))
 	b.WriteString("\n")
-	b.WriteString(styles.TextStyle.Render("Files are moved to Trash (recoverable)."))
+	b.WriteString(m.styles.TextStyle.Render("Files are moved to Trash (recoverable)."))
 	b.WriteString("\n\n")
 
 	// Section: Target types
 	b.WriteString(sectionStyle.Render("Target Types"))
 	b.WriteString("\n")
-	b.WriteString("  " + safetyDot(types.SafetyLevelSafe) + " Safe")
+	b.WriteString("  " + m.styles.SafetyDot(types.SafetyLevelSafe) + " Safe")
 	b.WriteString("\n")
-	b.WriteString(styles.MutedStyle.Render("    Auto-regenerated caches and logs"))
+	b.WriteString(m.styles.MutedStyle.Render("    Auto-regenerated caches and logs"))
 	b.WriteString("\n")
-	b.WriteString("  " + safetyDot(types.SafetyLevelModerate) + " Moderate")
+	b.WriteString("  " + m.styles.SafetyDot(types.SafetyLevelModerate) + " Moderate")
 	b.WriteString("\n")
-	b.WriteString(styles.MutedStyle.Render("    May require re-download or re-login"))
+	b.WriteString(m.styles.MutedStyle.Render("    May require re-download or re-login"))
 	b.WriteString("\n\n")
 
-	b.WriteString(styles.Divider(contentWidth) + "\n\n")
+	b.WriteString(m.styles.Divider(contentWidth) + "\n\n")
 
 	// Commands
-	infoLabel := lipgloss.NewStyle().Foreground(styles.ColorMuted).Width(10)
-	b.WriteString(infoLabel.Render("Clean") + styles.MutedStyle.Render("mac-cleanup ") + styles.SelectedStyle.Render("--clean"))
+	infoLabel := lipgloss.NewStyle().Foreground(m.styles.Muted).Width(10)
+	b.WriteString(infoLabel.Render("Clean") + m.styles.MutedStyle.Render("mac-cleanup ") + m.styles.SelectedStyle.Render("--clean"))
 	b.WriteString("\n")
-	b.WriteString(infoLabel.Render("Dry run") + styles.MutedStyle.Render("mac-cleanup ") + styles.SelectedStyle.Render("--clean --dry-run"))
+	b.WriteString(infoLabel.Render("Dry run") + m.styles.MutedStyle.Render("mac-cleanup ") + m.styles.SelectedStyle.Render("--clean --dry-run"))
 	b.WriteString("\n\n")
 
 	// Button
-	button := styles.ButtonActiveStyle.Render("Got it")
+	button := m.styles.ButtonActiveStyle.Render("Got it")
 	if contentWidth > 0 {
 		button = lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, button)
 	}
@@ -411,7 +416,7 @@ func (m *ConfigModel) introDialog() string {
 
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(styles.ColorBorder).
+		BorderForeground(m.styles.Border).
 		Padding(1, 2).
 		Width(boxWidth)
 

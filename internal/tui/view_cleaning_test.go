@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
 )
 
@@ -16,6 +17,7 @@ func newTestModelForViewCleaning() *Model {
 	m.height = 24
 	m.recentDeleted = NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity)
 	m.userConfig = &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)}
+	m.styles = styles.New(true)
 	return m
 }
 

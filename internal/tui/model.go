@@ -42,13 +42,16 @@ type Model struct {
 	cleaningState
 	reportState
 	versionState
+	themeState
 }
 
 // NewModel creates a new model
 func NewModel(cfg *types.Config, currentVersion string) *Model {
+	theme := styles.New(true)
+
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(styles.ColorPrimary)
+	s.Style = lipgloss.NewStyle().Foreground(theme.Primary)
 
 	// Initialize filter input
 	ti := textinput.New()
@@ -127,12 +130,13 @@ func NewModel(cfg *types.Config, currentVersion string) *Model {
 		versionState: versionState{
 			currentVersion: currentVersion,
 		},
+		themeState: themeState{styles: theme},
 	}
 }
 
 // Init initializes the model
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(m.spinner.Tick, m.startScan(), m.checkVersion())
+	return tea.Batch(m.spinner.Tick, m.startScan(), m.checkVersion(), tea.RequestBackgroundColor)
 }
 
 // View renders the UI

@@ -7,10 +7,12 @@ import (
 	"os"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/cli"
 	"github.com/2ykwang/mac-cleanup-go/internal/config"
 	"github.com/2ykwang/mac-cleanup-go/internal/logger"
+	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/tui"
 	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
 	pkgversion "github.com/2ykwang/mac-cleanup-go/internal/version"
@@ -80,6 +82,9 @@ func main() {
 	}
 
 	if *doClean {
+		// CLI path has no event loop, so detect background once up front.
+		theme := styles.New(lipgloss.HasDarkBackground(os.Stdin, os.Stdout))
+
 		userCfg, err := userconfig.Load()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to load user config: %v\n", err)
@@ -112,7 +117,7 @@ func main() {
 			}
 		}
 
-		fmt.Print(cli.FormatReport(report, *dryRun))
+		fmt.Print(cli.FormatReport(report, *dryRun, theme))
 		return
 	}
 
