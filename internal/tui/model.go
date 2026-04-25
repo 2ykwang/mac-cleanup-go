@@ -3,12 +3,12 @@ package tui
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/progress"
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/progress"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/cleaner"
 	"github.com/2ykwang/mac-cleanup-go/internal/logger"
@@ -54,7 +54,7 @@ func NewModel(cfg *types.Config, currentVersion string) *Model {
 	ti := textinput.New()
 	ti.Placeholder = "Search..."
 	ti.CharLimit = 100
-	ti.Width = 30
+	ti.SetWidth(30)
 
 	// Load user config
 	userCfg, _ := userconfig.Load()
@@ -75,7 +75,7 @@ func NewModel(cfg *types.Config, currentVersion string) *Model {
 
 	// Initialize progress bar
 	prog := progress.New(
-		progress.WithDefaultGradient(),
+		progress.WithDefaultBlend(),
 		progress.WithWidth(40),
 	)
 
@@ -136,11 +136,14 @@ func (m *Model) Init() tea.Cmd {
 }
 
 // View renders the UI
-func (m *Model) View() string {
+func (m *Model) View() tea.View {
 	if m.err != nil {
-		return m.renderCentered(func() string {
-			return "Error: " + m.err.Error() + "\n\nPress q to quit."
-		}, maxContentWidth)
+		return tea.View{
+			Content: m.renderCentered(func() string {
+				return "Error: " + m.err.Error() + "\n\nPress q to quit."
+			}, maxContentWidth),
+			AltScreen: true,
+		}
 	}
 
 	var output string
@@ -163,9 +166,9 @@ func (m *Model) View() string {
 
 	if m.showHelp {
 		base := lipgloss.NewStyle().Faint(true).Render(output)
-		return overlayCentered(base, m.helpDialog(), m.width, m.height)
+		output = overlayCentered(base, m.helpDialog(), m.width, m.height)
 	}
-	return output
+	return tea.View{Content: output, AltScreen: true}
 }
 
 func (m *Model) renderCentered(render func() string, maxWidth int) string {
@@ -180,14 +183,14 @@ func (m *Model) renderCentered(render func() string, maxWidth int) string {
 	}
 
 	originalWidth := m.width
-	originalHelpWidth := m.help.Width
+	originalHelpWidth := m.help.Width()
 	m.width = contentWidth
-	m.help.Width = contentWidth
+	m.help.SetWidth(contentWidth)
 
 	output := render()
 
 	m.width = originalWidth
-	m.help.Width = originalHelpWidth
+	m.help.SetWidth(originalHelpWidth)
 
 	return indentLines(output, strings.Repeat(" ", padding))
 }

@@ -4,7 +4,7 @@ package styles
 import (
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // Colors — shared palette for both TUI and CLI output.

@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
@@ -105,7 +106,8 @@ func TestRenderRecentDeleted_LongPathTruncation(t *testing.T) {
 	for _, line := range lines {
 		if strings.Contains(line, "✓") {
 			// The displayed path should be shorter than original
-			assert.True(t, len(line) < len(longPath)+20, "long path should be truncated")
+			plain := ansi.Strip(line)
+			assert.True(t, len(plain) < len(longPath)+20, "long path should be truncated")
 			break
 		}
 	}

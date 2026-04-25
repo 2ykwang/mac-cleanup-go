@@ -9,8 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -67,7 +68,7 @@ func TestNewModel_InvalidBuiltin_ShowsError(t *testing.T) {
 	m := NewModel(cfg, "test")
 
 	require.Error(t, m.err)
-	assert.True(t, strings.HasPrefix(m.View(), "Error:"), "expected error view")
+	assert.True(t, strings.HasPrefix(m.View().Content, "Error:"), "expected error view")
 }
 
 func TestHandleReportKey_ScrollClamped(t *testing.T) {
@@ -77,10 +78,10 @@ func TestHandleReportKey_ScrollClamped(t *testing.T) {
 	m.reportLines = make([]string, 20)
 	m.reportScroll = 15
 
-	m.handleReportKey(tea.KeyMsg{Type: tea.KeyDown})
+	m.handleReportKey(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, 15, m.reportScroll)
 
-	m.handleReportKey(tea.KeyMsg{Type: tea.KeyUp})
+	m.handleReportKey(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 14, m.reportScroll)
 }
 
@@ -146,7 +147,7 @@ func TestUpdate_WindowSizeMsg_UpdatesLayout(t *testing.T) {
 
 	assert.Equal(t, 120, m.width)
 	assert.Equal(t, 40, m.height)
-	assert.Equal(t, 120, m.help.Width)
+	assert.Equal(t, 120, m.help.Width())
 }
 
 func TestUpdate_VersionCheckMsg_UpdatesVersionState(t *testing.T) {
@@ -271,7 +272,7 @@ func newTestModelWithManualCategory() *Model {
 func TestHandleListKey_CursorDown(t *testing.T) {
 	m := newTestModelWithResults()
 
-	m.handleListKey(tea.KeyMsg{Type: tea.KeyDown})
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeyDown})
 
 	assert.Equal(t, 1, m.cursor)
 }
@@ -280,7 +281,7 @@ func TestHandleListKey_CursorUp(t *testing.T) {
 	m := newTestModelWithResults()
 	m.cursor = 2
 
-	m.handleListKey(tea.KeyMsg{Type: tea.KeyUp})
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeyUp})
 
 	assert.Equal(t, 1, m.cursor)
 }
@@ -289,7 +290,7 @@ func TestHandleListKey_CursorBoundsTop(t *testing.T) {
 	m := newTestModelWithResults()
 	m.cursor = 0
 
-	m.handleListKey(tea.KeyMsg{Type: tea.KeyUp})
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeyUp})
 
 	assert.Equal(t, 0, m.cursor, "cursor should not go below 0")
 }
@@ -298,7 +299,7 @@ func TestHandleListKey_CursorBoundsBottom(t *testing.T) {
 	m := newTestModelWithResults()
 	m.cursor = len(m.results) - 1
 
-	m.handleListKey(tea.KeyMsg{Type: tea.KeyDown})
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeyDown})
 
 	assert.Equal(t, len(m.results)-1, m.cursor, "cursor should not exceed results length")
 }
@@ -310,18 +311,18 @@ func TestHandleListKey_ToggleSelection(t *testing.T) {
 	m.cursor = 0
 
 	// Select
-	m.handleListKey(tea.KeyMsg{Type: tea.KeySpace})
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.True(t, m.selected["cat1"])
 
 	// Deselect
-	m.handleListKey(tea.KeyMsg{Type: tea.KeySpace})
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.False(t, m.selected["cat1"])
 }
 
 func TestHandleListKey_SelectAll(t *testing.T) {
 	m := newTestModelWithResults()
 
-	m.handleListKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	m.handleListKey(tea.KeyPressMsg{Code: 'a', Text: "a"})
 
 	assert.True(t, m.selected["cat1"])
 	assert.True(t, m.selected["cat2"])
@@ -333,7 +334,7 @@ func TestHandleListKey_DeselectAll(t *testing.T) {
 	m.selected["cat1"] = true
 	m.selected["cat2"] = true
 
-	m.handleListKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	m.handleListKey(tea.KeyPressMsg{Code: 'd', Text: "d"})
 
 	assert.False(t, m.selected["cat1"])
 	assert.False(t, m.selected["cat2"])
@@ -343,7 +344,7 @@ func TestHandleListKey_RiskyAutoExclude(t *testing.T) {
 	m := newTestModelWithResults()
 	m.cursor = 2 // Xcode Archives (risky)
 
-	m.handleListKey(tea.KeyMsg{Type: tea.KeySpace})
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeySpace})
 
 	assert.True(t, m.selected["cat3"])
 	assert.True(t, m.excluded["cat3"]["/path/4"], "risky items should be auto-excluded")
@@ -529,7 +530,7 @@ func TestHandleListKey_EnterPreview(t *testing.T) {
 	m := newTestModelWithResults()
 	m.selected["cat1"] = true
 
-	m.handleListKey(tea.KeyMsg{Type: tea.KeyEnter})
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	assert.Equal(t, ViewPreview, m.view)
 	assert.Equal(t, "cat1", m.previewCatID)
@@ -539,7 +540,7 @@ func TestHandleListKey_EnterPreview(t *testing.T) {
 func TestHandleListKey_EnterPreview_NoSelection(t *testing.T) {
 	m := newTestModelWithResults()
 
-	m.handleListKey(tea.KeyMsg{Type: tea.KeyEnter})
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	assert.Equal(t, ViewList, m.view, "should stay in list view when nothing selected")
 }
@@ -550,7 +551,7 @@ func TestHandlePreviewKey_Back(t *testing.T) {
 	m.selected["cat1"] = true
 	m.previewCatID = "cat1"
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyEsc})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyEsc})
 
 	assert.Equal(t, ViewList, m.view)
 }
@@ -561,7 +562,7 @@ func TestHandlePreviewKey_Confirm(t *testing.T) {
 	m.selected["cat1"] = true
 	m.previewCatID = "cat1"
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: 'y', Text: "y"})
 
 	assert.Equal(t, ViewConfirm, m.view)
 	assert.Equal(t, confirmCancel, m.confirmChoice)
@@ -575,7 +576,7 @@ func TestHandlePreviewKey_OpenInFinder_NonExistentPath(t *testing.T) {
 	m.previewCatID = "cat1"
 	m.previewItemIndex = 0 // /path/1 (non-existent)
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: 'o', Text: "o"})
 
 	assert.Equal(t, "Path not found", m.statusMessage)
 }
@@ -589,7 +590,7 @@ func TestHandlePreviewKey_OpenInFinder_ClearsStatusOnSuccess(t *testing.T) {
 	m.statusMessage = "Previous error" // Pre-existing status
 
 	// This will fail because path doesn't exist, but tests the flow
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: 'o', Text: "o"})
 
 	// Since path doesn't exist, it should set error message
 	assert.Equal(t, "Path not found", m.statusMessage)
@@ -610,7 +611,7 @@ func TestHandleDrillDownKey_OpenInFinder_NonExistentPath(t *testing.T) {
 		},
 	}
 
-	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
+	m.handleDrillDownKey(tea.KeyPressMsg{Code: 'o', Text: "o"})
 
 	assert.Equal(t, "Path not found", m.statusMessage)
 }
@@ -778,7 +779,7 @@ func TestHandleListKey_Scanning_AllowsSelection(t *testing.T) {
 	m := newTestModelWithResults()
 	m.scanning = true
 
-	m.handleListKey(tea.KeyMsg{Type: tea.KeySpace})
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeySpace})
 
 	assert.True(t, m.selected["cat1"])
 }
@@ -953,8 +954,8 @@ func TestRenderSectionLine_ColumnsAligned(t *testing.T) {
 	require.NotNil(t, r1)
 	require.NotNil(t, r2)
 
-	line1 := m.renderSectionLine(r1, true, false)
-	line2 := m.renderSectionLine(r2, false, false)
+	line1 := ansi.Strip(m.renderSectionLine(r1, true, false))
+	line2 := ansi.Strip(m.renderSectionLine(r2, false, false))
 
 	size1 := formatSize(m.getEffectiveSize(r1))
 	size2 := formatSize(m.getEffectiveSize(r2))
@@ -1083,7 +1084,7 @@ func TestView_RendersConfirmOverlay(t *testing.T) {
 
 	output := m.View()
 
-	assert.Contains(t, output, "Confirm Deletion")
+	assert.Contains(t, output.Content, "Confirm Deletion")
 }
 
 func TestViewReport_ContainsSummary(t *testing.T) {
@@ -1249,7 +1250,7 @@ func TestHandleListKey_ManualNotSelectable(t *testing.T) {
 
 	assert.Equal(t, types.MethodManual, m.results[m.cursor].Category.Method)
 
-	m.handleListKey(tea.KeyMsg{Type: tea.KeySpace})
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeySpace})
 
 	assert.False(t, m.selected["manual-cat"], "manual category should not be selectable via Space key")
 }
@@ -1257,7 +1258,7 @@ func TestHandleListKey_ManualNotSelectable(t *testing.T) {
 func TestHandleListKey_SelectAll_ExcludesManual(t *testing.T) {
 	m := newTestModelWithManualCategory()
 
-	m.handleListKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	m.handleListKey(tea.KeyPressMsg{Code: 'a', Text: "a"})
 
 	assert.True(t, m.selected["cat1"], "non-manual category should be selected")
 	assert.True(t, m.selected["cat2"], "non-manual category should be selected")
@@ -1273,7 +1274,7 @@ func TestHandleListKey_ManualSpaceOpensGuide(t *testing.T) {
 
 	assert.Equal(t, types.MethodManual, m.results[m.cursor].Category.Method)
 
-	m.handleListKey(tea.KeyMsg{Type: tea.KeySpace})
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeySpace})
 
 	assert.Equal(t, ViewGuide, m.view, "Space on Manual item should open guide popup")
 	assert.NotNil(t, m.guideCategory, "guideCategory should be set")
@@ -1286,7 +1287,7 @@ func TestHandleGuideKey_EscReturnsToList(t *testing.T) {
 	m.guideCategory = &m.results[2].Category
 	m.guidePathIndex = 1
 
-	m.handleGuideKey(tea.KeyMsg{Type: tea.KeyEsc})
+	m.handleGuideKey(tea.KeyPressMsg{Code: tea.KeyEsc})
 
 	assert.Equal(t, ViewList, m.view, "Esc should return to list view")
 	assert.Nil(t, m.guideCategory, "guideCategory should be cleared")
@@ -1298,7 +1299,7 @@ func TestHandleGuideKey_EnterReturnsToList(t *testing.T) {
 	m.view = ViewGuide
 	m.guideCategory = &m.results[2].Category
 
-	m.handleGuideKey(tea.KeyMsg{Type: tea.KeyEnter})
+	m.handleGuideKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	assert.Equal(t, ViewList, m.view, "Enter should return to list view")
 	assert.Nil(t, m.guideCategory, "guideCategory should be cleared")
@@ -1309,7 +1310,7 @@ func TestHandleGuideKey_SpaceReturnsToList(t *testing.T) {
 	m.view = ViewGuide
 	m.guideCategory = &m.results[2].Category
 
-	m.handleGuideKey(tea.KeyMsg{Type: tea.KeySpace})
+	m.handleGuideKey(tea.KeyPressMsg{Code: tea.KeySpace})
 
 	assert.Equal(t, ViewList, m.view, "Space should return to list view")
 }
@@ -1382,20 +1383,20 @@ func TestHandleGuideKey_PathNavigation(t *testing.T) {
 	}
 	m.guidePathIndex = 0
 
-	m.handleGuideKey(tea.KeyMsg{Type: tea.KeyDown})
+	m.handleGuideKey(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, 1, m.guidePathIndex, "down should increase path index")
 
-	m.handleGuideKey(tea.KeyMsg{Type: tea.KeyDown})
+	m.handleGuideKey(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, 2, m.guidePathIndex, "down should increase path index")
 
-	m.handleGuideKey(tea.KeyMsg{Type: tea.KeyDown})
+	m.handleGuideKey(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, 2, m.guidePathIndex, "should not exceed paths length")
 
-	m.handleGuideKey(tea.KeyMsg{Type: tea.KeyUp})
+	m.handleGuideKey(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 1, m.guidePathIndex, "up should decrease path index")
 
 	m.guidePathIndex = 0
-	m.handleGuideKey(tea.KeyMsg{Type: tea.KeyUp})
+	m.handleGuideKey(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 0, m.guidePathIndex, "should not go below 0")
 }
 
@@ -1414,7 +1415,7 @@ func TestHandleFilterTypingKey_EnterAppliesFilter(t *testing.T) {
 	m.previewItemIndex = 5
 	m.previewScroll = 10
 
-	m.handleFilterTypingKey(tea.KeyMsg{Type: tea.KeyEnter})
+	m.handleFilterTypingKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	assert.Equal(t, FilterApplied, m.filterState)
 	assert.Equal(t, "chrome", m.filterText)
@@ -1426,7 +1427,7 @@ func TestHandleFilterTypingKey_EscCancelsFilter(t *testing.T) {
 	m := newTestModelWithFilter()
 	m.filterInput.SetValue("test")
 
-	m.handleFilterTypingKey(tea.KeyMsg{Type: tea.KeyEsc})
+	m.handleFilterTypingKey(tea.KeyPressMsg{Code: tea.KeyEsc})
 
 	assert.Equal(t, FilterNone, m.filterState)
 	assert.Equal(t, "", m.filterText)
@@ -1435,7 +1436,7 @@ func TestHandleFilterTypingKey_EscCancelsFilter(t *testing.T) {
 func TestHandleFilterTypingKey_CtrlCQuits(t *testing.T) {
 	m := newTestModelWithFilter()
 
-	_, cmd := m.handleFilterTypingKey(tea.KeyMsg{Type: tea.KeyCtrlC})
+	_, cmd := m.handleFilterTypingKey(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 
 	require.NotNil(t, cmd)
 	msg := cmd()
@@ -1447,7 +1448,7 @@ func TestHandleFilterTypingKey_RegularKeyResetsScroll(t *testing.T) {
 	m.previewItemIndex = 5
 	m.previewScroll = 10
 
-	m.handleFilterTypingKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	m.handleFilterTypingKey(tea.KeyPressMsg{Code: 'a', Text: "a"})
 
 	assert.Equal(t, 0, m.previewItemIndex)
 	assert.Equal(t, 0, m.previewScroll)
@@ -1459,7 +1460,7 @@ func TestHandleConfirmKey_EnterStartsCleaningWhenDeleteSelected(t *testing.T) {
 	m.confirmChoice = confirmDelete
 	beforeTime := time.Now()
 
-	_, cmd := m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd := m.handleConfirmKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	assert.Equal(t, ViewCleaning, m.view)
 	assert.False(t, m.startTime.IsZero())
@@ -1472,7 +1473,7 @@ func TestHandleConfirmKey_EnterCancelsWhenCancelSelected(t *testing.T) {
 	m.view = ViewConfirm
 	m.confirmChoice = confirmCancel
 
-	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyEnter})
+	m.handleConfirmKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	assert.Equal(t, ViewPreview, m.view)
 }
@@ -1481,7 +1482,7 @@ func TestHandleConfirmKey_EscReturnsToPreview(t *testing.T) {
 	m := newTestModelWithResults()
 	m.view = ViewConfirm
 
-	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyEsc})
+	m.handleConfirmKey(tea.KeyPressMsg{Code: tea.KeyEsc})
 
 	assert.Equal(t, ViewPreview, m.view)
 }
@@ -1493,10 +1494,10 @@ func TestHandleConfirmKey_ScrollAdjusts(t *testing.T) {
 	m.selected["cat2"] = true
 	m.confirmScroll = 1
 
-	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyUp})
+	m.handleConfirmKey(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 0, m.confirmScroll)
 
-	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyDown})
+	m.handleConfirmKey(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, 1, m.confirmScroll)
 }
 
@@ -1505,7 +1506,7 @@ func TestHandleConfirmKey_LeftSelectsCancel(t *testing.T) {
 	m.view = ViewConfirm
 	m.confirmChoice = confirmDelete
 
-	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyLeft})
+	m.handleConfirmKey(tea.KeyPressMsg{Code: tea.KeyLeft})
 
 	assert.Equal(t, confirmCancel, m.confirmChoice)
 }
@@ -1515,7 +1516,7 @@ func TestHandleConfirmKey_RightSelectsDelete(t *testing.T) {
 	m.view = ViewConfirm
 	m.confirmChoice = confirmCancel
 
-	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyRight})
+	m.handleConfirmKey(tea.KeyPressMsg{Code: tea.KeyRight})
 
 	assert.Equal(t, confirmDelete, m.confirmChoice)
 }
@@ -1525,7 +1526,7 @@ func TestHandleConfirmKey_TabTogglesChoice(t *testing.T) {
 	m.view = ViewConfirm
 	m.confirmChoice = confirmCancel
 
-	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyTab})
+	m.handleConfirmKey(tea.KeyPressMsg{Code: tea.KeyTab})
 
 	assert.Equal(t, confirmDelete, m.confirmChoice)
 }
@@ -1535,7 +1536,7 @@ func TestHandleConfirmKey_ShiftTabTogglesChoice(t *testing.T) {
 	m.view = ViewConfirm
 	m.confirmChoice = confirmDelete
 
-	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyShiftTab})
+	m.handleConfirmKey(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
 
 	assert.Equal(t, confirmCancel, m.confirmChoice)
 }
@@ -1548,10 +1549,10 @@ func TestHandleConfirmKey_HomeEndScrollsToBounds(t *testing.T) {
 	m.selected["cat3"] = true
 	m.confirmScroll = 2
 
-	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyHome})
+	m.handleConfirmKey(tea.KeyPressMsg{Code: tea.KeyHome})
 	assert.Equal(t, 0, m.confirmScroll)
 
-	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyEnd})
+	m.handleConfirmKey(tea.KeyPressMsg{Code: tea.KeyEnd})
 	assert.Equal(t, 2, m.confirmScroll)
 }
 
@@ -1563,10 +1564,10 @@ func TestHandleConfirmKey_PageScrollClamps(t *testing.T) {
 	m.selected["cat2"] = true
 	m.selected["cat3"] = true
 
-	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyPgDown})
+	m.handleConfirmKey(tea.KeyPressMsg{Code: tea.KeyPgDown})
 	assert.Equal(t, 2, m.confirmScroll)
 
-	m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyPgUp})
+	m.handleConfirmKey(tea.KeyPressMsg{Code: tea.KeyPgUp})
 	assert.Equal(t, 0, m.confirmScroll)
 }
 
@@ -1614,7 +1615,7 @@ func TestHandlePreviewKey_CursorUpDecreases(t *testing.T) {
 	m := newTestModelForPreview()
 	m.previewItemIndex = 1
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyUp})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyUp})
 
 	assert.Equal(t, 0, m.previewItemIndex)
 }
@@ -1623,7 +1624,7 @@ func TestHandlePreviewKey_CursorUpMovesToSectionHeader(t *testing.T) {
 	m := newTestModelForPreview()
 	m.previewItemIndex = 0
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyUp})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyUp})
 
 	assert.Equal(t, -1, m.previewItemIndex)
 }
@@ -1632,7 +1633,7 @@ func TestHandlePreviewKey_CursorDownFromSectionMovesToFirstItem(t *testing.T) {
 	m := newTestModelForPreview()
 	m.previewItemIndex = -1
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyDown})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyDown})
 
 	assert.Equal(t, 0, m.previewItemIndex)
 }
@@ -1641,7 +1642,7 @@ func TestHandlePreviewKey_CursorDownIncreases(t *testing.T) {
 	m := newTestModelForPreview()
 	m.previewItemIndex = 0
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyDown})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyDown})
 
 	assert.Equal(t, 1, m.previewItemIndex)
 }
@@ -1653,7 +1654,7 @@ func TestHandlePreviewKey_CursorDownIgnoresEmptyItems(t *testing.T) {
 	require.NotNil(t, r)
 	r.Items = nil
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyDown})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyDown})
 
 	assert.Equal(t, -1, m.previewItemIndex)
 	assert.Equal(t, 0, m.previewScroll)
@@ -1668,7 +1669,7 @@ func TestHandleDrillDownKey_DownIgnoresEmptyItems(t *testing.T) {
 		scroll: 0,
 	})
 
-	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyDown})
+	m.handleDrillDownKey(tea.KeyPressMsg{Code: tea.KeyDown})
 
 	assert.Equal(t, 0, m.drillDownStack[0].cursor)
 	assert.Equal(t, 0, m.drillDownStack[0].scroll)
@@ -1681,7 +1682,7 @@ func TestHandlePreviewKey_SortToggle(t *testing.T) {
 	initialSort := m.sortOrder
 	expectedSort := initialSort.Next()
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: 's', Text: "s"})
 
 	assert.Equal(t, expectedSort, m.sortOrder)
 	assert.Equal(t, 0, m.previewItemIndex)
@@ -1693,7 +1694,7 @@ func TestHandlePreviewKey_HomeGoesToFirst(t *testing.T) {
 	m.previewItemIndex = 1
 	m.previewScroll = 5
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyHome})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyHome})
 
 	assert.Equal(t, 0, m.previewItemIndex)
 	assert.Equal(t, 0, m.previewScroll)
@@ -1703,7 +1704,7 @@ func TestHandlePreviewKey_EndGoesToLast(t *testing.T) {
 	m := newTestModelForPreview()
 	m.previewItemIndex = 0
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyEnd})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyEnd})
 
 	assert.Equal(t, 1, m.previewItemIndex)
 }
@@ -1713,7 +1714,7 @@ func TestHandlePreviewKey_SlashEntersSearchMode(t *testing.T) {
 	ti := textinput.New()
 	m.filterInput = ti
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: '/', Text: "/"})
 
 	assert.Equal(t, FilterTyping, m.filterState)
 }
@@ -1723,7 +1724,7 @@ func TestHandlePreviewKey_EscClearsAppliedFilter(t *testing.T) {
 	m.filterState = FilterApplied
 	m.filterText = "test"
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyEsc})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyEsc})
 
 	assert.Equal(t, FilterNone, m.filterState)
 	assert.Equal(t, "", m.filterText)
@@ -1734,7 +1735,7 @@ func TestHandlePreviewKey_EscReturnsToListWhenNoFilter(t *testing.T) {
 	m := newTestModelForPreview()
 	m.filterState = FilterNone
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyEsc})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyEsc})
 
 	assert.Equal(t, ViewList, m.view)
 }
@@ -1742,7 +1743,7 @@ func TestHandlePreviewKey_EscReturnsToListWhenNoFilter(t *testing.T) {
 func TestHandlePreviewKey_YEntersConfirm(t *testing.T) {
 	m := newTestModelForPreview()
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: 'y', Text: "y"})
 
 	assert.Equal(t, ViewConfirm, m.view)
 }
@@ -1755,7 +1756,7 @@ func TestHandleDrillDownKey_EscPopsStack(t *testing.T) {
 		cursor: 0,
 	})
 
-	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyEsc})
+	m.handleDrillDownKey(tea.KeyPressMsg{Code: tea.KeyEsc})
 
 	assert.Empty(t, m.drillDownStack)
 }
@@ -1768,10 +1769,10 @@ func TestHandleDrillDownKey_CursorNavigation(t *testing.T) {
 		cursor: 0,
 	})
 
-	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyDown})
+	m.handleDrillDownKey(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, 1, m.drillDownStack[0].cursor)
 
-	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyUp})
+	m.handleDrillDownKey(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 0, m.drillDownStack[0].cursor)
 }
 
@@ -1779,7 +1780,7 @@ func TestHandleConfirmKey_CtrlCQuits(t *testing.T) {
 	m := newTestModelWithResults()
 	m.view = ViewConfirm
 
-	_, cmd := m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyCtrlC})
+	_, cmd := m.handleConfirmKey(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 
 	require.NotNil(t, cmd)
 	msg := cmd()
@@ -1790,7 +1791,7 @@ func TestHandleConfirmKey_QQuits(t *testing.T) {
 	m := newTestModelWithResults()
 	m.view = ViewConfirm
 
-	_, cmd := m.handleConfirmKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+	_, cmd := m.handleConfirmKey(tea.KeyPressMsg{Code: 'q', Text: "q"})
 
 	require.NotNil(t, cmd)
 	msg := cmd()
@@ -1801,7 +1802,7 @@ func TestHandlePreviewKey_LeftCollapsesSection(t *testing.T) {
 	m := newTestModelForPreview()
 	m.expandCurrentSection()
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyLeft})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyLeft})
 
 	assert.True(t, m.isSectionCollapsed("cat1"))
 }
@@ -1810,7 +1811,7 @@ func TestHandlePreviewKey_RightExpandsSection(t *testing.T) {
 	m := newTestModelForPreview()
 	m.collapseCurrentSection()
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRight})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyRight})
 
 	assert.False(t, m.isSectionCollapsed("cat1"))
 }
@@ -1822,7 +1823,7 @@ func TestHandlePreviewKey_TabSwitchesToNextSection(t *testing.T) {
 	m.filterState = FilterApplied
 	m.filterText = "test"
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyTab})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyTab})
 
 	assert.Equal(t, "cat2", m.previewCatID)
 	assert.Equal(t, -1, m.previewItemIndex)
@@ -1837,7 +1838,7 @@ func TestHandlePreviewKey_ShiftTabSwitchesToPrevSection(t *testing.T) {
 	m.previewCatID = "cat2"
 	m.expandCurrentSection()
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyShiftTab})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
 
 	assert.Equal(t, "cat1", m.previewCatID)
 }
@@ -1847,7 +1848,7 @@ func TestHandlePreviewKey_SpaceTogglesExclusion(t *testing.T) {
 	m.excluded = make(map[string]map[string]bool)
 	itemPath := m.results[0].Items[0].Path
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeySpace})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeySpace})
 
 	assert.True(t, m.excluded["cat1"][itemPath])
 }
@@ -1857,7 +1858,7 @@ func TestHandlePreviewKey_SpaceSkipsLockedItem(t *testing.T) {
 	item := &m.results[0].Items[0]
 	item.Status = types.ItemStatusProcessLocked
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeySpace})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeySpace})
 
 	assert.False(t, m.isExcluded("cat1", item.Path))
 	assert.Equal(t, lockedItemStatusMessage, m.statusMessage)
@@ -1867,7 +1868,7 @@ func TestHandlePreviewKey_SpaceAtCollapsedSectionExpandsSection(t *testing.T) {
 	m := newTestModelForPreview()
 	m.collapseCurrentSection()
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeySpace})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeySpace})
 
 	assert.False(t, m.isSectionCollapsed("cat1"))
 }
@@ -1877,7 +1878,7 @@ func TestHandlePreviewKey_SpaceAtSectionFocusCollapsesSection(t *testing.T) {
 	m.previewItemIndex = -1
 	m.expandCurrentSection()
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeySpace})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeySpace})
 
 	assert.True(t, m.isSectionCollapsed("cat1"))
 }
@@ -1887,10 +1888,10 @@ func TestHandlePreviewKey_EnterAtSectionFocusTogglesSection(t *testing.T) {
 	m.previewItemIndex = -1
 	m.expandCurrentSection()
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyEnter})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.True(t, m.isSectionCollapsed("cat1"))
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyEnter})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.False(t, m.isSectionCollapsed("cat1"))
 }
 
@@ -1903,7 +1904,7 @@ func TestHandlePreviewKey_EnterDrillsDownOnDirectory(t *testing.T) {
 	}
 	m.previewItemIndex = 0
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyEnter})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	require.Len(t, m.drillDownStack, 1)
 	assert.Equal(t, dir, m.drillDownStack[0].path)
@@ -1914,7 +1915,7 @@ func TestHandlePreviewKey_EnterOnFileDoesNotDrillDown(t *testing.T) {
 	m := newTestModelForPreview()
 	m.previewItemIndex = 0
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyEnter})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	assert.Empty(t, m.drillDownStack)
 }
@@ -1924,7 +1925,7 @@ func TestHandlePreviewKey_MoveShowsLockedStatusMessage(t *testing.T) {
 	m.results[0].Items[0].Status = types.ItemStatusProcessLocked
 	m.previewItemIndex = -1
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyDown})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyDown})
 
 	assert.Equal(t, lockedItemStatusMessage, m.statusMessage)
 }
@@ -1934,7 +1935,7 @@ func TestHandlePreviewKey_SpaceClearsLockedStatusMessage(t *testing.T) {
 	m.statusMessage = lockedItemStatusMessage
 	itemPath := m.results[0].Items[0].Path
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeySpace})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeySpace})
 
 	assert.True(t, m.isExcluded("cat1", itemPath))
 	assert.Empty(t, m.statusMessage)
@@ -1944,7 +1945,7 @@ func TestHandlePreviewKey_MoveClearsLockedStatusMessage(t *testing.T) {
 	m := newTestModelForPreview()
 	m.statusMessage = lockedItemStatusMessage
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyDown})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyDown})
 
 	assert.Empty(t, m.statusMessage)
 }
@@ -1954,7 +1955,7 @@ func TestHandlePreviewKey_HomeClearsLockedStatusMessage(t *testing.T) {
 	m.statusMessage = lockedItemStatusMessage
 	m.previewItemIndex = 1
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyHome})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyHome})
 
 	assert.Empty(t, m.statusMessage)
 }
@@ -1964,7 +1965,7 @@ func TestHandlePreviewKey_PageDown(t *testing.T) {
 	m.height = 20
 	m.previewItemIndex = 0
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyPgDown})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyPgDown})
 
 	assert.True(t, m.previewCatID != "cat1" || m.previewItemIndex > 0, "page down should move to a later position")
 }
@@ -1973,7 +1974,7 @@ func TestHandlePreviewKey_PageUp(t *testing.T) {
 	m := newTestModelForPreview()
 	m.previewItemIndex = 1
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyPgUp})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyPgUp})
 
 	assert.LessOrEqual(t, m.previewItemIndex, 0)
 }
@@ -1982,7 +1983,7 @@ func TestHandlePreviewKey_ShiftPageDown(t *testing.T) {
 	m := newTestModelForPreview()
 	m.previewItemIndex = 0
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'J'}})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: 'J', Text: "J"})
 
 	assert.True(t, m.previewCatID != "cat1" || m.previewItemIndex > 0)
 }
@@ -1991,7 +1992,7 @@ func TestHandlePreviewKey_ShiftPageUp(t *testing.T) {
 	m := newTestModelForPreview()
 	m.previewItemIndex = 1
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'K'}})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: 'K', Text: "K"})
 
 	assert.LessOrEqual(t, m.previewItemIndex, 0)
 }
@@ -2002,7 +2003,7 @@ func TestHandlePreviewKey_AIncludesAll(t *testing.T) {
 		"cat1": {"/path/1": true, "/path/2": true},
 	}
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: 'a', Text: "a"})
 
 	assert.Empty(t, m.excluded["cat1"])
 }
@@ -2011,7 +2012,7 @@ func TestHandlePreviewKey_DExcludesAll(t *testing.T) {
 	m := newTestModelForPreview()
 	m.excluded = make(map[string]map[string]bool)
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: 'd', Text: "d"})
 
 	assert.NotEmpty(t, m.excluded["cat1"])
 }
@@ -2024,7 +2025,7 @@ func TestHandleDrillDownKey_BackspacePopsStack(t *testing.T) {
 		cursor: 0,
 	})
 
-	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyBackspace})
+	m.handleDrillDownKey(tea.KeyPressMsg{Code: tea.KeyBackspace})
 
 	assert.Empty(t, m.drillDownStack)
 }
@@ -2037,7 +2038,7 @@ func TestHandleDrillDownKey_HomeGoesToFirst(t *testing.T) {
 		cursor: 2,
 	})
 
-	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyHome})
+	m.handleDrillDownKey(tea.KeyPressMsg{Code: tea.KeyHome})
 
 	assert.Equal(t, 0, m.drillDownStack[0].cursor)
 }
@@ -2050,7 +2051,7 @@ func TestHandleDrillDownKey_EndGoesToLast(t *testing.T) {
 		cursor: 0,
 	})
 
-	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyEnd})
+	m.handleDrillDownKey(tea.KeyPressMsg{Code: tea.KeyEnd})
 
 	assert.Equal(t, 2, m.drillDownStack[0].cursor)
 }
@@ -2065,7 +2066,7 @@ func TestHandleDrillDownKey_SortToggle(t *testing.T) {
 	initialSort := m.sortOrder
 	expectedSort := initialSort.Next()
 
-	m.handleDrillDownKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	m.handleDrillDownKey(tea.KeyPressMsg{Code: 's', Text: "s"})
 
 	assert.Equal(t, expectedSort, m.sortOrder)
 }
@@ -2306,7 +2307,7 @@ func TestHandlePreviewKey_HomeOnCollapsedSectionResetsHeaderFocus(t *testing.T) 
 	m.previewScroll = 7
 	m.statusMessage = lockedItemStatusMessage
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyHome})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyHome})
 
 	assert.Equal(t, -1, m.previewItemIndex)
 	assert.Equal(t, 0, m.previewScroll)
@@ -2320,7 +2321,7 @@ func TestHandlePreviewKey_EndOnExpandedEmptySectionResetsHeaderFocus(t *testing.
 	m.previewItemIndex = 1
 	m.previewScroll = 3
 
-	m.handlePreviewKey(tea.KeyMsg{Type: tea.KeyEnd})
+	m.handlePreviewKey(tea.KeyPressMsg{Code: tea.KeyEnd})
 
 	assert.Equal(t, -1, m.previewItemIndex)
 	assert.Equal(t, 0, m.previewScroll)

@@ -3,7 +3,7 @@ package tui
 import (
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
@@ -11,7 +11,7 @@ import (
 
 const lockedItemStatusMessage = "In use by another process. Can't select."
 
-func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if m.showHelp {
 		return m.handleHelpKey(msg)
 	}
@@ -35,7 +35,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *Model) handleReportKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) handleReportKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "?":
 		return m.toggleHelp()
@@ -45,14 +45,14 @@ func (m *Model) handleReportKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.reportScroll = clamp(m.reportScroll-1, m.maxReportScroll())
 	case "down", "j":
 		m.reportScroll = clamp(m.reportScroll+1, m.maxReportScroll())
-	case "enter", " ":
+	case "enter", "space":
 		// Return to main screen and rescan
 		return m, m.startRescanCmd()
 	}
 	return m, nil
 }
 
-func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) handleListKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "?":
 		return m.toggleHelp()
@@ -66,7 +66,7 @@ func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.cursor < len(m.results)-1 {
 			m.cursor++
 		}
-	case " ":
+	case "space":
 		if len(m.results) > 0 && m.cursor < len(m.results) {
 			r := m.results[m.cursor]
 			// Open guide popup for manual categories
@@ -127,7 +127,7 @@ func (m *Model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) handlePreviewKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// Handle filter typing mode first
 	if m.filterState == FilterTyping {
 		return m.handleFilterTypingKey(msg)
@@ -172,7 +172,7 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.movePreviewSection(-1) {
 			m.previewScroll = 0
 		}
-	case " ":
+	case "space":
 		if m.previewItemIndex < 0 {
 			m.toggleCurrentSection()
 			return m, nil
@@ -272,7 +272,7 @@ func (m *Model) handlePreviewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *Model) handleFilterTypingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) handleFilterTypingKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
 		// Apply the filter
@@ -294,7 +294,7 @@ func (m *Model) handleFilterTypingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) handleConfirmKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "?":
 		return m.toggleHelp()
@@ -363,7 +363,7 @@ func (m *Model) setConfirmScroll(index int) {
 	m.confirmScroll = index
 }
 
-func (m *Model) handleDrillDownKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) handleDrillDownKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	state := &m.drillDownStack[len(m.drillDownStack)-1]
 
 	switch msg.String() {
@@ -426,11 +426,11 @@ func (m *Model) handleDrillDownKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // handleGuideKey handles key events in the guide popup view
-func (m *Model) handleGuideKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) handleGuideKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c", "q":
 		return m, tea.Quit
-	case "esc", "enter", " ":
+	case "esc", "enter", "space":
 		m.guideCategory = nil
 		m.guidePathIndex = 0
 		m.view = ViewList

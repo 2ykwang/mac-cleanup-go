@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
@@ -37,7 +37,7 @@ func TestHelp_HandleHelpKey_EscCloses(t *testing.T) {
 	m.showHelp = true
 	m.helpScroll = 3
 
-	m.handleHelpKey(tea.KeyMsg{Type: tea.KeyEscape})
+	m.handleHelpKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 
 	assert.False(t, m.showHelp)
 	assert.Equal(t, 0, m.helpScroll)
@@ -47,7 +47,7 @@ func TestHelp_HandleHelpKey_QuestionMarkCloses(t *testing.T) {
 	m := newTestModel()
 	m.showHelp = true
 
-	m.handleHelpKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	m.handleHelpKey(tea.KeyPressMsg{Code: '?', Text: "?"})
 
 	assert.False(t, m.showHelp)
 }
@@ -56,7 +56,7 @@ func TestHelp_HandleHelpKey_EnterCloses(t *testing.T) {
 	m := newTestModel()
 	m.showHelp = true
 
-	m.handleHelpKey(tea.KeyMsg{Type: tea.KeyEnter})
+	m.handleHelpKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	assert.False(t, m.showHelp)
 }
@@ -66,10 +66,10 @@ func TestHelp_HandleHelpKey_ScrollDown(t *testing.T) {
 	m.showHelp = true
 	m.helpScroll = 0
 
-	m.handleHelpKey(tea.KeyMsg{Type: tea.KeyDown})
+	m.handleHelpKey(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, 1, m.helpScroll)
 
-	m.handleHelpKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	m.handleHelpKey(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	assert.Equal(t, 2, m.helpScroll)
 }
 
@@ -78,10 +78,10 @@ func TestHelp_HandleHelpKey_ScrollUp(t *testing.T) {
 	m.showHelp = true
 	m.helpScroll = 3
 
-	m.handleHelpKey(tea.KeyMsg{Type: tea.KeyUp})
+	m.handleHelpKey(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 2, m.helpScroll)
 
-	m.handleHelpKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	m.handleHelpKey(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	assert.Equal(t, 1, m.helpScroll)
 }
 
@@ -90,7 +90,7 @@ func TestHelp_HandleHelpKey_ScrollUpClampsToZero(t *testing.T) {
 	m.showHelp = true
 	m.helpScroll = 0
 
-	m.handleHelpKey(tea.KeyMsg{Type: tea.KeyUp})
+	m.handleHelpKey(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 0, m.helpScroll)
 }
 
@@ -101,7 +101,7 @@ func TestHelp_HandleKey_RoutesToHelpWhenOpen(t *testing.T) {
 	m.helpScroll = 2
 
 	// "esc" should close help, not affect the list view
-	m.handleKey(tea.KeyMsg{Type: tea.KeyEscape})
+	m.handleKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 
 	assert.False(t, m.showHelp)
 	assert.Equal(t, ViewList, m.view) // view unchanged
@@ -116,7 +116,7 @@ func TestHelp_HandleKey_PreservesViewWhenHelpOpen(t *testing.T) {
 		m.showHelp = true
 
 		// down key should scroll help, not change underlying view state
-		m.handleKey(tea.KeyMsg{Type: tea.KeyDown})
+		m.handleKey(tea.KeyPressMsg{Code: tea.KeyDown})
 
 		assert.Equal(t, v, m.view, "view should be preserved for %v", v)
 		assert.True(t, m.showHelp, "help should remain open for %v", v)
@@ -170,7 +170,7 @@ func TestHelp_View_OverlayOnViewList(t *testing.T) {
 	m.height = 24
 
 	output := m.View()
-	assert.True(t, strings.Contains(output, "Help"), "overlay should contain 'Help' on ViewList")
+	assert.True(t, strings.Contains(output.Content, "Help"), "overlay should contain 'Help' on ViewList")
 }
 
 func TestHelp_View_OverlayOnViewPreview(t *testing.T) {
@@ -188,7 +188,7 @@ func TestHelp_View_OverlayOnViewPreview(t *testing.T) {
 	m.previewCatID = "test"
 
 	output := m.View()
-	assert.True(t, strings.Contains(output, "Help"), "overlay should contain 'Help' on ViewPreview")
+	assert.True(t, strings.Contains(output.Content, "Help"), "overlay should contain 'Help' on ViewPreview")
 }
 
 func TestHelp_View_OverlayOnViewReport(t *testing.T) {
@@ -200,5 +200,5 @@ func TestHelp_View_OverlayOnViewReport(t *testing.T) {
 	m.report = &types.Report{}
 
 	output := m.View()
-	assert.True(t, strings.Contains(output, "Help"), "overlay should contain 'Help' on ViewReport")
+	assert.True(t, strings.Contains(output.Content, "Help"), "overlay should contain 'Help' on ViewReport")
 }

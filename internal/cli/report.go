@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"golang.org/x/sys/unix"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/styles"

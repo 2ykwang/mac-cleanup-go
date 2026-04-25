@@ -4,9 +4,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/charmbracelet/bubbles/progress"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/progress"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/logger"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
@@ -42,7 +42,7 @@ func (m *Model) startScan() tea.Cmd {
 // Update handles messages
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleKey(msg)
 	case tea.WindowSizeMsg:
 		return m.handleWindowSize(msg)
@@ -54,8 +54,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleCleanProgress(msg)
 	case progress.FrameMsg:
 		var cmd tea.Cmd
-		progressModel, cmd := m.cleaningProgress.Update(msg)
-		m.cleaningProgress = progressModel.(progress.Model)
+		m.cleaningProgress, cmd = m.cleaningProgress.Update(msg)
 		return m, cmd
 	case cleanItemDoneMsg:
 		return m.handleCleanItemDone(msg)
@@ -101,7 +100,7 @@ func (m *Model) initScanResults(scanners []target.Target) {
 
 func (m *Model) handleWindowSize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	m.width, m.height = msg.Width, msg.Height
-	m.help.Width = msg.Width
+	m.help.SetWidth(msg.Width)
 	return m, nil
 }
 
