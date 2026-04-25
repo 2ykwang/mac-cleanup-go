@@ -116,7 +116,7 @@ func TestIsAvailable_ReturnsFalse_WhenBlockedProcessRunning(t *testing.T) {
 func TestIsAvailable_ReturnsTrue_WhenBlockedProcessNotRunning(t *testing.T) {
 	original := utils.IsProcessRunning
 	defer func() { utils.IsProcessRunning = original }()
-	utils.IsProcessRunning = func(name string) bool { return false }
+	utils.IsProcessRunning = func(_ string) bool { return false }
 
 	cat := types.Category{
 		ID:                 "test",

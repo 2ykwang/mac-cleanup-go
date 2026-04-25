@@ -10,7 +10,7 @@ import (
 func TestIsProcessRunning_ReturnsTrue_WhenPgrepFindsProcess(t *testing.T) {
 	original := execCommand
 	defer func() { execCommand = original }()
-	execCommand = func(name string, args ...string) *exec.Cmd {
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
 		return exec.Command("printf", "12345\n")
 	}
 
@@ -20,7 +20,7 @@ func TestIsProcessRunning_ReturnsTrue_WhenPgrepFindsProcess(t *testing.T) {
 func TestIsProcessRunning_ReturnsFalse_WhenPgrepEmpty(t *testing.T) {
 	original := execCommand
 	defer func() { execCommand = original }()
-	execCommand = func(name string, args ...string) *exec.Cmd {
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
 		return exec.Command("true")
 	}
 
@@ -30,7 +30,7 @@ func TestIsProcessRunning_ReturnsFalse_WhenPgrepEmpty(t *testing.T) {
 func TestIsProcessRunning_ReturnsFalse_WhenPgrepErrors(t *testing.T) {
 	original := execCommand
 	defer func() { execCommand = original }()
-	execCommand = func(name string, args ...string) *exec.Cmd {
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
 		return exec.Command("false")
 	}
 
