@@ -139,6 +139,12 @@ func buildJob(
 	if r.Category.Method == types.MethodManual {
 		return CleanJob{}, false
 	}
+	for _, proc := range r.Category.BlockedByProcesses {
+		if utils.IsProcessRunning(proc) {
+			logger.Warn("skipping target: blocking process running", "id", id, "process", proc)
+			return CleanJob{}, false
+		}
+	}
 
 	excludedMap := excluded[id]
 	var items []types.CleanableItem
