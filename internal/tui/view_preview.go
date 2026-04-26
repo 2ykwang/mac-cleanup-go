@@ -363,11 +363,8 @@ func (m *Model) renderItemRow(opts itemRowOpts) string {
 	}
 	paddedName = padToWidth(paddedName, opts.pathWidth)
 
-	switch {
-	case opts.isLocked || opts.isExcluded:
+	if opts.isLocked || opts.isExcluded {
 		paddedName = m.styles.MutedStyle.Render(paddedName)
-	case opts.isCurrent:
-		paddedName = m.styles.SelectedStyle.Render(paddedName)
 	}
 
 	size := fmt.Sprintf("%*s", opts.sizeWidth, utils.FormatSize(item.Size))
@@ -423,8 +420,6 @@ func (m *Model) renderPreviewItemLine(catID string, item types.CleanableItem, is
 	paddedPath := padToWidth(truncated, pathWidth)
 	if isLocked || isExcluded {
 		paddedPath = m.styles.MutedStyle.Render(paddedPath)
-	} else if isCurrent {
-		paddedPath = m.styles.SelectedStyle.Render(paddedPath)
 	}
 
 	size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(item.Size))

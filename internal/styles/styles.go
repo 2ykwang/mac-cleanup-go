@@ -46,9 +46,9 @@ func New(isDark bool) Styles {
 		Secondary: ld(lipgloss.Color("#0891B2"), lipgloss.Color("#22D3EE")), // cyan-600 / cyan-400
 		Success:   ld(lipgloss.Color("#059669"), lipgloss.Color("#34D399")), // emerald-600 / emerald-400
 		Warning:   ld(lipgloss.Color("#D97706"), lipgloss.Color("#FBBF24")), // amber-600 / amber-400
-		Muted:     ld(lipgloss.Color("#4B5563"), lipgloss.Color("#B5B5B5")), // gray-600 / 256-color 250
+		Muted:     ld(lipgloss.Color("#4B5563"), lipgloss.Color("#A0A0A0")), // gray-600 / 256-color ~247
 		Text:      ld(lipgloss.Color("#111827"), lipgloss.Color("#F9FAFB")), // gray-900 / gray-50
-		Border:    ld(lipgloss.Color("#D1D5DB"), lipgloss.Color("#909090")), // gray-300 / 256-color 242
+		Border:    ld(lipgloss.Color("#D1D5DB"), lipgloss.Color("#7A7A7A")), // gray-300 / 256-color ~243
 	}
 
 	s.TextStyle = lipgloss.NewStyle().Foreground(s.Text)
@@ -56,17 +56,17 @@ func New(isDark bool) Styles {
 	s.SuccessStyle = lipgloss.NewStyle().Foreground(s.Success)
 	s.WarningStyle = lipgloss.NewStyle().Foreground(s.Warning)
 	s.DangerStyle = lipgloss.NewStyle().Foreground(s.Danger)
-	s.SelectedStyle = lipgloss.NewStyle().Foreground(s.Primary).Bold(true)
+	s.SelectedStyle = lipgloss.NewStyle().Foreground(s.Text).Bold(true)
 	s.CursorStyle = lipgloss.NewStyle().Foreground(s.Secondary).Bold(true)
-	s.SizeStyle = lipgloss.NewStyle().Foreground(s.Secondary).Bold(true)
+	s.SizeStyle = lipgloss.NewStyle().Foreground(s.Secondary)
 	s.HelpStyle = lipgloss.NewStyle().Foreground(s.Muted).MarginTop(1)
 	s.HeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(s.Text).Background(s.Primary).Padding(0, 2).MarginBottom(1)
 	s.DividerStyle = lipgloss.NewStyle().Foreground(s.Border)
 	s.ButtonStyle = lipgloss.NewStyle().Padding(0, 2).Border(lipgloss.RoundedBorder()).BorderForeground(s.Border).Foreground(s.Text)
-	s.ButtonActiveStyle = s.ButtonStyle.BorderForeground(s.Primary).Foreground(s.Text).Bold(true)
+	s.ButtonActiveStyle = s.ButtonStyle.BorderForeground(s.Secondary).Foreground(s.Text).Bold(true)
 	s.ButtonDangerStyle = s.ButtonStyle
 	s.ButtonDangerActiveStyle = s.ButtonStyle.BorderForeground(s.Danger).Foreground(s.Danger).Bold(true)
-	s.SectionActiveNameStyle = lipgloss.NewStyle().Bold(true).Foreground(s.Primary)
+	s.SectionActiveNameStyle = lipgloss.NewStyle().Foreground(s.Text).Bold(true)
 
 	return s
 }
