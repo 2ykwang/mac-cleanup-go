@@ -68,6 +68,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateAvailable = msg.updateAvailable
 	case tea.BackgroundColorMsg:
 		m.styles = styles.New(msg.IsDark())
+		m.help.Styles = helpStyles(m.styles)
 	}
 	return m, nil
 }

@@ -3,7 +3,6 @@ package tui
 import (
 	"strings"
 
-	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/progress"
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/textinput"
@@ -102,7 +101,7 @@ func NewModel(cfg *types.Config, currentVersion string) *Model {
 		},
 		layoutState: layoutState{
 			view: ViewList,
-			help: help.New(),
+			help: newStyledHelp(theme),
 		},
 		scanState: scanState{
 			scanning:    true,
