@@ -82,6 +82,40 @@ categories:
     paths:
       - "~/Library/DiagnosticReports/*"
 
+  - id: shell-residue
+    name: Shell History Residue
+    group: system
+    safety: safe
+    method: permanent
+    note: Backup history files and stale shell metadata - regenerated on next shell start
+    paths:
+      - "~/.bash_history.bak*"
+      - "~/.zsh_history.bak*"
+      - "~/.config/fish/fish_history.bak*"
+      - "~/.zcompdump*"
+      - "~/.lesshst"
+      - "~/.viminfo.tmp"
+      - "~/.wget-hsts"
+
+  - id: identity-caches
+    name: Identity Caches
+    group: system
+    safety: safe
+    method: trash
+    note: Apple identity service caches - regenerated automatically
+    paths:
+      - "~/Library/IdentityCaches/*"
+
+  - id: macos-installer
+    name: macOS Installer Files
+    group: storage
+    safety: moderate
+    method: trash
+    note: Old macOS installer leftovers - re-download from App Store if needed
+    paths:
+      - "/Applications/Install macOS*.app"
+      - "/macOS Install Data"
+
   # ===== Browsers =====
   - id: browser-chrome
     name: Chrome Cache
@@ -193,6 +227,8 @@ categories:
     paths:
       - "~/Library/Developer/Xcode/DerivedData/*"
       - "~/Library/Developer/Xcode/iOS Device Logs/*"
+    blocked_by_processes:
+      - Xcode
 
   - id: xcode-archives
     name: Xcode Archives
@@ -212,6 +248,9 @@ categories:
     paths:
       - "~/Library/Developer/CoreSimulator/Caches/*"
       - "~/Library/Logs/CoreSimulator/*"
+    blocked_by_processes:
+      - Simulator
+      - Xcode
 
   - id: android
     name: Android SDK Cache
@@ -306,6 +345,7 @@ categories:
     note: Gradle build cache - increases build time after deletion
     paths:
       - "~/.gradle/caches/*"
+      - "~/.gradle/daemon/*"
 
   - id: maven
     name: Maven Cache
@@ -619,6 +659,166 @@ categories:
       - "~/Library/Developer/Xcode/iOS Device Logs/*"
       - "~/Library/Developer/Xcode/watchOS Device Logs/*"
 
+  - id: pre-commit
+    name: pre-commit Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: pre-commit framework hook cache - rebuilt on next run
+    paths:
+      - "~/.cache/pre-commit/*"
+
+  - id: prisma
+    name: Prisma Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Prisma ORM engine cache
+    paths:
+      - "~/.cache/prisma/*"
+
+  - id: puppeteer
+    name: Puppeteer Browser Cache
+    group: dev
+    safety: moderate
+    method: trash
+    note: Puppeteer downloaded Chromium - re-downloaded on next run
+    paths:
+      - "~/.cache/puppeteer/*"
+
+  - id: zig
+    name: Zig Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Zig compiler local cache
+    paths:
+      - "~/.cache/zig/*"
+
+  - id: opam
+    name: OPAM Download Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: OCaml OPAM package download cache
+    paths:
+      - "~/.cache/opam/*"
+      - "~/.opam/download-cache/*"
+
+  - id: gitlab-runner
+    name: GitLab Runner Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: GitLab Runner local cache
+    paths:
+      - "~/.cache/gitlab-runner/*"
+
+  - id: circleci
+    name: CircleCI Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: CircleCI local cache
+    paths:
+      - "~/.circleci/cache/*"
+
+  - id: jenkins
+    name: Jenkins Workspace Build Cache
+    group: dev
+    safety: moderate
+    method: trash
+    note: Jenkins workspace build artifacts - regenerated on next build
+    paths:
+      - "~/.jenkins/workspace/*/target/*"
+
+  - id: sonar
+    name: SonarQube Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: SonarQube scanner local cache
+    paths:
+      - "~/.sonar/*"
+
+  - id: expo
+    name: Expo Cache
+    group: dev
+    safety: moderate
+    method: trash
+    note: Expo React Native dev caches - re-downloaded on next run
+    paths:
+      - "~/.expo/expo-go/*"
+      - "~/.expo/android-apk-cache/*"
+      - "~/.expo/ios-simulator-app-cache/*"
+      - "~/.expo/native-modules-cache/*"
+      - "~/.expo/schema-cache/*"
+      - "~/.expo/template-cache/*"
+      - "~/.expo/versions-cache/*"
+
+  - id: ruby-bundle
+    name: Ruby Bundler Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Ruby Bundler download cache
+    paths:
+      - "~/.bundle/cache/*"
+
+  - id: vscode-ripgrep
+    name: VS Code ripgrep Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: VS Code ripgrep download cache
+    paths:
+      - "~/.cache/vscode-ripgrep/*"
+
+  - id: opencode
+    name: OpenCode Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: OpenCode CLI cache
+    paths:
+      - "~/.cache/opencode/*"
+
+  - id: kaku
+    name: Kaku Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Kaku tool cache
+    paths:
+      - "~/.cache/kaku/*"
+
+  - id: curl-cache
+    name: curl Cache
+    group: system
+    safety: safe
+    method: trash
+    note: curl HTTP client cache
+    paths:
+      - "~/.cache/curl/*"
+
+  - id: wget-cache
+    name: wget Cache
+    group: system
+    safety: safe
+    method: trash
+    note: wget HTTP client cache
+    paths:
+      - "~/.cache/wget/*"
+
+  - id: oh-my-zsh
+    name: Oh My Zsh Cache
+    group: system
+    safety: safe
+    method: trash
+    note: Oh My Zsh framework cache
+    paths:
+      - "~/.oh-my-zsh/cache/*"
+
   # ===== Applications =====
   - id: steam
     name: Steam Cache
@@ -866,6 +1066,160 @@ categories:
     note: ChatGPT desktop app cache
     paths:
       - "~/Library/Caches/com.openai.chat/*"
+
+  - id: codex
+    name: Codex Cache
+    group: app
+    safety: safe
+    method: trash
+    note: OpenAI Codex desktop app and CLI cache
+    paths:
+      - "~/Library/Application Support/Codex/Cache/*"
+      - "~/Library/Application Support/Codex/Code Cache/*"
+      - "~/Library/Application Support/Codex/GPUCache/*"
+      - "~/Library/Application Support/Codex/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Codex/DawnWebGPUCache/*"
+      - "~/Library/Logs/com.openai.codex/*"
+
+  - id: antigravity
+    name: Antigravity Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Antigravity browser cache
+    paths:
+      - "~/Library/Application Support/Antigravity/Cache/*"
+      - "~/Library/Application Support/Antigravity/Code Cache/*"
+      - "~/Library/Application Support/Antigravity/GPUCache/*"
+      - "~/Library/Application Support/Antigravity/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Antigravity/DawnWebGPUCache/*"
+
+  - id: qoder
+    name: Qoder Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Qoder IDE (VS Code fork) cache
+    paths:
+      - "~/Library/Application Support/Qoder/Cache/*"
+      - "~/Library/Application Support/Qoder/CachedData/*"
+      - "~/Library/Application Support/Qoder/CachedExtensionVSIXs/*"
+      - "~/Library/Application Support/Qoder/Code Cache/*"
+      - "~/Library/Application Support/Qoder/GPUCache/*"
+      - "~/Library/Application Support/Qoder/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Qoder/DawnWebGPUCache/*"
+      - "~/Library/Application Support/Qoder/logs/*"
+
+  - id: filo
+    name: Filo Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Filo Electron app cache
+    paths:
+      - "~/Library/Application Support/Filo/production/Cache/*"
+      - "~/Library/Application Support/Filo/production/Code Cache/*"
+      - "~/Library/Application Support/Filo/production/GPUCache/*"
+      - "~/Library/Application Support/Filo/production/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Filo/production/DawnWebGPUCache/*"
+
+  - id: stremio
+    name: Stremio Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Stremio media streaming cache
+    paths:
+      - "~/Library/Caches/smart.stremio*/*"
+      - "~/Library/Application Support/stremio/stremio-server/stremio-cache/*"
+
+  - id: pcsx2
+    name: PCSX2 Cache
+    group: app
+    safety: safe
+    method: trash
+    note: PCSX2 PS2 emulator cache and shader cache
+    paths:
+      - "~/Library/Caches/net.pcsx2.PCSX2/*"
+      - "~/Library/Application Support/PCSX2/cache/*"
+      - "~/Library/Logs/PCSX2/*"
+
+  - id: rpcs3
+    name: RPCS3 Cache
+    group: app
+    safety: safe
+    method: trash
+    note: RPCS3 PS3 emulator cache and logs
+    paths:
+      - "~/Library/Caches/net.rpcs3.rpcs3/*"
+      - "~/Library/Application Support/rpcs3/logs/*"
+
+  - id: google-updater
+    name: Google Updater Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Google software updater downloaded packages
+    paths:
+      - "~/Library/Application Support/Google/GoogleUpdater/crx_cache/*"
+      - "~/Library/Application Support/Google/GoogleUpdater/*.old"
+
+  - id: davinci-cacheclip
+    name: DaVinci Resolve CacheClip
+    group: app
+    safety: moderate
+    method: trash
+    note: DaVinci Resolve render/proxy cache - regenerated on next render
+    paths:
+      - "~/Movies/CacheClip/*"
+
+  - id: virtualbox
+    name: VirtualBox Cache
+    group: app
+    safety: safe
+    method: trash
+    note: VirtualBox runtime cache
+    paths:
+      - "~/VirtualBox VMs/.cache"
+
+  - id: zed-logs
+    name: Zed Logs
+    group: app
+    safety: safe
+    method: trash
+    note: Zed editor logs
+    paths:
+      - "~/Library/Logs/Zed/*"
+
+  - id: claude-logs
+    name: Claude Logs
+    group: app
+    safety: safe
+    method: trash
+    note: Claude desktop app logs
+    paths:
+      - "~/Library/Logs/Claude/*"
+
+  - id: messages-cache
+    name: Messages Preview Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Messages app preview attachments and stickers cache
+    paths:
+      - "~/Library/Messages/Caches/Previews/Attachments/*"
+      - "~/Library/Messages/Caches/Previews/StickerCache/*"
+
+  - id: wallpaper-cache
+    name: Wallpaper Cache
+    group: system
+    safety: safe
+    method: trash
+    note: macOS dynamic wallpaper agent cache and aerial thumbnails
+    paths:
+      - "~/Library/Containers/com.apple.wallpaper.agent/Data/Library/Caches/*"
+      - "~/Library/Containers/com.apple.wallpaper.extension.aerials/Data/tmp/*"
+      - "~/Library/Application Support/com.apple.wallpaper/aerials/thumbnails/*"
 
   - id: electron-updaters
     name: App Updaters (ShipIt)

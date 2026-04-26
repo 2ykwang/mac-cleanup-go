@@ -64,6 +64,9 @@ type Category struct {
 	Guide    string        `yaml:"guide,omitempty"`
 	Paths    []string      `yaml:"paths,omitempty"`
 	CheckCmd string        `yaml:"check_cmd,omitempty"`
+
+	// BlockedByProcesses lists process names that, when running, make this target unavailable.
+	BlockedByProcesses []string `yaml:"blocked_by_processes,omitempty"`
 }
 
 type Group struct {

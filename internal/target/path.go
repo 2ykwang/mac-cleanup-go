@@ -23,6 +23,12 @@ func (s *PathTarget) Category() types.Category {
 }
 
 func (s *PathTarget) IsAvailable() bool {
+	for _, proc := range s.category.BlockedByProcesses {
+		if utils.IsProcessRunning(proc) {
+			return false
+		}
+	}
+
 	// For command-based methods, check if command exists
 	if s.category.CheckCmd != "" {
 		return utils.CommandExists(s.category.CheckCmd)

@@ -124,6 +124,33 @@ func TestPrepareJobs_SkipsManualMethod(t *testing.T) {
 	}
 }
 
+func TestPrepareJobs_SkipsCategory_WhenBlockingProcessRunning(t *testing.T) {
+	original := utils.IsProcessRunning
+	defer func() { utils.IsProcessRunning = original }()
+	utils.IsProcessRunning = func(name string) bool { return name == "Xcode" }
+
+	service := NewCleanService(target.NewRegistry())
+
+	blocked := types.NewScanResult(types.Category{
+		ID:                 "xcode-derived",
+		Name:               "Xcode DerivedData",
+		Method:             types.MethodTrash,
+		BlockedByProcesses: []string{"Xcode"},
+	})
+	blocked.Items = newTestItems("/path1")
+
+	resultMap := map[string]*types.ScanResult{
+		"xcode-derived": blocked,
+		"cat2":          newTestScanResult("cat2", "Category 2", types.MethodTrash, newTestItems("/path2")),
+	}
+	selected := map[string]bool{"xcode-derived": true, "cat2": true}
+
+	jobs := service.PrepareJobs(resultMap, selected, nil)
+
+	assert.Len(t, jobs, 1)
+	assert.Equal(t, "cat2", jobs[0].Category.ID)
+}
+
 func TestPrepareJobs_FiltersExcludedItems(t *testing.T) {
 	service := NewCleanService(target.NewRegistry())
 
