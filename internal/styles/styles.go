@@ -46,9 +46,9 @@ func New(isDark bool) Styles {
 		Secondary: ld(lipgloss.Color("#0891B2"), lipgloss.Color("#22D3EE")), // cyan-600 / cyan-400
 		Success:   ld(lipgloss.Color("#059669"), lipgloss.Color("#34D399")), // emerald-600 / emerald-400
 		Warning:   ld(lipgloss.Color("#D97706"), lipgloss.Color("#FBBF24")), // amber-600 / amber-400
-		Muted:     ld(lipgloss.Color("#4B5563"), lipgloss.Color("#9CA3AF")), // gray-600 / gray-400
+		Muted:     ld(lipgloss.Color("#4B5563"), lipgloss.Color("#B5B5B5")), // gray-600 / 256-color 250
 		Text:      ld(lipgloss.Color("#111827"), lipgloss.Color("#F9FAFB")), // gray-900 / gray-50
-		Border:    ld(lipgloss.Color("#D1D5DB"), lipgloss.Color("#6B7280")), // gray-300 / gray-500
+		Border:    ld(lipgloss.Color("#D1D5DB"), lipgloss.Color("#909090")), // gray-300 / 256-color 242
 	}
 
 	s.TextStyle = lipgloss.NewStyle().Foreground(s.Text)

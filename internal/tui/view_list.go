@@ -278,8 +278,6 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult, nameWidth, sizeWidt
 	name = padToWidth(truncateToWidth(name, nameWidth, false), nameWidth)
 	if isManual {
 		name = m.styles.MutedStyle.Render(name)
-	} else if isCurrent {
-		name = m.styles.SelectedStyle.Render(name)
 	}
 
 	sizeText := utils.FormatSize(r.TotalSize)
@@ -376,7 +374,7 @@ func (m *Model) renderListSidePanel(width int) string {
 		b.WriteString(m.renderSelectedMiniList(width))
 		b.WriteString("\n")
 	}
-	b.WriteString(m.styles.Divider(min(width-2, 30)))
+	b.WriteString(m.styles.Divider(min(width-4, 30)))
 	return b.String()
 }
 
@@ -386,7 +384,7 @@ func (m *Model) renderSelectedMiniList(width int) string {
 		return ""
 	}
 
-	contentWidth := width - 2
+	contentWidth := width - 4
 	if contentWidth < 10 {
 		contentWidth = 10
 	}
