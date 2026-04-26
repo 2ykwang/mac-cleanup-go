@@ -87,8 +87,8 @@ func TestRenderRecentDeleted_FileSize(t *testing.T) {
 
 	output := m.renderRecentDeleted()
 
-	// utils.FormatSize(1024*1024) returns "1.0 MB"
-	assert.Contains(t, output, "1.0 MB", "should display formatted file size")
+	// utils.FormatSize(1024*1024) returns "1 MB"
+	assert.Contains(t, output, "1 MB", "should display formatted file size")
 }
 
 func TestRenderRecentDeleted_LongPathTruncation(t *testing.T) {

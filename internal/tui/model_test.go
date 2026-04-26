@@ -963,7 +963,11 @@ func TestRenderSectionLine_ColumnsAligned(t *testing.T) {
 	count1 := fmt.Sprintf("%d files", r1.TotalFileCount)
 	count2 := fmt.Sprintf("%d files", r2.TotalFileCount)
 
-	assert.Equal(t, strings.Index(line1, size1), strings.Index(line2, size2), "size column should start at same position")
+	// Size column is right-aligned, so verify the end position (not start) matches.
+	assert.Equal(t,
+		strings.Index(line1, size1)+len(size1),
+		strings.Index(line2, size2)+len(size2),
+		"size column should end at same position")
 	assert.Equal(t, strings.Index(line1, count1), strings.Index(line2, count2), "count column should start at same position")
 }
 

@@ -178,5 +178,5 @@ func TestConfigModel_RenderItemLine_ShowsSize(t *testing.T) {
 	m.items[0].size = 1024 * 1024 // 1 MB
 
 	line := m.renderItemLine(0, m.items[0], m.width)
-	assert.Contains(t, line, "1.0 MB")
+	assert.Contains(t, line, "1 MB")
 }
