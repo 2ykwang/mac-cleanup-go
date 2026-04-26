@@ -44,11 +44,13 @@ func TestFormatFooter_SingleShortcut(t *testing.T) {
 func TestListKeys_ShortHelp_ReturnsExpectedBindings(t *testing.T) {
 	bindings := ListKeyMap.ShortHelp()
 
-	assert.Len(t, bindings, 5)
+	assert.Len(t, bindings, 6)
 	assert.Equal(t, "↑/k", bindings[0].Help().Key)
 	assert.Equal(t, "space", bindings[1].Help().Key)
-	assert.Equal(t, "enter", bindings[2].Help().Key)
-	assert.Equal(t, "q", bindings[3].Help().Key)
+	assert.Equal(t, "a/d", bindings[2].Help().Key)
+	assert.Equal(t, "enter", bindings[3].Help().Key)
+	assert.Equal(t, "q", bindings[4].Help().Key)
+	assert.Equal(t, "?", bindings[5].Help().Key)
 }
 
 // PreviewKeys tests

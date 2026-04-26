@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
 )
 
@@ -16,6 +17,7 @@ func newTestModelForViewCleaning() *Model {
 	m.height = 24
 	m.recentDeleted = NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity)
 	m.userConfig = &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)}
+	m.styles = styles.New(true)
 	return m
 }
 
@@ -85,8 +87,8 @@ func TestRenderRecentDeleted_FileSize(t *testing.T) {
 
 	output := m.renderRecentDeleted()
 
-	// utils.FormatSize(1024*1024) returns "1.0 MB"
-	assert.Contains(t, output, "1.0 MB", "should display formatted file size")
+	// utils.FormatSize(1024*1024) returns "1 MB"
+	assert.Contains(t, output, "1 MB", "should display formatted file size")
 }
 
 func TestRenderRecentDeleted_LongPathTruncation(t *testing.T) {

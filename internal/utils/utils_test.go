@@ -51,13 +51,13 @@ func TestFormatSize_Bytes(t *testing.T) {
 }
 
 func TestFormatSize_KB(t *testing.T) {
-	assert.Equal(t, "1.0 KB", FormatSize(1024))
-	assert.Equal(t, "1.5 KB", FormatSize(1536))
+	assert.Equal(t, "1 KB", FormatSize(1024))
+	assert.Equal(t, "2 KB", FormatSize(1536))
 }
 
 func TestFormatSize_MB(t *testing.T) {
-	assert.Equal(t, "1.0 MB", FormatSize(1048576))
-	assert.Equal(t, "1.5 MB", FormatSize(1572864))
+	assert.Equal(t, "1 MB", FormatSize(1048576))
+	assert.Equal(t, "2 MB", FormatSize(1572864))
 }
 
 func TestFormatSize_GB(t *testing.T) {

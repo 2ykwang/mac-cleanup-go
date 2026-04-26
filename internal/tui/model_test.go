@@ -38,6 +38,7 @@ func newTestModel() *Model {
 	m.scanDoneIDs = make(map[string]bool)
 	m.userConfig = &userconfig.UserConfig{ExcludedPaths: make(map[string][]string)}
 	m.recentDeleted = NewRingBuffer[DeletedItemEntry](defaultRecentItemsCapacity)
+	m.styles = styles.New(true)
 	return m
 }
 
@@ -537,12 +538,40 @@ func TestHandleListKey_EnterPreview(t *testing.T) {
 	assert.True(t, m.isSectionCollapsed("cat1"))
 }
 
-func TestHandleListKey_EnterPreview_NoSelection(t *testing.T) {
+func TestHandleListKey_EnterPreview_NoSelection_ShowsHint(t *testing.T) {
 	m := newTestModelWithResults()
 
 	m.handleListKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	assert.Equal(t, ViewList, m.view, "should stay in list view when nothing selected")
+	assert.True(t, m.showHint, "should show hint when enter pressed without selection")
+}
+
+func TestHandleListKey_EnterPreview_WithSelection_DoesNotShowHint(t *testing.T) {
+	m := newTestModelWithResults()
+	m.selected["cat1"] = true
+
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+
+	assert.False(t, m.showHint, "hint should not appear when user has a selection")
+}
+
+func TestHandleListKey_HintDismissedByEsc(t *testing.T) {
+	m := newTestModelWithResults()
+	m.showHint = true
+
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeyEsc})
+
+	assert.False(t, m.showHint, "esc should dismiss hint")
+}
+
+func TestHandleListKey_HintNotDismissedByOtherKeys(t *testing.T) {
+	m := newTestModelWithResults()
+	m.showHint = true
+
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeyDown})
+
+	assert.True(t, m.showHint, "non-esc key should not dismiss hint")
 }
 
 func TestHandlePreviewKey_Back(t *testing.T) {
@@ -962,7 +991,11 @@ func TestRenderSectionLine_ColumnsAligned(t *testing.T) {
 	count1 := fmt.Sprintf("%d files", r1.TotalFileCount)
 	count2 := fmt.Sprintf("%d files", r2.TotalFileCount)
 
-	assert.Equal(t, strings.Index(line1, size1), strings.Index(line2, size2), "size column should start at same position")
+	// Size column is right-aligned, so verify the end position (not start) matches.
+	assert.Equal(t,
+		strings.Index(line1, size1)+len(size1),
+		strings.Index(line2, size2)+len(size2),
+		"size column should end at same position")
 	assert.Equal(t, strings.Index(line1, count1), strings.Index(line2, count2), "count column should start at same position")
 }
 
@@ -1236,8 +1269,8 @@ func TestRenderListItem_ManualItemMuted(t *testing.T) {
 	assert.Contains(t, output, "[Manual]")
 	assert.Contains(t, output, "Telegram DB")
 
-	mutedCheckbox := styles.MutedStyle.Render(" - ")
-	assert.Contains(t, output, mutedCheckbox, "manual item checkbox should be rendered with styles.MutedStyle")
+	mutedCheckbox := m.styles.MutedStyle.Render(" - ")
+	assert.Contains(t, output, mutedCheckbox, "manual item checkbox should be rendered with the muted style")
 
 	m.selected[manualResult.Category.ID] = true
 	outputSelected := m.renderListItem(2, manualResult, nameWidth, sizeWidth, countWidth)

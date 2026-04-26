@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
 func (m *Model) viewCleaning() string {
 	var b strings.Builder
 
-	b.WriteString(styles.HeaderStyle.Render("Cleaning..."))
+	b.WriteString(m.styles.HeaderStyle.Render("Cleaning..."))
 	b.WriteString("\n\n")
 
 	rowWidth := m.cleaningRowWidth()
@@ -24,22 +23,22 @@ func (m *Model) viewCleaning() string {
 			// Full success
 			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(cat.freedSpace))
 			b.WriteString(fmt.Sprintf("%s %s %s\n",
-				styles.SuccessStyle.Render("✓"),
+				m.styles.SuccessStyle.Render("✓"),
 				displayName,
-				styles.SizeStyle.Render(size)))
+				m.styles.SizeStyle.Render(size)))
 		} else if cat.cleaned > 0 {
 			// Partial success
 			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(cat.freedSpace))
 			b.WriteString(fmt.Sprintf("%s %s %s\n",
-				styles.WarningStyle.Render("△"),
+				m.styles.WarningStyle.Render("△"),
 				displayName,
-				styles.SizeStyle.Render(size)))
+				m.styles.SizeStyle.Render(size)))
 		} else {
 			// All failed
 			b.WriteString(fmt.Sprintf("%s %s %s\n",
-				styles.DangerStyle.Render("✗"),
+				m.styles.DangerStyle.Render("✗"),
 				displayName,
-				styles.MutedStyle.Render("failed")))
+				m.styles.MutedStyle.Render("failed")))
 		}
 	}
 
@@ -54,14 +53,14 @@ func (m *Model) viewCleaning() string {
 			if len(item) > 45 {
 				item = "..." + item[len(item)-42:]
 			}
-			b.WriteString(styles.MutedStyle.Render(fmt.Sprintf("  └ %s\n", item)))
+			b.WriteString(m.styles.MutedStyle.Render(fmt.Sprintf("  └ %s\n", item)))
 		}
 	}
 
 	// Show recent deletions list
 	if m.recentDeleted.Len() > 0 {
 		b.WriteString("\n")
-		b.WriteString(styles.MutedStyle.Render("Recent:"))
+		b.WriteString(m.styles.MutedStyle.Render("Recent:"))
 		b.WriteString("\n")
 		b.WriteString(m.renderRecentDeleted())
 	}
@@ -77,7 +76,7 @@ func (m *Model) viewCleaning() string {
 			percent = m.cleaningCurrent * 100 / m.cleaningTotal
 		}
 		progress := fmt.Sprintf("%d%% (%d/%d)", percent, m.cleaningCurrent, m.cleaningTotal)
-		b.WriteString(styles.MutedStyle.Render(progress))
+		b.WriteString(m.styles.MutedStyle.Render(progress))
 	}
 
 	return b.String()
@@ -105,9 +104,9 @@ func (m *Model) renderRecentDeleted() string {
 		// Status icon
 		var icon string
 		if entry.Success {
-			icon = styles.SuccessStyle.Render("✓")
+			icon = m.styles.SuccessStyle.Render("✓")
 		} else {
-			icon = styles.DangerStyle.Render("✗")
+			icon = m.styles.DangerStyle.Render("✗")
 		}
 
 		displayPath := shortenPath(entry.Path, nameWidth)
@@ -121,12 +120,12 @@ func (m *Model) renderRecentDeleted() string {
 			b.WriteString(fmt.Sprintf("  %s %s %s\n",
 				icon,
 				displayPath,
-				styles.SizeStyle.Render(size)))
+				m.styles.SizeStyle.Render(size)))
 		} else {
 			b.WriteString(fmt.Sprintf("  %s %s %s\n",
 				icon,
-				styles.MutedStyle.Render(displayPath),
-				styles.MutedStyle.Render(size)))
+				m.styles.MutedStyle.Render(displayPath),
+				m.styles.MutedStyle.Render(size)))
 		}
 	}
 

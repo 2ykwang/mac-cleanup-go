@@ -5,25 +5,24 @@ import (
 	"strings"
 	"time"
 
-	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
 func (m *Model) reportHeader() string {
 	var b strings.Builder
 
-	b.WriteString(styles.HeaderStyle.Render("Cleanup Complete"))
+	b.WriteString(m.styles.HeaderStyle.Render("Cleanup Complete"))
 	b.WriteString("\n\n")
 
 	// Summary
-	b.WriteString(fmt.Sprintf("Freed:     %s\n", styles.SizeStyle.Render(formatSize(m.report.FreedSpace))))
-	b.WriteString(fmt.Sprintf("Succeeded: %s\n", styles.SuccessStyle.Render(fmt.Sprintf("%d", m.report.CleanedItems))))
+	b.WriteString(fmt.Sprintf("Freed:     %s\n", m.styles.SizeStyle.Render(formatSize(m.report.FreedSpace))))
+	b.WriteString(fmt.Sprintf("Succeeded: %s\n", m.styles.SuccessStyle.Render(fmt.Sprintf("%d", m.report.CleanedItems))))
 	if m.report.FailedItems > 0 {
-		b.WriteString(fmt.Sprintf("Failed:    %s\n", styles.DangerStyle.Render(fmt.Sprintf("%d", m.report.FailedItems))))
+		b.WriteString(fmt.Sprintf("Failed:    %s\n", m.styles.DangerStyle.Render(fmt.Sprintf("%d", m.report.FailedItems))))
 	}
 	b.WriteString(fmt.Sprintf("Time:      %s\n\n", m.report.Duration.Round(time.Millisecond)))
 
-	b.WriteString(styles.Divider(m.reportDividerWidth()) + "\n")
+	b.WriteString(m.styles.Divider(m.reportDividerWidth()) + "\n")
 
 	return b.String()
 }
@@ -57,7 +56,7 @@ func (m *Model) viewReport() string {
 
 	// Show scroll indicator at top if scrolled
 	if m.reportScroll > 0 {
-		b.WriteString(styles.MutedStyle.Render(fmt.Sprintf("  ↑ %d more lines above\n", m.reportScroll)))
+		b.WriteString(m.styles.MutedStyle.Render(fmt.Sprintf("  ↑ %d more lines above\n", m.reportScroll)))
 	} else {
 		b.WriteString("\n")
 	}
@@ -71,7 +70,7 @@ func (m *Model) viewReport() string {
 	// Show scroll indicator at bottom if more content
 	remaining := totalLines - end
 	if remaining > 0 {
-		b.WriteString(styles.MutedStyle.Render(fmt.Sprintf("  ↓ %d more lines below\n", remaining)))
+		b.WriteString(m.styles.MutedStyle.Render(fmt.Sprintf("  ↓ %d more lines below\n", remaining)))
 	} else {
 		b.WriteString("\n")
 	}
@@ -89,12 +88,12 @@ func (m *Model) buildReportLines() []string {
 	for _, result := range m.report.Results {
 		if len(result.Errors) == 0 && result.CleanedItems > 0 {
 			if !hasSuccess {
-				lines = append(lines, styles.SuccessStyle.Render("Succeeded:"))
+				lines = append(lines, m.styles.SuccessStyle.Render("Succeeded:"))
 				hasSuccess = true
 			}
 			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(result.FreedSpace))
 			name := padToWidth(truncateToWidth(result.Category.Name, nameWidth, false), nameWidth)
-			lines = append(lines, fmt.Sprintf("  %s %s %s", styles.SuccessStyle.Render("✓"), name, styles.SizeStyle.Render(size)))
+			lines = append(lines, fmt.Sprintf("  %s %s %s", m.styles.SuccessStyle.Render("✓"), name, m.styles.SizeStyle.Render(size)))
 		}
 	}
 
@@ -102,15 +101,15 @@ func (m *Model) buildReportLines() []string {
 	for _, result := range m.report.Results {
 		if len(result.Errors) > 0 && result.CleanedItems > 0 {
 			if !hasSuccess {
-				lines = append(lines, styles.SuccessStyle.Render("Succeeded:"))
+				lines = append(lines, m.styles.SuccessStyle.Render("Succeeded:"))
 				hasSuccess = true
 			}
 			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(result.FreedSpace))
 			name := padToWidth(truncateToWidth(result.Category.Name, nameWidth, false), nameWidth)
 			lines = append(lines, fmt.Sprintf("  %s %s %s",
-				styles.WarningStyle.Render("△"),
+				m.styles.WarningStyle.Render("△"),
 				name,
-				styles.SizeStyle.Render(size)))
+				m.styles.SizeStyle.Render(size)))
 		}
 	}
 
@@ -122,22 +121,22 @@ func (m *Model) buildReportLines() []string {
 				if hasSuccess {
 					lines = append(lines, "") // blank line
 				}
-				lines = append(lines, styles.DangerStyle.Render("Failed:"))
+				lines = append(lines, m.styles.DangerStyle.Render("Failed:"))
 				hasFailed = true
 			}
 
 			// Show category with error count
 			if result.CleanedItems > 0 {
 				lines = append(lines, fmt.Sprintf("  %s %s: %s succeeded, %s failed",
-					styles.WarningStyle.Render("⚠"),
+					m.styles.WarningStyle.Render("⚠"),
 					result.Category.Name,
-					styles.SuccessStyle.Render(fmt.Sprintf("%d", result.CleanedItems)),
-					styles.DangerStyle.Render(fmt.Sprintf("%d", len(result.Errors)))))
+					m.styles.SuccessStyle.Render(fmt.Sprintf("%d", result.CleanedItems)),
+					m.styles.DangerStyle.Render(fmt.Sprintf("%d", len(result.Errors)))))
 			} else {
 				lines = append(lines, fmt.Sprintf("  %s %s: %s failed",
-					styles.DangerStyle.Render("✗"),
+					m.styles.DangerStyle.Render("✗"),
 					result.Category.Name,
-					styles.DangerStyle.Render(fmt.Sprintf("%d", len(result.Errors)))))
+					m.styles.DangerStyle.Render(fmt.Sprintf("%d", len(result.Errors)))))
 			}
 
 			// Show individual errors (truncate long paths)
@@ -146,7 +145,7 @@ func (m *Model) buildReportLines() []string {
 				if len(displayErr) > 60 {
 					displayErr = "..." + displayErr[len(displayErr)-57:]
 				}
-				lines = append(lines, styles.MutedStyle.Render(fmt.Sprintf("    └ %s", displayErr)))
+				lines = append(lines, m.styles.MutedStyle.Render(fmt.Sprintf("    └ %s", displayErr)))
 			}
 		}
 	}

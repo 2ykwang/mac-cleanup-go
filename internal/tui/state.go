@@ -9,10 +9,15 @@ import (
 	"charm.land/bubbles/v2/textinput"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/cleaner"
+	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/userconfig"
 )
+
+type themeState struct {
+	styles styles.Styles
+}
 
 type configState struct {
 	config            *types.Config
@@ -44,6 +49,7 @@ type layoutState struct {
 	help          help.Model
 	showHelp      bool
 	helpScroll    int
+	showHint      bool // list view only — set on enter w/o selection, dismissed by esc
 }
 
 type scanState struct {

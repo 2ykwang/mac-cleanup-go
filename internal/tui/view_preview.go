@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
@@ -195,14 +194,14 @@ func (m *Model) readDirectory(path string) []types.CleanableItem {
 func (m *Model) previewHeader() string {
 	var b strings.Builder
 
-	b.WriteString(styles.HeaderStyle.Render("Cleanup Preview"))
+	b.WriteString(m.styles.HeaderStyle.Render("Cleanup Preview"))
 	b.WriteString("\n\n")
 
 	b.WriteString(fmt.Sprintf("Selected: %d  │  Estimated: %s  │  Sort: %s\n",
-		m.getSelectedCount(), styles.SizeStyle.Render(formatSize(m.getSelectedSize())), m.sortOrder.Label()))
+		m.getSelectedCount(), m.styles.SizeStyle.Render(formatSize(m.getSelectedSize())), m.sortOrder.Label()))
 	b.WriteString("\n")
-	b.WriteString(styles.MutedStyle.Render("Next: press ") + styles.SelectedStyle.Render("Y") + styles.MutedStyle.Render(" to open delete confirmation") + "\n")
-	b.WriteString(styles.Divider(60) + "\n")
+	b.WriteString(m.styles.MutedStyle.Render("Next: press ") + m.styles.SelectedStyle.Render("Y") + m.styles.MutedStyle.Render(" to open delete confirmation") + "\n")
+	b.WriteString(m.styles.Divider(60) + "\n")
 
 	return b.String()
 }
@@ -213,21 +212,21 @@ func (m *Model) previewFooter(selected []*types.ScanResult) string {
 	// Warning for risky items
 	for _, r := range selected {
 		if r.Category.Safety == types.SafetyLevelRisky {
-			b.WriteString("\n" + styles.DangerStyle.Render("Warning: Risky items included"))
+			b.WriteString("\n" + m.styles.DangerStyle.Render("Warning: Risky items included"))
 			break
 		}
 	}
 
 	// Status message (e.g., error messages)
 	if m.statusMessage != "" {
-		b.WriteString("\n" + styles.WarningStyle.Render(m.statusMessage))
+		b.WriteString("\n" + m.styles.WarningStyle.Render(m.statusMessage))
 	}
 
 	b.WriteString("\n\n")
 
 	// Context-specific footer for filter mode
 	if m.filterState == FilterTyping {
-		b.WriteString(styles.HelpStyle.Render(FormatFooter(FilterTypingShortcuts)))
+		b.WriteString(m.styles.HelpStyle.Render(FormatFooter(FilterTypingShortcuts)))
 	} else {
 		b.WriteString(m.help.View(PreviewKeyMap))
 	}
@@ -240,7 +239,7 @@ func (m *Model) renderSectionLine(r *types.ScanResult, isCurrentSection bool, is
 
 	cursor := "  "
 	if isFocused {
-		cursor = styles.CursorStyle.Render("▸ ")
+		cursor = m.styles.CursorStyle.Render("▸ ")
 	}
 
 	indicator := "▶"
@@ -248,14 +247,14 @@ func (m *Model) renderSectionLine(r *types.ScanResult, isCurrentSection bool, is
 		indicator = "▼"
 	}
 	if isCurrentSection {
-		indicator = styles.CursorStyle.Render(indicator)
+		indicator = m.styles.CursorStyle.Render(indicator)
 	} else {
-		indicator = styles.MutedStyle.Render(indicator)
+		indicator = m.styles.MutedStyle.Render(indicator)
 	}
 
 	name := padToWidth(truncateToWidth(r.Category.Name, nameWidth, false), nameWidth)
 	if isCurrentSection {
-		name = SectionActiveNameStyle.Render(name)
+		name = m.styles.SectionActiveNameStyle.Render(name)
 	}
 
 	badgeText := ""
@@ -271,20 +270,20 @@ func (m *Model) renderSectionLine(r *types.ScanResult, isCurrentSection bool, is
 		badgeText += " [Manual]"
 	}
 	badgeText = padToWidth(truncateToWidth(badgeText, badgeWidth, false), badgeWidth)
-	badge := styles.MutedStyle.Render(badgeText)
+	badge := m.styles.MutedStyle.Render(badgeText)
 	switch r.Category.Safety {
 	case types.SafetyLevelSafe:
-		badge = styles.SuccessStyle.Render(badgeText)
+		badge = m.styles.SuccessStyle.Render(badgeText)
 	case types.SafetyLevelModerate:
-		badge = styles.WarningStyle.Render(badgeText)
+		badge = m.styles.WarningStyle.Render(badgeText)
 	case types.SafetyLevelRisky:
-		badge = styles.DangerStyle.Render(badgeText)
+		badge = m.styles.DangerStyle.Render(badgeText)
 	}
 
 	size := fmt.Sprintf("%*s", sizeWidth, formatSize(m.getEffectiveSize(r)))
 	count := fmt.Sprintf("%*s", countWidth, fmt.Sprintf("%d", r.TotalFileCount))
 
-	return fmt.Sprintf("%s%s %s %s %s %s", cursor, indicator, name, badge, styles.SizeStyle.Render(size), styles.MutedStyle.Render(count))
+	return fmt.Sprintf("%s%s %s %s %s %s", cursor, indicator, name, badge, m.styles.SizeStyle.Render(size), m.styles.MutedStyle.Render(count))
 }
 
 func (m *Model) previewSectionColumnWidths() (int, int, int, int) {
@@ -300,7 +299,7 @@ func (m *Model) renderSectionColumnsHeader() string {
 	badge := padToWidth("Risk/Mode", badgeWidth)
 	size := fmt.Sprintf("%*s", sizeWidth, "Size")
 	count := fmt.Sprintf("%*s", countWidth, "Files")
-	return styles.MutedStyle.Render(fmt.Sprintf("    %s %s %s %s", name, badge, size, count))
+	return m.styles.MutedStyle.Render(fmt.Sprintf("    %s %s %s %s", name, badge, size, count))
 }
 
 // itemRowOpts holds parameters for rendering a single item row.
@@ -321,18 +320,18 @@ func (m *Model) renderItemRow(opts itemRowOpts) string {
 
 	cursor := "  "
 	if opts.isCurrent {
-		cursor = styles.CursorStyle.Render("▸ ")
+		cursor = m.styles.CursorStyle.Render("▸ ")
 	}
 
 	checkbox := ""
 	if opts.showCheck {
 		switch {
 		case opts.isLocked:
-			checkbox = styles.MutedStyle.Render(" - ")
+			checkbox = m.styles.MutedStyle.Render(" - ")
 		case opts.isExcluded:
-			checkbox = styles.MutedStyle.Render("[ ]")
+			checkbox = m.styles.MutedStyle.Render("[ ]")
 		default:
-			checkbox = styles.SuccessStyle.Render("[x]")
+			checkbox = m.styles.SuccessStyle.Render("[x]")
 		}
 		checkbox += " "
 	}
@@ -344,7 +343,7 @@ func (m *Model) renderItemRow(opts itemRowOpts) string {
 	if opts.showCheck {
 		icon = padToWidth(icon, previewIconWidth)
 		if opts.isLocked {
-			icon = styles.MutedStyle.Render(icon)
+			icon = m.styles.MutedStyle.Render(icon)
 		}
 	}
 
@@ -364,21 +363,18 @@ func (m *Model) renderItemRow(opts itemRowOpts) string {
 	}
 	paddedName = padToWidth(paddedName, opts.pathWidth)
 
-	switch {
-	case opts.isLocked || opts.isExcluded:
-		paddedName = styles.MutedStyle.Render(paddedName)
-	case opts.isCurrent:
-		paddedName = styles.SelectedStyle.Render(paddedName)
+	if opts.isLocked || opts.isExcluded {
+		paddedName = m.styles.MutedStyle.Render(paddedName)
 	}
 
 	size := fmt.Sprintf("%*s", opts.sizeWidth, utils.FormatSize(item.Size))
 	age := fmt.Sprintf("%*s", opts.ageWidth, utils.FormatAge(item.ModifiedAt))
 	if opts.isLocked || opts.isExcluded {
-		size = styles.MutedStyle.Render(size)
-		age = styles.MutedStyle.Render(age)
+		size = m.styles.MutedStyle.Render(size)
+		age = m.styles.MutedStyle.Render(age)
 	} else {
-		size = styles.SizeStyle.Render(size)
-		age = styles.MutedStyle.Render(age)
+		size = m.styles.SizeStyle.Render(size)
+		age = m.styles.MutedStyle.Render(age)
 	}
 
 	return fmt.Sprintf("%s%s%s %s %s %s\n", cursor, checkbox, icon, paddedName, size, age)
@@ -390,14 +386,14 @@ func (m *Model) renderPreviewItemLine(catID string, item types.CleanableItem, is
 
 	cursor := "  "
 	if isCurrent {
-		cursor = styles.CursorStyle.Render("▸ ")
+		cursor = m.styles.CursorStyle.Render("▸ ")
 	}
 
-	checkbox := styles.SuccessStyle.Render("[x]")
+	checkbox := m.styles.SuccessStyle.Render("[x]")
 	if isLocked {
-		checkbox = styles.MutedStyle.Render(" - ")
+		checkbox = m.styles.MutedStyle.Render(" - ")
 	} else if isExcluded {
-		checkbox = styles.MutedStyle.Render("[ ]")
+		checkbox = m.styles.MutedStyle.Render("[ ]")
 	}
 
 	icon := " "
@@ -406,7 +402,7 @@ func (m *Model) renderPreviewItemLine(catID string, item types.CleanableItem, is
 	}
 	icon = padToWidth(icon, previewIconWidth)
 	if isLocked {
-		icon = styles.MutedStyle.Render(icon)
+		icon = m.styles.MutedStyle.Render(icon)
 	}
 
 	displayPath := item.Path
@@ -423,19 +419,17 @@ func (m *Model) renderPreviewItemLine(catID string, item types.CleanableItem, is
 
 	paddedPath := padToWidth(truncated, pathWidth)
 	if isLocked || isExcluded {
-		paddedPath = styles.MutedStyle.Render(paddedPath)
-	} else if isCurrent {
-		paddedPath = styles.SelectedStyle.Render(paddedPath)
+		paddedPath = m.styles.MutedStyle.Render(paddedPath)
 	}
 
 	size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(item.Size))
 	age := fmt.Sprintf("%*s", ageWidth, utils.FormatAge(item.ModifiedAt))
 	if isLocked || isExcluded {
-		size = styles.MutedStyle.Render(size)
-		age = styles.MutedStyle.Render(age)
+		size = m.styles.MutedStyle.Render(size)
+		age = m.styles.MutedStyle.Render(age)
 	} else {
-		size = styles.SizeStyle.Render(size)
-		age = styles.MutedStyle.Render(age)
+		size = m.styles.SizeStyle.Render(size)
+		age = m.styles.MutedStyle.Render(age)
 	}
 
 	return fmt.Sprintf("%s%s %s %s %s %s", cursor, checkbox, icon, paddedPath, size, age)
@@ -475,7 +469,7 @@ func (m *Model) viewPreview() string {
 		addLine("Search: "+m.filterInput.View(), false)
 	}
 	if filterQuery != "" {
-		addLine(styles.MutedStyle.Render(fmt.Sprintf("Filter: \"%s\"", filterQuery)), false)
+		addLine(m.styles.MutedStyle.Render(fmt.Sprintf("Filter: \"%s\"", filterQuery)), false)
 	}
 	addLine(m.renderSectionColumnsHeader(), false)
 
@@ -502,7 +496,7 @@ func (m *Model) viewPreview() string {
 		}
 
 		if len(items) == 0 {
-			addLine(styles.MutedStyle.Render("    (no items)"), false)
+			addLine(m.styles.MutedStyle.Render("    (no items)"), false)
 			continue
 		}
 
@@ -530,7 +524,7 @@ func (m *Model) viewPreview() string {
 		b.WriteString("\n")
 	}
 	if len(bodyLines) > visible {
-		b.WriteString(styles.MutedStyle.Render(fmt.Sprintf("  … [%d-%d / %d]\n", start+1, end, len(bodyLines))))
+		b.WriteString(m.styles.MutedStyle.Render(fmt.Sprintf("  … [%d-%d / %d]\n", start+1, end, len(bodyLines))))
 	}
 	m.updatePreviewStatusMessage()
 	b.WriteString(footer)
@@ -540,12 +534,12 @@ func (m *Model) viewPreview() string {
 func (m *Model) drillDownHeader(path string) string {
 	var b strings.Builder
 
-	b.WriteString(styles.HeaderStyle.Render("Directory Browser"))
+	b.WriteString(m.styles.HeaderStyle.Render("Directory Browser"))
 	b.WriteString("\n\n")
 
-	b.WriteString(styles.MutedStyle.Render("Path: ") + shortenPath(path, m.width-10))
+	b.WriteString(m.styles.MutedStyle.Render("Path: ") + shortenPath(path, m.width-10))
 	b.WriteString("\n")
-	b.WriteString(styles.Divider(60) + "\n")
+	b.WriteString(m.styles.Divider(60) + "\n")
 
 	return b.String()
 }
@@ -555,7 +549,7 @@ func (m *Model) drillDownFooter() string {
 
 	// Status message (e.g., error messages)
 	if m.statusMessage != "" {
-		b.WriteString("\n" + styles.WarningStyle.Render(m.statusMessage))
+		b.WriteString("\n" + m.styles.WarningStyle.Render(m.statusMessage))
 	}
 
 	b.WriteString("\n\n")
@@ -578,7 +572,7 @@ func (m *Model) viewDrillDown() string {
 	b.WriteString(header)
 
 	if len(state.items) == 0 {
-		b.WriteString(styles.MutedStyle.Render("(empty)") + "\n")
+		b.WriteString(m.styles.MutedStyle.Render("(empty)") + "\n")
 	} else {
 		// Sort items based on current sort order
 		sortedItems := m.sortItems(state.items)
@@ -609,7 +603,7 @@ func (m *Model) viewDrillDown() string {
 		}
 
 		if len(sortedItems) > visible {
-			b.WriteString(styles.MutedStyle.Render(fmt.Sprintf("\n  [%d/%d]", state.cursor+1, len(sortedItems))))
+			b.WriteString(m.styles.MutedStyle.Render(fmt.Sprintf("\n  [%d/%d]", state.cursor+1, len(sortedItems))))
 		}
 	}
 

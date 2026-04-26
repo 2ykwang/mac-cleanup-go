@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/logger"
+	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
@@ -65,6 +66,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case versionCheckMsg:
 		m.latestVersion = msg.latestVersion
 		m.updateAvailable = msg.updateAvailable
+	case tea.BackgroundColorMsg:
+		m.styles = styles.New(msg.IsDark())
+		m.help.Styles = helpStyles(m.styles)
 	}
 	return m, nil
 }

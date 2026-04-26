@@ -6,8 +6,6 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/2ykwang/mac-cleanup-go/internal/styles"
-	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
@@ -23,8 +21,6 @@ const (
 	// previewPrefixWidth: cursor(2) + checkbox(3) + space(1) + icon(2) + space(1)
 	previewPrefixWidth = 9
 )
-
-var SectionActiveNameStyle = lipgloss.NewStyle().Bold(true).Foreground(styles.ColorPrimary)
 
 func splitColumns(available int, weights, caps []int) []int {
 	cols := make([]int, len(weights))
@@ -160,19 +156,6 @@ func (m *Model) nameSizeColumns(overhead int, allowOverflow bool) (int, int) {
 // Helper functions
 func formatSize(bytes int64) string {
 	return utils.FormatSize(bytes)
-}
-
-func safetyDot(level types.SafetyLevel) string {
-	switch level {
-	case types.SafetyLevelSafe:
-		return styles.SuccessStyle.Render("●")
-	case types.SafetyLevelModerate:
-		return styles.WarningStyle.Render("●")
-	case types.SafetyLevelRisky:
-		return styles.DangerStyle.Render("●")
-	default:
-		return styles.MutedStyle.Render("●")
-	}
 }
 
 // shortenPath truncates path to fit within maxWidth display columns.

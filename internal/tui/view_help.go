@@ -6,8 +6,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-
-	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 )
 
 const githubURL = "https://github.com/2ykwang/mac-cleanup-go"
@@ -15,8 +13,8 @@ const githubURL = "https://github.com/2ykwang/mac-cleanup-go"
 func (m *Model) helpContent(contentWidth int) string {
 	section := lipgloss.NewStyle().
 		Bold(true).
-		Foreground(styles.ColorSecondary)
-	keyStyle := lipgloss.NewStyle().Foreground(styles.ColorSecondary)
+		Foreground(m.styles.Secondary)
+	keyStyle := lipgloss.NewStyle().Foreground(m.styles.Secondary)
 	colStyle := lipgloss.NewStyle().Width(14)
 
 	styledKey := func(s string) string {
@@ -28,28 +26,28 @@ func (m *Model) helpContent(contentWidth int) string {
 		for i, p := range parts {
 			rendered[i] = keyStyle.Render(p)
 		}
-		return strings.Join(rendered, styles.MutedStyle.Render(" / "))
+		return strings.Join(rendered, m.styles.MutedStyle.Render(" / "))
 	}
 
 	writeRow := func(b *strings.Builder, key, desc string) {
-		b.WriteString("  " + colStyle.Render(styledKey(key)) + styles.MutedStyle.Render(desc) + "\n")
+		b.WriteString("  " + colStyle.Render(styledKey(key)) + m.styles.MutedStyle.Render(desc) + "\n")
 	}
 
 	var b strings.Builder
 
-	muted := styles.MutedStyle
-	div := styles.Divider(contentWidth)
+	muted := m.styles.MutedStyle
+	div := m.styles.Divider(contentWidth)
 
 	// Title
-	b.WriteString(styles.HeaderStyle.Render("Help"))
+	b.WriteString(m.styles.HeaderStyle.Render("Help"))
 	b.WriteString("\n" + div + "\n\n")
 
 	// Overview
 	b.WriteString(section.Render("Overview"))
 	b.WriteString("\n")
-	b.WriteString(styles.TextStyle.Render("Scans and removes macOS system caches, app logs, old"))
+	b.WriteString(m.styles.TextStyle.Render("Scans and removes macOS system caches, app logs, old"))
 	b.WriteString("\n")
-	b.WriteString(styles.TextStyle.Render("downloads, and dev tool leftovers to free disk space."))
+	b.WriteString(m.styles.TextStyle.Render("downloads, and dev tool leftovers to free disk space."))
 	b.WriteString("\n")
 	b.WriteString(muted.Render("Files are moved to Trash by default — always recoverable."))
 	b.WriteString("\n")
@@ -96,7 +94,7 @@ func (m *Model) helpContent(contentWidth int) string {
 	b.WriteString("\n")
 	b.WriteString("  • " + keyStyle.Render("space") + muted.Render(" on manual item → opens cleanup guide") + "\n")
 	b.WriteString("  • " + keyStyle.Render("/") + muted.Render(" in preview → search files by name") + "\n")
-	b.WriteString("  • " + styles.DangerStyle.Render("Risky") + muted.Render(" items are auto-excluded for safety") + "\n")
+	b.WriteString("  • " + m.styles.DangerStyle.Render("Risky") + muted.Render(" items are auto-excluded for safety") + "\n")
 	b.WriteString("\n")
 
 	// GitHub
@@ -157,11 +155,11 @@ func (m *Model) helpDialog() string {
 	if scrollable {
 		footer = "esc close  ↑↓ scroll  o github"
 	}
-	visible += "\n" + styles.MutedStyle.Render(footer)
+	visible += "\n" + m.styles.MutedStyle.Render(footer)
 
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(styles.ColorBorder).
+		BorderForeground(m.styles.Border).
 		Padding(1, 2).
 		Width(boxWidth)
 

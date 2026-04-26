@@ -7,7 +7,6 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
@@ -59,7 +58,7 @@ func (m *Model) getGroupStats() []GroupStat {
 }
 
 // formatGroupStats formats group statistics as a single line string
-func formatGroupStats(stats []GroupStat) string {
+func (m *Model) formatGroupStats(stats []GroupStat) string {
 	if len(stats) == 0 {
 		return ""
 	}
@@ -68,7 +67,7 @@ func formatGroupStats(stats []GroupStat) string {
 	for _, s := range stats {
 		parts = append(parts, fmt.Sprintf("%s: %s", s.Name, formatSize(s.Size)))
 	}
-	return styles.MutedStyle.Render(strings.Join(parts, "  "))
+	return m.styles.MutedStyle.Render(strings.Join(parts, "  "))
 }
 
 func (m *Model) pendingScanNames() string {
@@ -94,14 +93,14 @@ func (m *Model) pendingScanNames() string {
 func (m *Model) listHeader(showSummary bool) string {
 	var b strings.Builder
 
-	b.WriteString(styles.HeaderStyle.Render("Mac Cleanup"))
+	b.WriteString(m.styles.HeaderStyle.Render("Mac Cleanup"))
 	b.WriteString("\n")
 	if m.scanning {
 		b.WriteString(fmt.Sprintf("%s Scanning...  %s\n",
 			m.spinner.View(),
-			styles.MutedStyle.Render(fmt.Sprintf("%d/%d", m.scanCompleted, m.scanTotal))))
+			m.styles.MutedStyle.Render(fmt.Sprintf("%d/%d", m.scanCompleted, m.scanTotal))))
 		if pending := m.pendingScanNames(); pending != "" {
-			b.WriteString(styles.MutedStyle.Render(fmt.Sprintf("  └ %s", pending)))
+			b.WriteString(m.styles.MutedStyle.Render(fmt.Sprintf("  └ %s", pending)))
 			b.WriteString("\n")
 		}
 	}
@@ -110,42 +109,42 @@ func (m *Model) listHeader(showSummary bool) string {
 	if m.updateAvailable && m.latestVersion != "" {
 		updateMsg := fmt.Sprintf("[↑] Update available: %s → %s (run with --update)",
 			m.currentVersion, m.latestVersion)
-		b.WriteString(styles.SuccessStyle.Render(updateMsg))
+		b.WriteString(m.styles.SuccessStyle.Render(updateMsg))
 		b.WriteString("\n")
 	}
 
 	// Permission warning
 	if !m.hasFullDiskAccess {
-		b.WriteString(styles.WarningStyle.Render("[!] Limited access: Grant Full Disk Access in System Settings for complete scan"))
+		b.WriteString(m.styles.WarningStyle.Render("[!] Limited access: Grant Full Disk Access in System Settings for complete scan"))
 		b.WriteString("\n")
 	}
 	b.WriteString("\n")
 
 	// Legend
 	b.WriteString(fmt.Sprintf("%s Safe      %s\n",
-		styles.SuccessStyle.Render("●"), styles.MutedStyle.Render("Auto-regenerated caches")))
+		m.styles.SuccessStyle.Render("●"), m.styles.MutedStyle.Render("Auto-regenerated caches")))
 	b.WriteString(fmt.Sprintf("%s Moderate  %s\n",
-		styles.WarningStyle.Render("●"), styles.MutedStyle.Render("May need re-download or re-login")))
+		m.styles.WarningStyle.Render("●"), m.styles.MutedStyle.Render("May need re-download or re-login")))
 	b.WriteString(fmt.Sprintf("%s Risky     %s\n",
-		styles.DangerStyle.Render("●"), styles.MutedStyle.Render("May contain important data")))
+		m.styles.DangerStyle.Render("●"), m.styles.MutedStyle.Render("May contain important data")))
 	b.WriteString("\n")
 
 	// Summary
 	if showSummary {
-		summary := fmt.Sprintf("Available: %s", styles.SizeStyle.Render(formatSize(m.getAvailableSize())))
+		summary := fmt.Sprintf("Available: %s", m.styles.SizeStyle.Render(formatSize(m.getAvailableSize())))
 		if m.hasSelection() {
 			summary += fmt.Sprintf("  │  Selected: %s (%d)",
-				styles.SizeStyle.Render(formatSize(m.getSelectedSize())), m.getSelectedCount())
+				m.styles.SizeStyle.Render(formatSize(m.getSelectedSize())), m.getSelectedCount())
 		}
 		b.WriteString(summary + "\n")
 	}
 
 	// Group statistics
 	if stats := m.getGroupStats(); len(stats) > 0 {
-		b.WriteString(formatGroupStats(stats) + "\n")
+		b.WriteString(m.formatGroupStats(stats) + "\n")
 	}
 
-	b.WriteString(styles.Divider(60) + "\n")
+	b.WriteString(m.styles.Divider(60) + "\n")
 
 	return b.String()
 }
@@ -155,14 +154,14 @@ func (m *Model) listFooter(includeHelp bool) string {
 
 	// Show scan warnings after scan completes
 	if !m.scanning && len(m.scanErrors) > 0 {
-		b.WriteString(styles.WarningStyle.Render("[!] Scan warnings:"))
+		b.WriteString(m.styles.WarningStyle.Render("[!] Scan warnings:"))
 		b.WriteString("\n")
 		for _, err := range m.scanErrors {
 			errMsg := err.Error
 			if len(errMsg) > 50 {
 				errMsg = errMsg[:47] + "..."
 			}
-			b.WriteString(styles.MutedStyle.Render(fmt.Sprintf("    %s: %s", err.CategoryName, errMsg)))
+			b.WriteString(m.styles.MutedStyle.Render(fmt.Sprintf("    %s: %s", err.CategoryName, errMsg)))
 			b.WriteString("\n")
 		}
 	}
@@ -234,7 +233,7 @@ func (m *Model) viewList() string {
 			Width(sideWidth).
 			Height(sideHeight).
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(styles.ColorBorder).
+			BorderForeground(m.styles.Border).
 			Padding(0, 1)
 		spacer := strings.Repeat(" ", gapWidth)
 		listContent = lipgloss.JoinHorizontal(lipgloss.Top, listStyle.Render(listContent), spacer, sideStyle.Render(sideContent))
@@ -256,18 +255,18 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult, nameWidth, sizeWidt
 
 	cursor := "  "
 	if isCurrent {
-		cursor = styles.CursorStyle.Render("▸ ")
+		cursor = m.styles.CursorStyle.Render("▸ ")
 	}
 
 	checkbox := "[ ]"
 	if isManual {
 		// Manual items cannot be selected - always show muted unchecked box
-		checkbox = styles.MutedStyle.Render(" - ")
+		checkbox = m.styles.MutedStyle.Render(" - ")
 	} else if m.selected[r.Category.ID] {
-		checkbox = styles.SuccessStyle.Render("[✓]")
+		checkbox = m.styles.SuccessStyle.Render("[✓]")
 	}
 
-	dot := safetyDot(r.Category.Safety)
+	dot := m.styles.SafetyDot(r.Category.Safety)
 
 	name := r.Category.Name
 
@@ -278,9 +277,7 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult, nameWidth, sizeWidt
 	// Truncate and pad using display width for consistent alignment
 	name = padToWidth(truncateToWidth(name, nameWidth, false), nameWidth)
 	if isManual {
-		name = styles.MutedStyle.Render(name)
-	} else if isCurrent {
-		name = styles.SelectedStyle.Render(name)
+		name = m.styles.MutedStyle.Render(name)
 	}
 
 	sizeText := utils.FormatSize(r.TotalSize)
@@ -294,11 +291,11 @@ func (m *Model) renderListItem(idx int, r *types.ScanResult, nameWidth, sizeWidt
 	count := fmt.Sprintf("%*s", countWidth, countText)
 
 	if isManual {
-		size = styles.MutedStyle.Render(size)
-		count = styles.MutedStyle.Render(count)
+		size = m.styles.MutedStyle.Render(size)
+		count = m.styles.MutedStyle.Render(count)
 	} else {
-		size = styles.SizeStyle.Render(size)
-		count = styles.MutedStyle.Render(count)
+		size = m.styles.SizeStyle.Render(size)
+		count = m.styles.MutedStyle.Render(count)
 	}
 
 	return fmt.Sprintf("%s%s %s %s %s %s\n",
@@ -314,9 +311,9 @@ func (m *Model) renderListBody(visible int) string {
 
 	if len(m.results) == 0 {
 		if m.scanning {
-			b.WriteString(styles.MutedStyle.Render("Scanning..."))
+			b.WriteString(m.styles.MutedStyle.Render("Scanning..."))
 		} else {
-			b.WriteString(styles.MutedStyle.Render("No items to clean."))
+			b.WriteString(m.styles.MutedStyle.Render("No items to clean."))
 		}
 		b.WriteString("\n")
 		return b.String()
@@ -328,7 +325,7 @@ func (m *Model) renderListBody(visible int) string {
 		colHeader := fmt.Sprintf("%*s%-*s %*s %*s",
 			listPrefixWidth, "",
 			nameWidth, "Name", sizeWidth, "Size", countWidth, "Count")
-		b.WriteString(styles.MutedStyle.Render(colHeader) + "\n")
+		b.WriteString(m.styles.MutedStyle.Render(colHeader) + "\n")
 		linesRemaining--
 	}
 
@@ -352,7 +349,7 @@ func (m *Model) renderListBody(visible int) string {
 	}
 
 	if showPager {
-		b.WriteString(styles.MutedStyle.Render(fmt.Sprintf("\n  [%d/%d]", m.cursor+1, len(m.results))))
+		b.WriteString(m.styles.MutedStyle.Render(fmt.Sprintf("\n  [%d/%d]", m.cursor+1, len(m.results))))
 	}
 	return b.String()
 }
@@ -360,24 +357,24 @@ func (m *Model) renderListBody(visible int) string {
 func (m *Model) renderListSidePanel(width int) string {
 	var b strings.Builder
 
-	b.WriteString(styles.HeaderStyle.Render("Summary"))
+	b.WriteString(m.styles.HeaderStyle.Render("Summary"))
 	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf("%s %s", styles.MutedStyle.Render("Available:"), styles.SizeStyle.Render(formatSize(m.getAvailableSize()))))
+	b.WriteString(fmt.Sprintf("%s %s", m.styles.MutedStyle.Render("Available:"), m.styles.SizeStyle.Render(formatSize(m.getAvailableSize()))))
 	b.WriteString("\n")
 	b.WriteString(fmt.Sprintf("%s %s (%s)",
-		styles.MutedStyle.Render("Selected:"),
-		styles.SizeStyle.Render(formatSize(m.getSelectedSize())),
-		styles.TextStyle.Render(fmt.Sprintf("%d", m.getSelectedCount())),
+		m.styles.MutedStyle.Render("Selected:"),
+		m.styles.SizeStyle.Render(formatSize(m.getSelectedSize())),
+		m.styles.TextStyle.Render(fmt.Sprintf("%d", m.getSelectedCount())),
 	))
 	b.WriteString("\n")
 	if m.hasSelection() {
 		b.WriteString("\n")
-		b.WriteString(styles.MutedStyle.Render("Selected Items"))
+		b.WriteString(m.styles.MutedStyle.Render("Selected Items"))
 		b.WriteString("\n")
 		b.WriteString(m.renderSelectedMiniList(width))
 		b.WriteString("\n")
 	}
-	b.WriteString(styles.Divider(min(width-2, 30)))
+	b.WriteString(m.styles.Divider(min(width-4, 30)))
 	return b.String()
 }
 
@@ -387,7 +384,7 @@ func (m *Model) renderSelectedMiniList(width int) string {
 		return ""
 	}
 
-	contentWidth := width - 2
+	contentWidth := width - 4
 	if contentWidth < 10 {
 		contentWidth = 10
 	}
@@ -405,12 +402,12 @@ func (m *Model) renderSelectedMiniList(width int) string {
 		}
 		name := truncateToWidth(r.Category.Name, nameWidth, false)
 		name = padToWidth(name, nameWidth)
-		dot := safetyDot(r.Category.Safety)
-		b.WriteString(fmt.Sprintf("%s %s %s\n", dot, name, styles.SizeStyle.Render(sizeStr)))
+		dot := m.styles.SafetyDot(r.Category.Safety)
+		b.WriteString(fmt.Sprintf("%s %s %s\n", dot, name, m.styles.SizeStyle.Render(sizeStr)))
 	}
 
 	if len(selected) > limit {
-		b.WriteString(styles.MutedStyle.Render(fmt.Sprintf("+%d more", len(selected)-limit)))
+		b.WriteString(m.styles.MutedStyle.Render(fmt.Sprintf("+%d more", len(selected)-limit)))
 	}
 
 	return strings.TrimRight(b.String(), "\n")

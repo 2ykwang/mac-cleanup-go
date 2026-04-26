@@ -3,7 +3,6 @@ package tui
 import (
 	"strings"
 
-	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/progress"
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/textinput"
@@ -42,13 +41,16 @@ type Model struct {
 	cleaningState
 	reportState
 	versionState
+	themeState
 }
 
 // NewModel creates a new model
 func NewModel(cfg *types.Config, currentVersion string) *Model {
+	theme := styles.New(true)
+
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(styles.ColorPrimary)
+	s.Style = lipgloss.NewStyle().Foreground(theme.Muted)
 
 	// Initialize filter input
 	ti := textinput.New()
@@ -99,7 +101,7 @@ func NewModel(cfg *types.Config, currentVersion string) *Model {
 		},
 		layoutState: layoutState{
 			view: ViewList,
-			help: help.New(),
+			help: newStyledHelp(theme),
 		},
 		scanState: scanState{
 			scanning:    true,
@@ -127,12 +129,13 @@ func NewModel(cfg *types.Config, currentVersion string) *Model {
 		versionState: versionState{
 			currentVersion: currentVersion,
 		},
+		themeState: themeState{styles: theme},
 	}
 }
 
 // Init initializes the model
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(m.spinner.Tick, m.startScan(), m.checkVersion())
+	return tea.Batch(m.spinner.Tick, m.startScan(), m.checkVersion(), tea.RequestBackgroundColor)
 }
 
 // View renders the UI
@@ -142,7 +145,8 @@ func (m *Model) View() tea.View {
 			Content: m.renderCentered(func() string {
 				return "Error: " + m.err.Error() + "\n\nPress q to quit."
 			}, maxContentWidth),
-			AltScreen: true,
+			AltScreen:       true,
+			ForegroundColor: m.styles.Text,
 		}
 	}
 
@@ -168,7 +172,11 @@ func (m *Model) View() tea.View {
 		base := lipgloss.NewStyle().Faint(true).Render(output)
 		output = overlayCentered(base, m.helpDialog(), m.width, m.height)
 	}
-	return tea.View{Content: output, AltScreen: true}
+	if m.showHint {
+		base := lipgloss.NewStyle().Faint(true).Render(output)
+		output = overlayCentered(base, m.hintDialog(), m.width, m.height)
+	}
+	return tea.View{Content: output, AltScreen: true, ForegroundColor: m.styles.Text}
 }
 
 func (m *Model) renderCentered(render func() string, maxWidth int) string {
