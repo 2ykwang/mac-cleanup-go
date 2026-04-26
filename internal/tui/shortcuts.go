@@ -8,27 +8,31 @@ import (
 
 // ListKeys defines key bindings for list view
 type ListKeys struct {
-	Up     key.Binding
-	Down   key.Binding
-	Select key.Binding
-	Enter  key.Binding
-	Quit   key.Binding
-	Help   key.Binding
+	Up        key.Binding
+	Down      key.Binding
+	Select    key.Binding
+	SelectAll key.Binding
+	ClearAll  key.Binding
+	Enter     key.Binding
+	Quit      key.Binding
+	Help      key.Binding
 }
 
 func (k ListKeys) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Select, k.Enter, k.Quit, k.Help}
+	return []key.Binding{k.Up, k.Select, k.SelectAll, k.Enter, k.Quit, k.Help}
 }
 
 func (k ListKeys) FullHelp() [][]key.Binding { return nil }
 
 var ListKeyMap = ListKeys{
-	Up:     key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
-	Down:   key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
-	Select: key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "select")),
-	Enter:  key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "preview")),
-	Quit:   key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
-	Help:   key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
+	Up:        key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
+	Down:      key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
+	Select:    key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "select")),
+	SelectAll: key.NewBinding(key.WithKeys("a"), key.WithHelp("a/d", "all/none")),
+	ClearAll:  key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "clear")),
+	Enter:     key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "review")),
+	Quit:      key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+	Help:      key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 }
 
 // PreviewKeys defines key bindings for preview view

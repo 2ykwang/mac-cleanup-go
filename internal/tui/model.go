@@ -50,7 +50,7 @@ func NewModel(cfg *types.Config, currentVersion string) *Model {
 
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(theme.Primary)
+	s.Style = lipgloss.NewStyle().Foreground(theme.Muted)
 
 	// Initialize filter input
 	ti := textinput.New()
@@ -171,6 +171,10 @@ func (m *Model) View() tea.View {
 	if m.showHelp {
 		base := lipgloss.NewStyle().Faint(true).Render(output)
 		output = overlayCentered(base, m.helpDialog(), m.width, m.height)
+	}
+	if m.showHint {
+		base := lipgloss.NewStyle().Faint(true).Render(output)
+		output = overlayCentered(base, m.hintDialog(), m.width, m.height)
 	}
 	return tea.View{Content: output, AltScreen: true, ForegroundColor: m.styles.Text}
 }

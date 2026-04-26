@@ -9,6 +9,30 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
+// Hint dialog (shown when user presses enter without any selection)
+
+func (m *Model) hintDialog() string {
+	boxWidth := min(56, m.width-4)
+	if boxWidth < 24 {
+		boxWidth = m.width
+	}
+
+	var b strings.Builder
+	b.WriteString(m.styles.HeaderStyle.Render("Nothing selected yet"))
+	b.WriteString("\n\n")
+	b.WriteString(m.styles.TextStyle.Render("Use [space] or [a] to choose what to clean."))
+	b.WriteString("\n\n")
+	b.WriteString(m.styles.HelpStyle.Render("Press esc to dismiss"))
+
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(m.styles.Border).
+		Padding(1, 2).
+		Width(boxWidth)
+
+	return boxStyle.Render(b.String())
+}
+
 // Confirm dialog view
 
 func (m *Model) viewConfirm() string {

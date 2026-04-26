@@ -53,6 +53,12 @@ func (m *Model) handleReportKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handleListKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	if m.showHint {
+		if msg.String() == "esc" {
+			m.showHint = false
+		}
+		return m, nil
+	}
 	switch msg.String() {
 	case "?":
 		return m.toggleHelp()
@@ -122,6 +128,8 @@ func (m *Model) handleListKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			}
 			m.initializePreviewSections()
 			m.view = ViewPreview
+		} else {
+			m.showHint = true
 		}
 	}
 	return m, nil

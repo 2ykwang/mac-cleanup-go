@@ -49,6 +49,7 @@ type layoutState struct {
 	help          help.Model
 	showHelp      bool
 	helpScroll    int
+	showHint      bool // list view only — set on enter w/o selection, dismissed by esc
 }
 
 type scanState struct {

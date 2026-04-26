@@ -538,12 +538,40 @@ func TestHandleListKey_EnterPreview(t *testing.T) {
 	assert.True(t, m.isSectionCollapsed("cat1"))
 }
 
-func TestHandleListKey_EnterPreview_NoSelection(t *testing.T) {
+func TestHandleListKey_EnterPreview_NoSelection_ShowsHint(t *testing.T) {
 	m := newTestModelWithResults()
 
 	m.handleListKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	assert.Equal(t, ViewList, m.view, "should stay in list view when nothing selected")
+	assert.True(t, m.showHint, "should show hint when enter pressed without selection")
+}
+
+func TestHandleListKey_EnterPreview_WithSelection_DoesNotShowHint(t *testing.T) {
+	m := newTestModelWithResults()
+	m.selected["cat1"] = true
+
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+
+	assert.False(t, m.showHint, "hint should not appear when user has a selection")
+}
+
+func TestHandleListKey_HintDismissedByEsc(t *testing.T) {
+	m := newTestModelWithResults()
+	m.showHint = true
+
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeyEsc})
+
+	assert.False(t, m.showHint, "esc should dismiss hint")
+}
+
+func TestHandleListKey_HintNotDismissedByOtherKeys(t *testing.T) {
+	m := newTestModelWithResults()
+	m.showHint = true
+
+	m.handleListKey(tea.KeyPressMsg{Code: tea.KeyDown})
+
+	assert.True(t, m.showHint, "non-esc key should not dismiss hint")
 }
 
 func TestHandlePreviewKey_Back(t *testing.T) {
