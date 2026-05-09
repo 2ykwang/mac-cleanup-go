@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
@@ -175,7 +176,7 @@ func (m *Model) readDirectory(path string) []types.CleanableItem {
 		}
 
 		if entry.IsDir() {
-			item.Size, item.FileCount, _ = utils.GetDirSizeWithCount(fullPath)
+			item.Size, item.FileCount, _ = utils.GetDirSizeWithCount(fullPath, utils.WithIgnoreNames(target.IgnoredNames()...))
 		} else {
 			item.Size = info.Size()
 			item.FileCount = 1

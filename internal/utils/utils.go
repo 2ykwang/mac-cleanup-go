@@ -111,7 +111,32 @@ var CommandExists = func(cmd string) bool {
 	return err == nil
 }
 
-func GetDirSizeWithCount(path string) (int64, int64, error) {
+// SizeOption configures GetDirSizeWithCount behavior.
+type SizeOption func(*sizeOpts)
+
+type sizeOpts struct {
+	ignoreNames map[string]bool
+}
+
+// WithIgnoreNames excludes files whose basename matches any of the given names
+// from size and count totals.
+func WithIgnoreNames(names ...string) SizeOption {
+	return func(o *sizeOpts) {
+		if o.ignoreNames == nil {
+			o.ignoreNames = make(map[string]bool, len(names))
+		}
+		for _, n := range names {
+			o.ignoreNames[n] = true
+		}
+	}
+}
+
+func GetDirSizeWithCount(path string, opts ...SizeOption) (int64, int64, error) {
+	var cfg sizeOpts
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	info, err := os.Lstat(path)
 	if err != nil {
 		return 0, 0, err
@@ -125,7 +150,7 @@ func GetDirSizeWithCount(path string) (int64, int64, error) {
 
 	dirWorkers := DefaultWorkers()
 	if dirWorkers < 2 {
-		return getDirSizeWithCountSequential(path)
+		return getDirSizeWithCountSequential(path, cfg)
 	}
 
 	var size, count int64
@@ -190,6 +215,10 @@ func GetDirSizeWithCount(path string) (int64, int64, error) {
 								continue
 							}
 
+							if cfg.ignoreNames[entryName] {
+								continue
+							}
+
 							var stat unix.Stat_t
 							if err := unix.Fstatat(dirFD, entryName, &stat, unix.AT_SYMLINK_NOFOLLOW); err != nil {
 								statErrs++
@@ -237,17 +266,21 @@ func GetDirSizeWithCount(path string) (int64, int64, error) {
 	return size, count, nil
 }
 
-func getDirSizeWithCountSequential(path string) (int64, int64, error) {
+func getDirSizeWithCountSequential(path string, cfg sizeOpts) (int64, int64, error) {
 	var size, count int64
 	err := filepath.Walk(path, func(walkPath string, info os.FileInfo, err error) error {
 		if err != nil {
 			logger.Debug("getDirSizeWithCountSequential walk error", "path", walkPath, "error", err)
 			return nil
 		}
-		if !info.IsDir() {
-			size += info.Size()
-			count++
+		if info.IsDir() {
+			return nil
 		}
+		if cfg.ignoreNames[info.Name()] {
+			return nil
+		}
+		size += info.Size()
+		count++
 		return nil
 	})
 	return size, count, err

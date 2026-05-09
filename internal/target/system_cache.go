@@ -1,6 +1,7 @@
 package target
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/logger"
@@ -67,6 +68,9 @@ func (s *SystemCacheTarget) collectFilteredPaths() []string {
 			continue
 		}
 		for _, p := range matched {
+			if isIgnoredName(filepath.Base(p)) {
+				continue
+			}
 			if !s.isExcluded(p) {
 				paths = append(paths, p)
 			}

@@ -138,6 +138,29 @@ func TestScan_ExcludesPathsFromOtherCategories(t *testing.T) {
 	assert.Equal(t, "RandomApp", result.Items[0].Name)
 }
 
+func TestSystemCacheScan_ExcludesDSStoreFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+	cachesDir := filepath.Join(tmpDir, "Caches")
+	require.NoError(t, os.MkdirAll(cachesDir, 0o755))
+
+	require.NoError(t, os.WriteFile(filepath.Join(cachesDir, ".DS_Store"), []byte("meta"), 0o644))
+	appDir := filepath.Join(cachesDir, "SomeApp")
+	require.NoError(t, os.MkdirAll(appDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, "cache.dat"), []byte("data"), 0o644))
+
+	systemCache := types.Category{
+		ID:    "system-cache",
+		Paths: []string{filepath.Join(cachesDir, "*")},
+	}
+	s := NewSystemCacheTarget(systemCache, []types.Category{systemCache})
+
+	result, err := s.Scan()
+
+	require.NoError(t, err)
+	require.Len(t, result.Items, 1)
+	assert.Equal(t, "SomeApp", result.Items[0].Name)
+}
+
 func TestScan_WhenNoMatchingPaths_ReturnsEmptyResult(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "systemcache-empty-test")
 	require.NoError(t, err)
