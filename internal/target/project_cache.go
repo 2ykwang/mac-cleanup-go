@@ -192,7 +192,7 @@ func (t *ProjectCacheTarget) calculateSizes(found []foundCache) ([]types.Cleanab
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			size, count, err := utils.GetDirSizeWithCount(fc.path)
+			size, count, err := utils.GetDirSizeWithCount(fc.path, utils.WithIgnoreNames(ignoredNames...))
 			if err != nil {
 				return
 			}

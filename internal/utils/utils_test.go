@@ -132,6 +132,37 @@ func TestGetDirSizeWithCount(t *testing.T) {
 	assert.Equal(t, int64(3), count)
 }
 
+func TestGetDirSizeWithCount_WithIgnoreNames_ExcludesMatchingFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "regular.txt"), make([]byte, 100), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".DS_Store"), make([]byte, 50), 0o644))
+	subDir := filepath.Join(tmpDir, "nested")
+	require.NoError(t, os.Mkdir(subDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(subDir, ".DS_Store"), make([]byte, 30), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(subDir, "data.bin"), make([]byte, 200), 0o644))
+
+	size, count, err := GetDirSizeWithCount(tmpDir, WithIgnoreNames(".DS_Store"))
+
+	require.NoError(t, err)
+	assert.Equal(t, int64(300), size)
+	assert.Equal(t, int64(2), count)
+}
+
+func TestGetDirSizeWithCount_WithIgnoreNames_Sequential(t *testing.T) {
+	prev := runtime.GOMAXPROCS(1)
+	defer runtime.GOMAXPROCS(prev)
+
+	tmpDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "data.bin"), make([]byte, 100), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".DS_Store"), make([]byte, 50), 0o644))
+
+	size, count, err := GetDirSizeWithCount(tmpDir, WithIgnoreNames(".DS_Store"))
+
+	require.NoError(t, err)
+	assert.Equal(t, int64(100), size)
+	assert.Equal(t, int64(1), count)
+}
+
 func TestGetDirSizeWithCount_SymlinkDir(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink behavior differs on Windows")

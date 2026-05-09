@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
@@ -289,4 +290,45 @@ func TestScan_ExcludesSIPProtectedPaths(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, result.Items, 1)
 	assert.Equal(t, "regular.txt", result.Items[0].Name)
+}
+
+func TestScan_ExcludesDSStoreFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".DS_Store"), []byte("meta"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "regular.txt"), []byte("data"), 0o644))
+
+	cat := types.Category{
+		ID:    "test",
+		Paths: []string{filepath.Join(tmpDir, "*")},
+	}
+
+	result, err := NewPathTarget(cat).Scan()
+
+	require.NoError(t, err)
+	require.Len(t, result.Items, 1)
+	assert.Equal(t, "regular.txt", result.Items[0].Name)
+}
+
+func TestScan_ExcludesNestedDSStoreFromDirectorySize(t *testing.T) {
+	tmpDir := t.TempDir()
+	subDir := filepath.Join(tmpDir, "cache")
+	require.NoError(t, os.MkdirAll(subDir, 0o755))
+
+	regular := []byte("hello world")
+	require.NoError(t, os.WriteFile(filepath.Join(subDir, "regular.txt"), regular, 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(subDir, ".DS_Store"), []byte("metadata"), 0o644))
+
+	cat := types.Category{
+		ID:    "test",
+		Paths: []string{filepath.Join(tmpDir, "*")},
+	}
+
+	result, err := NewPathTarget(cat).Scan()
+
+	require.NoError(t, err)
+	require.Len(t, result.Items, 1)
+	assert.Equal(t, "cache", result.Items[0].Name)
+	assert.Equal(t, int64(len(regular)), result.Items[0].Size)
+	assert.Equal(t, int64(1), result.Items[0].FileCount)
 }

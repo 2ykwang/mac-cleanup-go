@@ -62,6 +62,24 @@ func (s *PathTarget) Scan() (*types.ScanResult, error) {
 	return result, nil
 }
 
+// ignoredNames lists OS-managed metadata filenames that scans skip everywhere.
+var ignoredNames = []string{".DS_Store"}
+
+func isIgnoredName(name string) bool {
+	for _, n := range ignoredNames {
+		if n == name {
+			return true
+		}
+	}
+	return false
+}
+
+// IgnoredNames returns OS-managed metadata filenames that scans skip.
+// Returns a copy so callers cannot mutate the underlying policy.
+func IgnoredNames() []string {
+	return append([]string(nil), ignoredNames...)
+}
+
 // collectPaths gathers all paths from glob patterns, filtering out SIP protected paths
 func (s *PathTarget) collectPaths() []string {
 	var paths []string
@@ -71,6 +89,9 @@ func (s *PathTarget) collectPaths() []string {
 			continue
 		}
 		for _, p := range matched {
+			if isIgnoredName(filepath.Base(p)) {
+				continue
+			}
 			if !utils.IsSIPProtected(p) {
 				paths = append(paths, p)
 			}
@@ -128,7 +149,7 @@ func (s *PathTarget) scanPath(path string) (types.CleanableItem, error) {
 
 	var size, fileCount int64
 	if info.IsDir() {
-		size, fileCount, _ = utils.GetDirSizeWithCount(path)
+		size, fileCount, _ = utils.GetDirSizeWithCount(path, utils.WithIgnoreNames(ignoredNames...))
 	} else {
 		size = info.Size()
 		fileCount = 1

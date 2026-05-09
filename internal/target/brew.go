@@ -65,7 +65,7 @@ func (s *BrewTarget) Scan() (*types.ScanResult, error) {
 	}
 
 	// Scan the cache directory
-	size, fileCount, _ := utils.GetDirSizeWithCount(cachePath)
+	size, fileCount, _ := utils.GetDirSizeWithCount(cachePath, utils.WithIgnoreNames(ignoredNames...))
 	if size > 0 {
 		item := types.CleanableItem{
 			Path:        cachePath,
