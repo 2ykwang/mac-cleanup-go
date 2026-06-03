@@ -118,6 +118,10 @@ func (m *Model) listHeader(showSummary bool) string {
 		b.WriteString(m.styles.WarningStyle.Render("[!] Limited access: Grant Full Disk Access in System Settings for complete scan"))
 		b.WriteString("\n")
 	}
+	if m.dockerUnreachable {
+		b.WriteString(m.styles.WarningStyle.Render("[!] Docker not responding: start Docker to include its cleanup"))
+		b.WriteString("\n")
+	}
 	b.WriteString("\n")
 
 	// Legend

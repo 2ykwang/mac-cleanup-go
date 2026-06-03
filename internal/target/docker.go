@@ -1,12 +1,14 @@
 package target
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/logger"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
@@ -34,14 +36,20 @@ func (s *DockerTarget) Category() types.Category {
 	return s.category
 }
 
+// dockerVersionTimeout bounds the `docker version` probe: it runs synchronously
+// during startup (Registry.Available), so a hung Docker daemon must not block
+// indefinitely. A var so tests can shorten it.
+var dockerVersionTimeout = 3 * time.Second
+
 func (s *DockerTarget) IsAvailable() bool {
 	if !utils.CommandExists("docker") {
 		logger.Debug("docker command not found")
 		return false
 	}
-	cmd := execCommand("docker", "version")
-	if err := cmd.Run(); err != nil {
-		logger.Warn("docker daemon not running", "error", err)
+	ctx, cancel := context.WithTimeout(context.Background(), dockerVersionTimeout)
+	defer cancel()
+	if err := execCommandContext(ctx, "docker", "version").Run(); err != nil {
+		logger.Warn("docker not available", "error", err)
 		return false
 	}
 	return true

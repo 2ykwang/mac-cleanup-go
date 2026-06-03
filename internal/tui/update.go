@@ -12,6 +12,7 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/styles"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
+	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
 func (m *Model) startScan() tea.Cmd {
@@ -19,6 +20,7 @@ func (m *Model) startScan() tea.Cmd {
 	scanners := m.registry.Available()
 	m.scanTotal = len(scanners)
 	m.scanCompleted = 0
+	m.dockerUnreachable = m.detectDockerUnreachable(scanners)
 	clear(m.scanDoneIDs)
 
 	logger.Info("scan started", "registered", m.scanRegistered, "available", m.scanTotal)
@@ -38,6 +40,21 @@ func (m *Model) startScan() tea.Cmd {
 		}
 	}
 	return tea.Batch(cmds...)
+}
+
+// detectDockerUnreachable reports whether Docker is a configured target and is
+// installed, yet absent from the available scanners — i.e. its daemon did not
+// respond (stopped or hung). Surfaced as a hint; not used for control flow.
+func (m *Model) detectDockerUnreachable(available []target.Target) bool {
+	if _, ok := m.registry.Get("docker"); !ok {
+		return false
+	}
+	for _, s := range available {
+		if s.Category().ID == "docker" {
+			return false
+		}
+	}
+	return utils.CommandExists("docker")
 }
 
 // Update handles messages

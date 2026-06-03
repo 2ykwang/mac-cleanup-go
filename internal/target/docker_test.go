@@ -1,10 +1,12 @@
 package target
 
 import (
+	"context"
 	"math"
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -163,12 +165,16 @@ func withDockerExecFixture(t *testing.T, fixture dockerExecFixture) func() {
 	t.Helper()
 
 	originalCommandExists := utils.CommandExists
-	original := execCommand
+	originalCmd := execCommand
+	originalCtx := execCommandContext
 
 	utils.CommandExists = func(_ string) bool {
 		return fixture.commandExists
 	}
-	execCommand = func(_ string, args ...string) *exec.Cmd {
+	// build returns a canned command for the given docker args. IsAvailable now
+	// goes through execCommandContext while Scan/Clean still use execCommand, so
+	// both vars are stubbed with the same logic.
+	build := func(args ...string) *exec.Cmd {
 		if len(args) > 0 && args[0] == "version" {
 			if fixture.versionOK {
 				return exec.Command("true")
@@ -189,10 +195,17 @@ func withDockerExecFixture(t *testing.T, fixture dockerExecFixture) func() {
 		}
 		return exec.Command("true")
 	}
+	execCommand = func(_ string, args ...string) *exec.Cmd {
+		return build(args...)
+	}
+	execCommandContext = func(_ context.Context, _ string, args ...string) *exec.Cmd {
+		return build(args...)
+	}
 
 	return func() {
 		utils.CommandExists = originalCommandExists
-		execCommand = original
+		execCommand = originalCmd
+		execCommandContext = originalCtx
 	}
 }
 
@@ -204,6 +217,32 @@ func stubDockerScan(t *testing.T, verboseOutput, summaryOutput string) func() {
 		verboseOutput: verboseOutput,
 		summaryOutput: summaryOutput,
 	})
+}
+
+func TestIsAvailable_ReturnsFalse_WhenVersionTimesOut(t *testing.T) {
+	originalExists := utils.CommandExists
+	originalCtx := execCommandContext
+	originalTimeout := dockerVersionTimeout
+	defer func() {
+		utils.CommandExists = originalExists
+		execCommandContext = originalCtx
+		dockerVersionTimeout = originalTimeout
+	}()
+
+	utils.CommandExists = func(_ string) bool { return true }
+	dockerVersionTimeout = 50 * time.Millisecond
+	execCommandContext = func(ctx context.Context, _ string, _ ...string) *exec.Cmd {
+		return exec.CommandContext(ctx, "sleep", "5")
+	}
+
+	s := NewDockerTarget(types.Category{ID: "docker"})
+
+	start := time.Now()
+	available := s.IsAvailable()
+	elapsed := time.Since(start)
+
+	assert.False(t, available)
+	assert.Less(t, elapsed, time.Second)
 }
 
 func TestDockerTarget_IsAvailable_ReturnsFalse_WhenDockerNotExists(t *testing.T) {
