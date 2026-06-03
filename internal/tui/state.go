@@ -53,13 +53,14 @@ type layoutState struct {
 }
 
 type scanState struct {
-	scanCompleted  int
-	scanTotal      int
-	scanRegistered int
-	scanning       bool
-	spinner        spinner.Model
-	scanDoneIDs    map[string]bool
-	scanErrors     []scanErrorInfo
+	scanCompleted     int
+	scanTotal         int
+	scanRegistered    int
+	scanning          bool
+	spinner           spinner.Model
+	scanDoneIDs       map[string]bool
+	scanErrors        []scanErrorInfo
+	dockerUnreachable bool // docker installed but its daemon did not respond
 }
 
 type previewState struct {
