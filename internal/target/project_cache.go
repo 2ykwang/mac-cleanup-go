@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -68,11 +67,19 @@ var excludeDirs = map[string]struct{}{
 const (
 	maxScanDepth     = 8
 	defaultStaleDays = 7
+	// discoveryWorkers caps the parallel walk: per-directory work is tiny, so more
+	// than a few workers only adds queue contention, not speed.
+	discoveryWorkers = 4
 )
 
 type foundCache struct {
 	path    string
 	pattern cachePattern
+}
+
+type walkItem struct {
+	path  string
+	depth int
 }
 
 // ProjectCacheTarget scans $HOME recursively for stale build caches
@@ -110,43 +117,7 @@ func (t *ProjectCacheTarget) Scan() (*types.ScanResult, error) {
 		patternMap[p.DirName] = append(patternMap[p.DirName], p)
 	}
 
-	var found []foundCache
-
-	//nolint:errcheck // WalkDir errors are handled per-entry
-	filepath.WalkDir(t.scanRoot, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || !d.IsDir() || path == t.scanRoot {
-			return nil
-		}
-
-		name := d.Name()
-
-		rel, _ := filepath.Rel(t.scanRoot, path)
-		depth := strings.Count(rel, string(filepath.Separator)) + 1
-		if depth > maxScanDepth {
-			return fs.SkipDir
-		}
-
-		if depth == 1 {
-			if _, excluded := excludeDirs[name]; excluded {
-				return fs.SkipDir
-			}
-		}
-
-		if patterns, ok := patternMap[name]; ok {
-			parentDir := filepath.Dir(path)
-			for _, p := range patterns {
-				if hasMarker(parentDir, p.MarkerFiles) {
-					found = append(found, foundCache{path: path, pattern: p})
-					break // first matching pattern wins (e.g. target/ → Cargo before Maven)
-				}
-			}
-			// Always prune cache-named dirs even without marker —
-			// they are likely tool dependencies, and recursing into them is expensive.
-			return fs.SkipDir
-		}
-
-		return nil
-	})
+	found := t.discoverCaches(patternMap)
 
 	walkDuration := time.Since(start)
 	logger.Info("project cache walk complete",
@@ -172,6 +143,105 @@ func (t *ProjectCacheTarget) Scan() (*types.ScanResult, error) {
 		"total_ms", time.Since(start).Milliseconds())
 
 	return result, nil
+}
+
+// discoverCaches walks scanRoot in parallel and returns the project cache dirs
+// that classifyDir identifies (pattern-named dirs validated by a marker file).
+func (t *ProjectCacheTarget) discoverCaches(patternMap map[string][]cachePattern) []foundCache {
+	workers := discoveryWorkers
+	if w := utils.DefaultWorkers(); w < workers {
+		workers = w
+	}
+
+	var (
+		mu      sync.Mutex
+		cond    = sync.NewCond(&mu)
+		found   []foundCache
+		queue   = []walkItem{{path: t.scanRoot, depth: 0}}
+		pending = 1
+		done    bool
+	)
+
+	var wg sync.WaitGroup
+	wg.Add(workers)
+	for i := 0; i < workers; i++ {
+		go func() {
+			defer wg.Done()
+			for {
+				mu.Lock()
+				for len(queue) == 0 && !done {
+					cond.Wait()
+				}
+				if done {
+					mu.Unlock()
+					return
+				}
+				last := len(queue) - 1
+				cur := queue[last]
+				queue = queue[:last]
+				mu.Unlock()
+
+				children, localFound := t.classifyDir(cur.path, cur.depth, patternMap)
+
+				mu.Lock()
+				found = append(found, localFound...)
+				if len(children) > 0 {
+					queue = append(queue, children...)
+					pending += len(children)
+					cond.Broadcast()
+				}
+				pending--
+				if pending == 0 {
+					done = true
+					cond.Broadcast()
+				}
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+	return found
+}
+
+// classifyDir reads one directory and returns its subdirectories split into
+// caches to record and children to keep walking.
+func (t *ProjectCacheTarget) classifyDir(dir string, depth int, patternMap map[string][]cachePattern) (children []walkItem, found []foundCache) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		logger.Debug("project cache walk readdir failed", "path", dir, "error", err)
+		return nil, nil
+	}
+
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		childDepth := depth + 1
+		if childDepth > maxScanDepth {
+			continue
+		}
+		if childDepth == 1 {
+			if _, excluded := excludeDirs[name]; excluded {
+				continue
+			}
+		}
+
+		childPath := filepath.Join(dir, name)
+		patterns, ok := patternMap[name]
+		if !ok {
+			children = append(children, walkItem{path: childPath, depth: childDepth})
+			continue
+		}
+		for _, p := range patterns {
+			if hasMarker(dir, p.MarkerFiles) {
+				found = append(found, foundCache{path: childPath, pattern: p})
+				break // first matching pattern wins (e.g. target/ → Cargo before Maven)
+			}
+		}
+		// cache-named dirs are pruned (not added to children) even without a marker
+	}
+	return children, found
 }
 
 func (t *ProjectCacheTarget) calculateSizes(found []foundCache) ([]types.CleanableItem, int64, int64) {
