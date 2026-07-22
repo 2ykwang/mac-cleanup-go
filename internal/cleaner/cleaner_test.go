@@ -13,7 +13,6 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/mocks"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
-	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
 // newMockTargetWithCategory creates a MockTarget with basic setup.
@@ -283,67 +282,38 @@ func TestClean_Manual_SkipsWithGuide(t *testing.T) {
 	assert.Equal(t, 1, result.SkippedItems)
 }
 
-func TestClean_Trash_MovesToTrash(t *testing.T) {
-	original := utils.MoveToTrashBatch
-	defer func() { utils.MoveToTrashBatch = original }()
-
-	var trashedPaths []string
-	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
-		trashedPaths = paths
-		return utils.TrashBatchResult{
-			Succeeded: paths,
-			Failed:    make(map[string]error),
-		}
-	}
-
+func TestClean_Trash_TreatsMissingPathsAsCleaned(t *testing.T) {
 	c := NewExecutor(nil)
 	cat := types.Category{
 		ID:     "test-trash",
 		Name:   "Test Trash",
 		Method: types.MethodTrash,
 	}
+	dir := t.TempDir()
 	items := []types.CleanableItem{
-		{Path: "/tmp/test1", Name: "test1", Size: 100},
-		{Path: "/tmp/test2", Name: "test2", Size: 200},
+		{Path: dir + "/missing-1", Name: "test1", Size: 100},
+		{Path: dir + "/missing-2", Name: "test2", Size: 200},
 	}
 
 	result := c.Trash(cat, items)
 
 	assert.Equal(t, 2, result.CleanedItems)
 	assert.Equal(t, int64(300), result.FreedSpace)
-	assert.Equal(t, []string{"/tmp/test1", "/tmp/test2"}, trashedPaths)
 	assert.Empty(t, result.Errors)
 }
 
 func TestClean_Trash_PartialFailure(t *testing.T) {
-	original := utils.MoveToTrashBatch
-	defer func() { utils.MoveToTrashBatch = original }()
-
-	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
-		result := utils.TrashBatchResult{
-			Succeeded: make([]string, 0, len(paths)),
-			Failed:    make(map[string]error),
-		}
-		for _, p := range paths {
-			if p == "/tmp/test2" {
-				result.Failed[p] = fmt.Errorf("permission denied")
-			} else {
-				result.Succeeded = append(result.Succeeded, p)
-			}
-		}
-		return result
-	}
-
 	c := NewExecutor(nil)
 	cat := types.Category{
 		ID:     "test-trash",
 		Name:   "Test Trash",
 		Method: types.MethodTrash,
 	}
+	dir := t.TempDir()
 	items := []types.CleanableItem{
-		{Path: "/tmp/test1", Name: "test1", Size: 100},
-		{Path: "/tmp/test2", Name: "test2", Size: 200},
-		{Path: "/tmp/test3", Name: "test3", Size: 300},
+		{Path: dir + "/missing-1", Name: "test1", Size: 100},
+		{Path: "", Name: "invalid", Size: 200},
+		{Path: dir + "/missing-3", Name: "test3", Size: 300},
 	}
 
 	result := c.Trash(cat, items)
@@ -351,5 +321,5 @@ func TestClean_Trash_PartialFailure(t *testing.T) {
 	assert.Equal(t, 2, result.CleanedItems)
 	assert.Equal(t, int64(400), result.FreedSpace)
 	require.Len(t, result.Errors, 1)
-	assert.Contains(t, result.Errors[0], "permission denied")
+	assert.Contains(t, result.Errors[0], "path is empty")
 }

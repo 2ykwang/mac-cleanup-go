@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
-	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
 func TestNewBrewTarget_ReturnsNonNil(t *testing.T) {
@@ -73,6 +72,12 @@ func TestBrewTarget_GetBrewCachePath_CachesResult(t *testing.T) {
 }
 
 func TestBrewTarget_Clean_ReturnsResult(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("true")
+	}
+
 	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
 	s := NewBrewTarget(cat)
 	s.cachePath = "/nonexistent/path"
@@ -210,19 +215,12 @@ func TestBrewTarget_Clean_ReturnsError_WhenCachePathEmpty(t *testing.T) {
 	assert.Contains(t, result.Errors[0], "invalid path")
 }
 
-func TestBrewTarget_Clean_Success_WithMock(t *testing.T) {
+func TestBrewTarget_Clean_Success(t *testing.T) {
 	original := execCommand
-	originalMoveToTrashBatch := utils.MoveToTrashBatch
-	defer func() {
-		execCommand = original
-		utils.MoveToTrashBatch = originalMoveToTrashBatch
-	}()
+	defer func() { execCommand = original }()
 
 	execCommand = func(_ string, _ ...string) *exec.Cmd {
 		return exec.Command("true")
-	}
-	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
-		return utils.TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
 	}
 
 	tmpDir := t.TempDir()
