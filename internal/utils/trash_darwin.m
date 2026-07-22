@@ -2,6 +2,7 @@
 
 #import <AppKit/AppKit.h>
 #import <dispatch/dispatch.h>
+#import <stdint.h>
 
 static char *copy_response(NSArray<NSString *> *moved_paths, NSString *error_message) {
     NSDictionary *response = @{
@@ -32,7 +33,66 @@ static NSString *operation_error_message(NSError *error) {
                                       (long)error.code];
 }
 
-char *mac_cleanup_recycle_paths(const char *paths_json) {
+@interface MacCleanupRecycleOperation : NSObject {
+@private
+    dispatch_semaphore_t _completed;
+    NSArray<NSString *> *_moved_paths;
+    NSError *_operation_error;
+}
+
+- (void)completeWithMovedPaths:(NSArray<NSString *> *)moved_paths
+                         error:(NSError *)error;
+- (BOOL)waitForTimeoutNanoseconds:(int64_t)timeout_nanoseconds;
+- (char *)copyResponse;
+
+@end
+
+@implementation MacCleanupRecycleOperation
+
+- (instancetype)init {
+    self = [super init];
+    if (self != nil) {
+        _completed = dispatch_semaphore_create(0);
+    }
+    return self;
+}
+
+- (void)completeWithMovedPaths:(NSArray<NSString *> *)moved_paths
+                         error:(NSError *)error {
+    _moved_paths = [moved_paths copy];
+    _operation_error = [error copy];
+    dispatch_semaphore_signal(_completed);
+}
+
+- (BOOL)waitForTimeoutNanoseconds:(int64_t)timeout_nanoseconds {
+    if (timeout_nanoseconds <= 0) {
+        return NO;
+    }
+
+    dispatch_time_t deadline = dispatch_time(DISPATCH_TIME_NOW, timeout_nanoseconds);
+    return dispatch_semaphore_wait(_completed, deadline) == 0;
+}
+
+- (char *)copyResponse {
+    return copy_response(_moved_paths, operation_error_message(_operation_error));
+}
+
+- (void)dealloc {
+    [_moved_paths release];
+    [_operation_error release];
+    dispatch_release(_completed);
+    [super dealloc];
+}
+
+@end
+
+static NSString *timeout_error_message(int64_t timeout_nanoseconds) {
+    double timeout_seconds = (double)timeout_nanoseconds / (double)NSEC_PER_SEC;
+    return [NSString stringWithFormat:@"NSWorkspace.recycleURLs: timed out after %.3f seconds",
+                                      timeout_seconds];
+}
+
+char *mac_cleanup_recycle_paths(const char *paths_json, int64_t timeout_nanoseconds) {
     @autoreleasepool {
         if (paths_json == NULL) {
             return copy_response(@[], @"NSWorkspace.recycleURLs: missing request");
@@ -53,9 +113,7 @@ char *mac_cleanup_recycle_paths(const char *paths_json) {
             }
         }
 
-        dispatch_semaphore_t completed = dispatch_semaphore_create(0);
-        __block NSArray<NSString *> *moved_paths = nil;
-        __block NSError *operation_error = nil;
+        MacCleanupRecycleOperation *operation = [[MacCleanupRecycleOperation alloc] init];
 
         dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
             @autoreleasepool {
@@ -74,18 +132,19 @@ char *mac_cleanup_recycle_paths(const char *paths_json) {
                                 [completed_paths addObject:paths[i]];
                             }
                         }
-                        moved_paths = [completed_paths copy];
-                        operation_error = [error copy];
-                        dispatch_semaphore_signal(completed);
+                        [operation completeWithMovedPaths:completed_paths error:error];
                     }];
             }
         });
 
-        dispatch_semaphore_wait(completed, DISPATCH_TIME_FOREVER);
-        char *response = copy_response(moved_paths, operation_error_message(operation_error));
-        [moved_paths release];
-        [operation_error release];
-        dispatch_release(completed);
+        if (![operation waitForTimeoutNanoseconds:timeout_nanoseconds]) {
+            char *response = copy_response(@[], timeout_error_message(timeout_nanoseconds));
+            [operation release];
+            return response;
+        }
+
+        char *response = [operation copyResponse];
+        [operation release];
         return response;
     }
 }

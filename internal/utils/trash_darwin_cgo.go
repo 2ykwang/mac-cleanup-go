@@ -5,9 +5,10 @@ package utils
 /*
 #cgo CFLAGS: -fblocks -mmacosx-version-min=12.0
 #cgo LDFLAGS: -framework AppKit -framework Foundation -mmacosx-version-min=12.0
+#include <stdint.h>
 #include <stdlib.h>
 
-char *mac_cleanup_recycle_paths(const char *paths_json);
+char *mac_cleanup_recycle_paths(const char *paths_json, int64_t timeout_nanoseconds);
 */
 import "C"
 
@@ -15,8 +16,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 	"unsafe"
 )
+
+const defaultTrashTimeout = 10 * time.Second
+
+var trashTimeout = defaultTrashTimeout
 
 type nativeRecycleResponse struct {
 	MovedPaths []string `json:"moved_paths"`
@@ -32,7 +38,7 @@ func recyclePathsPlatform(paths []string) ([]string, error) {
 	input := C.CString(string(payload))
 	defer C.free(unsafe.Pointer(input))
 
-	output := C.mac_cleanup_recycle_paths(input)
+	output := C.mac_cleanup_recycle_paths(input, C.int64_t(trashTimeout.Nanoseconds()))
 	if output == nil {
 		return nil, errors.New("NSWorkspace.recycleURLs returned no response")
 	}
