@@ -12,12 +12,7 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
-const (
-	trashBatchSize = 50
-	// TrashBatchSize remains temporarily exported while callers migrate batching
-	// into BatchTrash.
-	TrashBatchSize = trashBatchSize
-)
+const trashBatchSize = 50
 
 var (
 	errInvalidTrashPath = errors.New("invalid trash path")
