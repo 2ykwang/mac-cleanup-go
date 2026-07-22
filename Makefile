@@ -4,6 +4,13 @@ BINARY_DIR := bin
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 GO ?= go
 GOFLAGS := -ldflags "-X main.version=$(VERSION)"
+MACOSX_DEPLOYMENT_TARGET ?= 12.0
+
+ifeq ($(shell uname -s),Darwin)
+export MACOSX_DEPLOYMENT_TARGET
+export CGO_CFLAGS ?= -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
+export CGO_LDFLAGS ?= -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
+endif
 
 # Default target
 .DEFAULT_GOAL := help
@@ -17,6 +24,14 @@ build: ## Build the binary
 .PHONY: build-dev
 build-dev: ## Build without version info (faster)
 	$(GO) build -o $(BINARY_DIR)/$(BINARY_NAME) .
+
+.PHONY: build-darwin-release
+build-darwin-release: ## Build and verify separate macOS arm64 and amd64 binaries
+	mkdir -p $(BINARY_DIR)/darwin-arm64 $(BINARY_DIR)/darwin-amd64
+	MACOSX_DEPLOYMENT_TARGET=$(MACOSX_DEPLOYMENT_TARGET) CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 CC=clang CGO_CFLAGS="-arch arm64" CGO_LDFLAGS="-arch arm64" $(GO) build $(GOFLAGS) -o $(BINARY_DIR)/darwin-arm64/$(BINARY_NAME) .
+	./scripts/verify_macos_binary.sh $(BINARY_DIR)/darwin-arm64/$(BINARY_NAME) arm64
+	MACOSX_DEPLOYMENT_TARGET=$(MACOSX_DEPLOYMENT_TARGET) CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 CC=clang CGO_CFLAGS="-arch x86_64" CGO_LDFLAGS="-arch x86_64" $(GO) build $(GOFLAGS) -o $(BINARY_DIR)/darwin-amd64/$(BINARY_NAME) .
+	./scripts/verify_macos_binary.sh $(BINARY_DIR)/darwin-amd64/$(BINARY_NAME) amd64
 
 .PHONY: run
 run: ## Run the application (with DEBUG logging)

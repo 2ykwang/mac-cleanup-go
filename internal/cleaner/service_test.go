@@ -486,14 +486,32 @@ func TestClean_EmptyJobs(t *testing.T) {
 	assert.Len(t, report.Results, 0)
 }
 
-func TestClean_NilCallbacks(t *testing.T) {
-	// Setup: use MoveToTrashBatch mock to avoid actual file operations
-	original := utils.MoveToTrashBatch
-	defer func() { utils.MoveToTrashBatch = original }()
-	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
-		return utils.TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
+func TestClean_EmptyTrashJob(t *testing.T) {
+	service := NewCleanService(target.NewRegistry())
+	job := CleanJob{
+		Category: types.Category{
+			ID:     "empty-trash",
+			Name:   "Empty Trash",
+			Method: types.MethodTrash,
+		},
+	}
+	progressCalls := 0
+	callbacks := types.CleanCallbacks{
+		OnProgress: func(types.CleanProgress) {
+			progressCalls++
+		},
 	}
 
+	report := service.Clean([]CleanJob{job}, callbacks)
+
+	require.NotNil(t, report)
+	require.Len(t, report.Results, 1)
+	assert.Equal(t, 0, report.CleanedItems)
+	assert.Equal(t, 0, report.FailedItems)
+	assert.Equal(t, 0, progressCalls)
+}
+
+func TestClean_NilCallbacks(t *testing.T) {
 	service := NewCleanService(target.NewRegistry())
 
 	jobs := []CleanJob{
@@ -515,12 +533,6 @@ func TestClean_NilCallbacks(t *testing.T) {
 }
 
 func TestClean_CallsOnProgress_TrashMethod(t *testing.T) {
-	original := utils.MoveToTrashBatch
-	defer func() { utils.MoveToTrashBatch = original }()
-	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
-		return utils.TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
-	}
-
 	service := NewCleanService(target.NewRegistry())
 
 	jobs := []CleanJob{
@@ -652,12 +664,6 @@ func TestClean_CallsOnProgress_Builtin(t *testing.T) {
 }
 
 func TestClean_CallsOnItemDone(t *testing.T) {
-	original := utils.MoveToTrashBatch
-	defer func() { utils.MoveToTrashBatch = original }()
-	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
-		return utils.TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
-	}
-
 	service := NewCleanService(target.NewRegistry())
 
 	items := []types.CleanableItem{
@@ -701,23 +707,6 @@ func TestClean_CallsOnItemDone(t *testing.T) {
 }
 
 func TestClean_CallsOnItemDone_WithError(t *testing.T) {
-	original := utils.MoveToTrashBatch
-	defer func() { utils.MoveToTrashBatch = original }()
-	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
-		result := utils.TrashBatchResult{
-			Succeeded: make([]string, 0, len(paths)),
-			Failed:    make(map[string]error),
-		}
-		for _, p := range paths {
-			if p == "/path2" {
-				result.Failed[p] = assert.AnError
-			} else {
-				result.Succeeded = append(result.Succeeded, p)
-			}
-		}
-		return result
-	}
-
 	service := NewCleanService(target.NewRegistry())
 
 	jobs := []CleanJob{
@@ -727,7 +716,7 @@ func TestClean_CallsOnItemDone_WithError(t *testing.T) {
 				Name:   "Test Category",
 				Method: types.MethodTrash,
 			},
-			Items: newTestItems("/path1", "/path2"),
+			Items: newTestItems("/path1", ""),
 		},
 	}
 
@@ -752,12 +741,6 @@ func TestClean_CallsOnItemDone_WithError(t *testing.T) {
 }
 
 func TestClean_CallsOnCategoryDone(t *testing.T) {
-	original := utils.MoveToTrashBatch
-	defer func() { utils.MoveToTrashBatch = original }()
-	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
-		return utils.TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
-	}
-
 	service := NewCleanService(target.NewRegistry())
 
 	jobs := []CleanJob{
@@ -849,16 +832,7 @@ func TestClean_BuiltinBatchProcessing(t *testing.T) {
 	assert.Equal(t, 3, report.CleanedItems)
 }
 
-func TestClean_TrashMethodBatchProcessing(t *testing.T) {
-	original := utils.MoveToTrashBatch
-	defer func() { utils.MoveToTrashBatch = original }()
-
-	var batchCalls [][]string
-	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
-		batchCalls = append(batchCalls, paths)
-		return utils.TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
-	}
-
+func TestClean_TrashReportsEveryItem(t *testing.T) {
 	service := NewCleanService(target.NewRegistry())
 
 	jobs := []CleanJob{
@@ -881,35 +855,11 @@ func TestClean_TrashMethodBatchProcessing(t *testing.T) {
 
 	report := service.Clean(jobs, callbacks)
 
-	// Trash method processes items in batches (batch size 50)
-	// 3 items < batch size, so single batch call
-	require.Len(t, batchCalls, 1, "Should call MoveToTrashBatch once for batch")
-	assert.Equal(t, []string{"/path1", "/path2", "/path3"}, batchCalls[0])
-
-	// OnItemDone is called for each item after batch completes
 	assert.Equal(t, 3, itemDoneCalls, "OnItemDone should be called for each item")
-
 	assert.Equal(t, 3, report.CleanedItems)
 }
 
 func TestClean_AggregatesResults(t *testing.T) {
-	original := utils.MoveToTrashBatch
-	defer func() { utils.MoveToTrashBatch = original }()
-	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
-		result := utils.TrashBatchResult{
-			Succeeded: make([]string, 0, len(paths)),
-			Failed:    make(map[string]error),
-		}
-		for _, p := range paths {
-			if p == "/fail" {
-				result.Failed[p] = assert.AnError
-			} else {
-				result.Succeeded = append(result.Succeeded, p)
-			}
-		}
-		return result
-	}
-
 	service := NewCleanService(target.NewRegistry())
 
 	jobs := []CleanJob{
@@ -917,7 +867,7 @@ func TestClean_AggregatesResults(t *testing.T) {
 			Category: types.Category{ID: "cat1", Name: "Cat 1", Method: types.MethodTrash},
 			Items: []types.CleanableItem{
 				{Path: "/path1", Name: "File 1", Size: 100},
-				{Path: "/fail", Name: "Fail", Size: 50},
+				{Path: "", Name: "Fail", Size: 50},
 			},
 		},
 		{
@@ -938,12 +888,6 @@ func TestClean_AggregatesResults(t *testing.T) {
 }
 
 func TestClean_MultipleCategories(t *testing.T) {
-	original := utils.MoveToTrashBatch
-	defer func() { utils.MoveToTrashBatch = original }()
-	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
-		return utils.TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
-	}
-
 	registry := target.NewRegistry()
 	cat := types.Category{
 		ID:     "docker",
@@ -998,12 +942,6 @@ func TestClean_MultipleCategories(t *testing.T) {
 }
 
 func TestClean_ReturnsCorrectReport(t *testing.T) {
-	original := utils.MoveToTrashBatch
-	defer func() { utils.MoveToTrashBatch = original }()
-	utils.MoveToTrashBatch = func(paths []string) utils.TrashBatchResult {
-		return utils.TrashBatchResult{Succeeded: paths, Failed: make(map[string]error)}
-	}
-
 	service := NewCleanService(target.NewRegistry())
 
 	jobs := []CleanJob{

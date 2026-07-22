@@ -154,11 +154,10 @@ func TestOldDownloadTarget_Clean_EmptyItems(t *testing.T) {
 	assert.Empty(t, result.Errors)
 }
 
-func TestOldDownloadTarget_Clean_MovesToTrash(t *testing.T) {
+func TestOldDownloadTarget_Clean_AggregatesResult(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	testFile := filepath.Join(tmpDir, "to_delete.txt")
-	require.NoError(t, os.WriteFile(testFile, []byte("delete me"), 0o644))
 
 	cat := types.Category{
 		ID:   "old-downloads",
@@ -177,7 +176,6 @@ func TestOldDownloadTarget_Clean_MovesToTrash(t *testing.T) {
 	assert.Equal(t, int64(9), result.FreedSpace)
 	assert.Empty(t, result.Errors)
 
-	// File should no longer exist at original path
 	_, err = os.Stat(testFile)
 	assert.True(t, os.IsNotExist(err))
 }

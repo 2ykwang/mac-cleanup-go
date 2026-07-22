@@ -2,20 +2,49 @@ version: 2
 
 project_name: mac-cleanup-go
 
+env:
+  - MACOSX_DEPLOYMENT_TARGET=12.0
+
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - main: .
+  - id: darwin-amd64
+    main: .
     binary: mac-cleanup
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
+      - CC=clang
+      - CGO_CFLAGS=-arch x86_64
+      - CGO_LDFLAGS=-arch x86_64
     goos:
       - darwin
     goarch:
       - amd64
+    hooks:
+      post:
+        - cmd: ./scripts/verify_macos_binary.sh "{{ .Path }}" amd64
+          output: true
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+  - id: darwin-arm64
+    main: .
+    binary: mac-cleanup
+    env:
+      - CGO_ENABLED=1
+      - CC=clang
+      - CGO_CFLAGS=-arch arm64
+      - CGO_LDFLAGS=-arch arm64
+    goos:
+      - darwin
+    goarch:
       - arm64
+    hooks:
+      post:
+        - cmd: ./scripts/verify_macos_binary.sh "{{ .Path }}" arm64
+          output: true
     ldflags:
       - -s -w -X main.version={{.Version}}
 

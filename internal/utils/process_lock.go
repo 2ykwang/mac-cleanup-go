@@ -11,6 +11,8 @@ import (
 
 const lsofTimeout = 10 * time.Second
 
+var execCommandContext = exec.CommandContext
+
 // GetLockedPaths returns top-level paths under basePath that are in use by processes.
 func GetLockedPaths(basePath string) (map[string]bool, error) {
 	locked := make(map[string]bool)

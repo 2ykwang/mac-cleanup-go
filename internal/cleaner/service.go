@@ -179,39 +179,33 @@ func (s *CleanService) cleanBuiltin(job CleanJob, callbacks types.CleanCallbacks
 	return result
 }
 
-// cleanTrashBatch handles trash method with batch processing for performance.
+// cleanTrashBatch handles a trash category and reports progress around the operation.
 func (s *CleanService) cleanTrashBatch(job CleanJob, callbacks types.CleanCallbacks, currentItem *int, totalItems int) *types.CleanResult {
-	result := types.NewCleanResult(job.Category)
-
 	items := job.Items
-	for i := 0; i < len(items); i += utils.TrashBatchSize {
-		end := min(i+utils.TrashBatchSize, len(items))
-		batch := items[i:end]
+	if len(items) == 0 {
+		return types.NewCleanResult(job.Category)
+	}
 
-		if callbacks.OnProgress != nil {
-			callbacks.OnProgress(types.CleanProgress{
-				CategoryName: job.Category.Name,
-				CurrentItem:  batch[0].Name,
-				Current:      *currentItem,
-				Total:        totalItems,
-			})
-		}
+	if callbacks.OnProgress != nil {
+		callbacks.OnProgress(types.CleanProgress{
+			CategoryName: job.Category.Name,
+			CurrentItem:  items[0].Name,
+			Current:      *currentItem,
+			Total:        totalItems,
+		})
+	}
 
-		batchResult := s.executor.Trash(job.Category, batch)
-		result.Merge(batchResult)
+	result := s.executor.Trash(job.Category, items)
+	s.sendBatchItemCallbacks(items, result, callbacks)
+	*currentItem += len(items)
 
-		s.sendBatchItemCallbacks(batch, batchResult, callbacks)
-		*currentItem += len(batch)
-
-		// Send progress after batch completion to update UI
-		if callbacks.OnProgress != nil {
-			callbacks.OnProgress(types.CleanProgress{
-				CategoryName: job.Category.Name,
-				CurrentItem:  batch[len(batch)-1].Name,
-				Current:      *currentItem,
-				Total:        totalItems,
-			})
-		}
+	if callbacks.OnProgress != nil {
+		callbacks.OnProgress(types.CleanProgress{
+			CategoryName: job.Category.Name,
+			CurrentItem:  items[len(items)-1].Name,
+			Current:      *currentItem,
+			Total:        totalItems,
+		})
 	}
 
 	return result

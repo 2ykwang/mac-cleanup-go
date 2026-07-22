@@ -3,6 +3,7 @@ package target
 import (
 	"context"
 	"math"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -119,6 +120,10 @@ func TestDockerTarget_Clean_IncludesCategoryInResult(t *testing.T) {
 }
 
 func TestDockerTarget_Scan_Integration(t *testing.T) {
+	if os.Getenv("MAC_CLEANUP_DOCKER_INTEGRATION") != "1" {
+		t.Skip("set MAC_CLEANUP_DOCKER_INTEGRATION=1 to run the Docker integration test")
+	}
+
 	cat := types.Category{
 		ID:       "docker",
 		Name:     "Docker",

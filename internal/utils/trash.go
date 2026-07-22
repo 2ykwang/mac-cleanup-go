@@ -1,214 +1,165 @@
 package utils
 
 import (
-	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
-	"time"
+	"sync"
+	"unicode/utf8"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/logger"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
-// trashTimeout is the timeout for trash operations. It is a variable to allow mocking in tests.
-var trashTimeout = 30 * time.Second
+const trashBatchSize = 50
 
-// TrashBatchSize is the maximum number of files to process in a single AppleScript call.
-const TrashBatchSize = 50
+var (
+	errInvalidTrashPath = errors.New("invalid trash path")
+	errPathNotRecycled  = errors.New("path was not reported as recycled")
+	recycleCallMu       sync.Mutex
+)
 
-// execCommandContext is a variable for exec.CommandContext to allow mocking in tests.
-var execCommandContext = exec.CommandContext
+type recyclePathsFunc func(paths []string) ([]string, error)
 
-// TrashBatchResult holds the result of batch trash operation.
-type TrashBatchResult struct {
-	Succeeded []string
-	Failed    map[string]error
+type trashItem struct {
+	path string
+	size int64
 }
 
 func BatchTrash(items []types.CleanableItem, opts types.BatchTrashOptions) *types.CleanResult {
-	result := &types.CleanResult{
-		Category: opts.Category,
-		Errors:   make([]string, 0),
+	return batchTrash(items, opts, recyclePathsPlatform)
+}
+
+func batchTrash(
+	items []types.CleanableItem,
+	opts types.BatchTrashOptions,
+	recyclePaths recyclePathsFunc,
+) *types.CleanResult {
+	result := types.NewCleanResult(opts.Category)
+	pending := prepareTrashItems(items, opts, result)
+
+	for start := 0; start < len(pending); start += trashBatchSize {
+		end := min(start+trashBatchSize, len(pending))
+		recycleTrashBatch(pending[start:end], recyclePaths, result)
 	}
 
-	if len(items) == 0 {
-		return result
-	}
+	logger.Info("trash completed",
+		"total", len(items),
+		"cleaned", result.CleanedItems,
+		"skipped", result.SkippedItems,
+		"failed", len(result.Errors))
 
-	paths := make([]string, 0, len(items))
-	pathToItem := make(map[string]types.CleanableItem, len(items))
+	return result
+}
+
+func prepareTrashItems(
+	items []types.CleanableItem,
+	opts types.BatchTrashOptions,
+	result *types.CleanResult,
+) []trashItem {
+	pending := make([]trashItem, 0, len(items))
+	seen := make(map[string]struct{}, len(items))
 
 	for _, item := range items {
+		if _, duplicate := seen[item.Path]; duplicate {
+			continue
+		}
+		seen[item.Path] = struct{}{}
+
 		if opts.Filter != nil && opts.Filter(item) {
 			result.SkippedItems++
 			continue
 		}
-
+		if err := validateTrashPath(item.Path); err != nil {
+			addTrashError(result, item.Path, err)
+			continue
+		}
 		if opts.Validate != nil {
 			if err := opts.Validate(item); err != nil {
-				result.Errors = append(result.Errors, err.Error())
+				addTrashError(result, item.Path, err)
 				continue
 			}
 		}
 
-		paths = append(paths, item.Path)
-		pathToItem[item.Path] = item
+		candidate := trashItem{path: item.Path, size: item.Size}
+		if _, err := os.Lstat(item.Path); os.IsNotExist(err) {
+			recordTrashSuccess(result, candidate)
+			continue
+		}
+		pending = append(pending, candidate)
 	}
 
-	if len(paths) == 0 {
-		return result
-	}
-
-	batchResult := MoveToTrashBatch(paths)
-
-	for _, p := range batchResult.Succeeded {
-		item := pathToItem[p]
-		result.FreedSpace += item.Size
-		result.CleanedItems++
-	}
-
-	for p, err := range batchResult.Failed {
-		item := pathToItem[p]
-		result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Path, err))
-	}
-
-	return result
+	return pending
 }
 
-// MoveToTrash moves a file or directory to macOS Trash using Finder.
-// It is a variable to allow mocking in tests.
-var MoveToTrash = moveToTrashImpl
-
-func moveToTrashImpl(path string) error {
-	escaped, err := EscapeForAppleScript(path)
-	if err != nil {
-		return fmt.Errorf("move to trash: invalid path: %w", err)
-	}
-
-	script := fmt.Sprintf(`tell application "Finder" to delete POSIX file "%s"`, escaped)
-	ctx, cancel := context.WithTimeout(context.Background(), trashTimeout)
-	defer cancel()
-
-	cmd := execCommandContext(ctx, "osascript", "-e", script)
-	if err := cmd.Run(); err != nil {
-		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return fmt.Errorf("move to trash timeout: %s", path)
-		}
-		return fmt.Errorf("move to trash: %s: %w", path, err)
-	}
-	return nil
-}
-
-// MoveToTrashBatch moves multiple files to Trash in batches.
-// It is a variable to allow mocking in tests.
-var MoveToTrashBatch = moveToTrashBatchImpl
-
-func moveToTrashBatchImpl(paths []string) TrashBatchResult {
-	result := TrashBatchResult{
-		Succeeded: make([]string, 0, len(paths)),
-		Failed:    make(map[string]error),
-	}
-
-	if len(paths) == 0 {
-		return result
-	}
-
-	totalBatches := (len(paths) + TrashBatchSize - 1) / TrashBatchSize
-	fallbackCount := 0
-
-	// Process in batches
-	for i := 0; i < len(paths); i += TrashBatchSize {
-		end := i + TrashBatchSize
-		if end > len(paths) {
-			end = len(paths)
-		}
-		batch := paths[i:end]
-		batchNum := i/TrashBatchSize + 1
-
-		if err := executeBatch(batch); err != nil {
-			logger.Debug("batch failed, falling back to individual deletion",
-				"batch", batchNum, "batchSize", len(batch), "error", err)
-			fallbackCount++
-
-			// Batch failed, check each file and fallback to individual deletion if needed
-			for _, p := range batch {
-				if _, statErr := os.Lstat(p); os.IsNotExist(statErr) {
-					// File already deleted by batch before error occurred
-					result.Succeeded = append(result.Succeeded, p)
-				} else if statErr == nil {
-					// File still exists, try individual deletion
-					if individualErr := MoveToTrash(p); individualErr != nil {
-						result.Failed[p] = individualErr
-					} else {
-						result.Succeeded = append(result.Succeeded, p)
-					}
-				} else {
-					// os.Stat returned unexpected error
-					result.Failed[p] = statErr
-				}
-			}
-		} else {
-			result.Succeeded = append(result.Succeeded, batch...)
-		}
-	}
-
-	logger.Info("trash batch completed",
-		"total", len(paths),
-		"succeeded", len(result.Succeeded),
-		"failed", len(result.Failed),
-		"batches", totalBatches,
-		"fallbacks", fallbackCount)
-
-	return result
-}
-
-// executeBatch executes a single batch of files using AppleScript.
-func executeBatch(paths []string) error {
-	if len(paths) == 0 {
+func validateTrashPath(path string) error {
+	switch {
+	case path == "":
+		return fmt.Errorf("%w: path is empty", errInvalidTrashPath)
+	case !utf8.ValidString(path):
+		return fmt.Errorf("%w: path is not valid UTF-8", errInvalidTrashPath)
+	case strings.IndexByte(path, 0) >= 0:
+		return fmt.Errorf("%w: path contains a NUL byte", errInvalidTrashPath)
+	default:
 		return nil
 	}
+}
 
-	start := time.Now()
-
-	// Build AppleScript with proper escaping
-	var script strings.Builder
-	script.Grow(len(paths) * 120) // Pre-allocate ~120 bytes per path
-
-	script.WriteString(`tell application "Finder"`)
-	script.WriteString("\n")
-
-	for _, p := range paths {
-		escaped, err := EscapeForAppleScript(p)
-		if err != nil {
-			return fmt.Errorf("invalid path %s: %w", p, err)
-		}
-		script.WriteString(fmt.Sprintf(`  delete POSIX file "%s"`, escaped))
-		script.WriteString("\n")
+func recycleTrashBatch(
+	items []trashItem,
+	recyclePaths recyclePathsFunc,
+	result *types.CleanResult,
+) {
+	paths := make([]string, len(items))
+	for i, item := range items {
+		paths[i] = item.path
 	}
 
-	script.WriteString("end tell")
-
-	ctx, cancel := context.WithTimeout(context.Background(), trashTimeout)
-	defer cancel()
-
-	var stderr bytes.Buffer
-	cmd := execCommandContext(ctx, "osascript", "-e", script.String())
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return fmt.Errorf("timeout after %v", trashTimeout)
-		}
-		return fmt.Errorf("osascript: %w, stderr: %s", err, stderr.String())
+	movedPaths, recycleErr := callRecyclePaths(paths, recyclePaths)
+	moved := make(map[string]struct{}, len(movedPaths))
+	for _, path := range movedPaths {
+		moved[path] = struct{}{}
 	}
 
-	logger.Debug("AppleScript batch executed",
-		"fileCount", len(paths),
-		"duration", time.Since(start).String())
+	for _, item := range items {
+		if _, ok := moved[item.path]; ok {
+			recordTrashSuccess(result, item)
+			continue
+		}
+		resolveUnreportedPath(item, recycleErr, result)
+	}
+}
 
-	return nil
+func callRecyclePaths(paths []string, recyclePaths recyclePathsFunc) ([]string, error) {
+	recycleCallMu.Lock()
+	defer recycleCallMu.Unlock()
+
+	return recyclePaths(paths)
+}
+
+func resolveUnreportedPath(item trashItem, recycleErr error, result *types.CleanResult) {
+	_, statErr := os.Lstat(item.path)
+	if os.IsNotExist(statErr) {
+		recordTrashSuccess(result, item)
+		return
+	}
+	if statErr != nil {
+		addTrashError(result, item.path, fmt.Errorf("checking final state: %w", statErr))
+		return
+	}
+	if recycleErr != nil {
+		addTrashError(result, item.path, recycleErr)
+		return
+	}
+	addTrashError(result, item.path, errPathNotRecycled)
+}
+
+func recordTrashSuccess(result *types.CleanResult, item trashItem) {
+	result.CleanedItems++
+	result.FreedSpace += item.size
+}
+
+func addTrashError(result *types.CleanResult, path string, err error) {
+	result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", path, err))
 }
