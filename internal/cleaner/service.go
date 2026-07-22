@@ -182,6 +182,10 @@ func (s *CleanService) cleanBuiltin(job CleanJob, callbacks types.CleanCallbacks
 // cleanTrashBatch handles a trash category and reports progress around the operation.
 func (s *CleanService) cleanTrashBatch(job CleanJob, callbacks types.CleanCallbacks, currentItem *int, totalItems int) *types.CleanResult {
 	items := job.Items
+	if len(items) == 0 {
+		return types.NewCleanResult(job.Category)
+	}
+
 	if callbacks.OnProgress != nil {
 		callbacks.OnProgress(types.CleanProgress{
 			CategoryName: job.Category.Name,

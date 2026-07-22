@@ -486,6 +486,31 @@ func TestClean_EmptyJobs(t *testing.T) {
 	assert.Len(t, report.Results, 0)
 }
 
+func TestClean_EmptyTrashJob(t *testing.T) {
+	service := NewCleanService(target.NewRegistry())
+	job := CleanJob{
+		Category: types.Category{
+			ID:     "empty-trash",
+			Name:   "Empty Trash",
+			Method: types.MethodTrash,
+		},
+	}
+	progressCalls := 0
+	callbacks := types.CleanCallbacks{
+		OnProgress: func(types.CleanProgress) {
+			progressCalls++
+		},
+	}
+
+	report := service.Clean([]CleanJob{job}, callbacks)
+
+	require.NotNil(t, report)
+	require.Len(t, report.Results, 1)
+	assert.Equal(t, 0, report.CleanedItems)
+	assert.Equal(t, 0, report.FailedItems)
+	assert.Equal(t, 0, progressCalls)
+}
+
 func TestClean_NilCallbacks(t *testing.T) {
 	service := NewCleanService(target.NewRegistry())
 
