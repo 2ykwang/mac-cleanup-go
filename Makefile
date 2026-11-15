@@ -105,31 +105,6 @@ test-cover-html: ## Generate HTML coverage report
 	$(GO) tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
 
-PERF_COUNT ?= 1
-BENCH_DATA_DIR ?= /tmp/mac-cleanup-bench
-ifneq ($(filter test-perf,$(MAKECMDGOALS)),)
-PERF_ARGS := $(filter-out test-perf,$(MAKECMDGOALS))
-ifneq ($(strip $(PERF_ARGS)),)
-PERF_COUNT := $(firstword $(PERF_ARGS))
-endif
-$(PERF_ARGS):
-	@:
-endif
-
-.PHONY: test-perf
-test-perf: ## Run performance benchmarks (requires -tags=perf, set count via `make test-perf 3`)
-	@set -e; \
-	tmp=$$(mktemp -t bench.XXXXXX); \
-	trap 'rm -f $$tmp' EXIT; \
-	BENCH_DATA_DIR=$(BENCH_DATA_DIR) $(GO) test -tags=perf -bench=. -benchmem -run=^$$ -count=$(PERF_COUNT) ./internal/... | tee $$tmp; \
-	if command -v benchstat >/dev/null 2>&1; then \
-		echo ""; \
-		benchstat $$tmp; \
-	else \
-		echo ""; \
-		echo "benchstat not found; install with: go install golang.org/x/perf/cmd/benchstat@latest"; \
-	fi
-
 ##@ Cleanup
 
 .PHONY: clean
