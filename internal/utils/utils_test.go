@@ -42,6 +42,80 @@ func TestExpandPath_RelativePath(t *testing.T) {
 	assert.Equal(t, "relative/path", result)
 }
 
+func TestExpandPath_DarwinUserCacheDirPrefix(t *testing.T) {
+	original := darwinUserCacheDir
+	defer func() { darwinUserCacheDir = original }()
+	darwinUserCacheDir = func() (string, error) { return "/var/folders/aa/bb/C/", nil }
+
+	result := ExpandPath("$DARWIN_USER_CACHE_DIR/clang/ModuleCache/*")
+
+	assert.Equal(t, "/var/folders/aa/bb/C/clang/ModuleCache/*", result)
+}
+
+func TestExpandPath_DarwinUserCacheDirPrefix_KeepsPath_WhenLookupFails(t *testing.T) {
+	original := darwinUserCacheDir
+	defer func() { darwinUserCacheDir = original }()
+	darwinUserCacheDir = func() (string, error) { return "", errors.New("getconf failed") }
+
+	result := ExpandPath("$DARWIN_USER_CACHE_DIR/clang/ModuleCache/*")
+
+	assert.Equal(t, "$DARWIN_USER_CACHE_DIR/clang/ModuleCache/*", result)
+}
+
+func TestLookupDarwinUserCacheDir_RunsGetconf(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+	var gotName string
+	var gotArgs []string
+	execCommand = func(name string, args ...string) *exec.Cmd {
+		gotName, gotArgs = name, args
+		return exec.Command("printf", "/var/folders/aa/bb/C/\n")
+	}
+
+	_, err := lookupDarwinUserCacheDir()
+
+	require.NoError(t, err)
+	assert.Equal(t, "getconf", gotName)
+	assert.Equal(t, []string{"DARWIN_USER_CACHE_DIR"}, gotArgs)
+}
+
+func TestLookupDarwinUserCacheDir_TrimsTrailingNewline(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("printf", "/var/folders/aa/bb/C/\n")
+	}
+
+	dir, err := lookupDarwinUserCacheDir()
+
+	require.NoError(t, err)
+	assert.Equal(t, "/var/folders/aa/bb/C/", dir)
+}
+
+func TestLookupDarwinUserCacheDir_ReturnsError_WhenGetconfFails(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("false")
+	}
+
+	_, err := lookupDarwinUserCacheDir()
+
+	assert.Error(t, err)
+}
+
+func TestLookupDarwinUserCacheDir_ReturnsError_WhenOutputIsNotAbsolute(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("printf", "\n")
+	}
+
+	_, err := lookupDarwinUserCacheDir()
+
+	assert.Error(t, err)
+}
+
 func TestFormatSize_Zero(t *testing.T) {
 	assert.Equal(t, "0 B", FormatSize(0))
 }
