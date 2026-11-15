@@ -147,7 +147,7 @@ OK      System Logs              67    259.7 MB
 - 삭제 전 미리보기에서 항목을 제외할 수 있습니다.
 - 영향도 라벨(safe, moderate, risky, manual)을 표시합니다.
 - SIP 보호 경로는 스캔/정리 대상에서 제외됩니다.
-- Homebrew, Docker, 오래된 다운로드 파일에 대한 전용 스캐너가 있습니다 (brew/docker 출력 또는 마지막 수정 시각 기준).
+- Homebrew, Docker, 오래된 다운로드 파일, 오래된 프로젝트 빌드 캐시, Claude Code/Codex 지난 릴리스에 대한 전용 스캐너가 있습니다 (명령 출력, 마지막 수정 시각 또는 활성 릴리스 기준).
 
 ## 영향도 분류 기준
 
@@ -156,12 +156,12 @@ OK      System Logs              67    259.7 MB
 - risky: 사용자 데이터가 포함될 수 있음; 항목 기본 제외.
 - manual: 자동 삭제 없이 앱 가이드만 표시.
 
-## 대상 (v1.3.6 기준)
+## 대상 (v1.7.0 기준)
 
-- 전체 대상: 107개.
-- 그룹: System 7, Browsers 10, Development 35, Applications 52, Storage 3.
-- 처리 방법: trash 101, permanent 1, builtin 3, manual 2.
-- builtin: homebrew, docker, old-downloads (고정 경로가 아닌 명령 결과/마지막 수정 시각 기준 스캔).
+- 전체 대상: 202개.
+- 그룹: System 14, Browsers 15, Development 71, Applications 97, Storage 5.
+- 처리 방법: trash 192, permanent 2, builtin 6, manual 2.
+- builtin: homebrew, docker, old-downloads, project-cache, claude-code-versions, codex-daemon-releases (고정 경로가 아닌 명령 결과, 마지막 수정 시각 또는 활성 릴리스 기준 스캔).
 - manual: telegram, kakaotalk (자동 삭제하지 않고, 채팅 데이터 등 대용량 항목 안내 목적).
 - 수치는 릴리스 기준이며 변동될 수 있습니다.
 

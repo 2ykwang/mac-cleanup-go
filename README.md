@@ -148,7 +148,7 @@ OK      System Logs              67    259.7 MB
 - Lets you preview items and exclude what you want to keep.
 - Labels targets by impact level (safe, moderate, risky, manual).
 - SIP-protected paths are excluded from scan/cleanup.
-- Built-in scans for Homebrew, Docker, and old downloads (brew/docker output or last-modified time filtering).
+- Built-in scans for Homebrew, Docker, old downloads, stale project build caches, and old Claude Code/Codex releases (command output, last-modified time, or the active release).
 
 ## Impact levels
 
@@ -157,12 +157,12 @@ OK      System Logs              67    259.7 MB
 - risky: user data possible; items start excluded.
 - manual: no automatic deletion; shows an app guide only.
 
-## Targets (as of v1.3.6)
+## Targets (as of v1.7.0)
 
-- Total targets: 107.
-- Groups: System 7, Browsers 10, Development 35, Applications 52, Storage 3.
-- Cleanup methods: trash 101, permanent 1, builtin 3, manual 2.
-- Builtins: homebrew, docker, old-downloads (built-in scanners using brew/docker output or last-modified time filtering).
+- Total targets: 202.
+- Groups: System 14, Browsers 15, Development 71, Applications 97, Storage 5.
+- Cleanup methods: trash 192, permanent 2, builtin 6, manual 2.
+- Builtins: homebrew, docker, old-downloads, project-cache, claude-code-versions, codex-daemon-releases (built-in scanners using command output, last-modified time, or the active release).
 - Manual: telegram, kakaotalk (no automatic deletion; surfaces large data like chat caches).
 - Counts are release-based and may change over time.
 
