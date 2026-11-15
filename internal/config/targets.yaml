@@ -117,6 +117,8 @@ categories:
       - "/macOS Install Data"
 
   # ===== Browsers =====
+  # Chromium profile globs ("<root>/*/GPUCache/*") also match "<root>/GPUPersistentCache/GPUCache/*".
+  # Listing GPUPersistentCache as well would nest one item inside another.
   - id: browser-chrome
     name: Chrome Cache
     group: browser
@@ -124,9 +126,21 @@ categories:
     method: trash
     note: Web page cache and GPU cache - regenerated on browsing
     paths:
-      - "~/Library/Application Support/Google/Chrome/Default/Application Cache/*"
-      - "~/Library/Application Support/Google/Chrome/Default/GPUCache/*"
+      - "~/Library/Application Support/Google/Chrome/*/Application Cache/*"
+      - "~/Library/Application Support/Google/Chrome/*/Code Cache/*"
+      - "~/Library/Application Support/Google/Chrome/*/GPUCache/*"
+      - "~/Library/Application Support/Google/Chrome/*/DawnCache/*"
+      - "~/Library/Application Support/Google/Chrome/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Google/Chrome/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/Google/Chrome/*/GrShaderCache/*"
+      - "~/Library/Application Support/Google/Chrome/*/GraphiteDawnCache/*"
       - "~/Library/Application Support/Google/Chrome/Default/Service Worker/CacheStorage/*"
+      - "~/Library/Application Support/Google/Chrome/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Google/Chrome/GrShaderCache/*"
+      - "~/Library/Application Support/Google/Chrome/ShaderCache/*"
+      - "~/Library/Application Support/Google/Chrome/component_crx_cache/*"
+      - "~/Library/Application Support/Google/Chrome/extensions_crx_cache/*"
+      - "~/Library/Application Support/Google/Chrome/Crashpad/completed/*"
       - "~/Library/Caches/Google/Chrome/*"
 
   - id: browser-safari
@@ -154,6 +168,20 @@ categories:
     method: trash
     note: Arc browser cache - regenerated automatically
     paths:
+      - "~/Library/Application Support/Arc/User Data/*/Application Cache/*"
+      - "~/Library/Application Support/Arc/User Data/*/Code Cache/*"
+      - "~/Library/Application Support/Arc/User Data/*/GPUCache/*"
+      - "~/Library/Application Support/Arc/User Data/*/DawnCache/*"
+      - "~/Library/Application Support/Arc/User Data/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Arc/User Data/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/Arc/User Data/*/GrShaderCache/*"
+      - "~/Library/Application Support/Arc/User Data/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Arc/User Data/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Arc/User Data/GrShaderCache/*"
+      - "~/Library/Application Support/Arc/User Data/ShaderCache/*"
+      - "~/Library/Application Support/Arc/User Data/component_crx_cache/*"
+      - "~/Library/Application Support/Arc/User Data/extensions_crx_cache/*"
+      - "~/Library/Application Support/Arc/User Data/Crashpad/completed/*"
       - "~/Library/Caches/Arc/*"
       - "~/Library/Caches/company.thebrowser.Browser/*"
 
@@ -175,8 +203,20 @@ categories:
     method: trash
     note: Brave browser cache - regenerated automatically
     paths:
-      - "~/Library/Application Support/BraveSoftware/Brave-Browser/Default/Application Cache/*"
-      - "~/Library/Application Support/BraveSoftware/Brave-Browser/Default/GPUCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/*/Application Cache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/*/Code Cache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/*/GPUCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/*/DawnCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/*/GrShaderCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/GraphiteDawnCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/GrShaderCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/ShaderCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/component_crx_cache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/extensions_crx_cache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/Crashpad/completed/*"
       - "~/Library/Caches/BraveSoftware/*"
 
   - id: browser-edge
@@ -186,8 +226,20 @@ categories:
     method: trash
     note: Microsoft Edge cache - regenerated automatically
     paths:
-      - "~/Library/Application Support/Microsoft Edge/Default/Application Cache/*"
-      - "~/Library/Application Support/Microsoft Edge/Default/GPUCache/*"
+      - "~/Library/Application Support/Microsoft Edge/*/Application Cache/*"
+      - "~/Library/Application Support/Microsoft Edge/*/Code Cache/*"
+      - "~/Library/Application Support/Microsoft Edge/*/GPUCache/*"
+      - "~/Library/Application Support/Microsoft Edge/*/DawnCache/*"
+      - "~/Library/Application Support/Microsoft Edge/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Microsoft Edge/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/Microsoft Edge/*/GrShaderCache/*"
+      - "~/Library/Application Support/Microsoft Edge/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Microsoft Edge/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Microsoft Edge/GrShaderCache/*"
+      - "~/Library/Application Support/Microsoft Edge/ShaderCache/*"
+      - "~/Library/Application Support/Microsoft Edge/component_crx_cache/*"
+      - "~/Library/Application Support/Microsoft Edge/extensions_crx_cache/*"
+      - "~/Library/Application Support/Microsoft Edge/Crashpad/completed/*"
       - "~/Library/Caches/Microsoft Edge/*"
 
   - id: browser-opera
@@ -206,6 +258,20 @@ categories:
     method: trash
     note: Vivaldi browser cache - regenerated automatically
     paths:
+      - "~/Library/Application Support/Vivaldi/*/Application Cache/*"
+      - "~/Library/Application Support/Vivaldi/*/Code Cache/*"
+      - "~/Library/Application Support/Vivaldi/*/GPUCache/*"
+      - "~/Library/Application Support/Vivaldi/*/DawnCache/*"
+      - "~/Library/Application Support/Vivaldi/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Vivaldi/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/Vivaldi/*/GrShaderCache/*"
+      - "~/Library/Application Support/Vivaldi/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Vivaldi/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Vivaldi/GrShaderCache/*"
+      - "~/Library/Application Support/Vivaldi/ShaderCache/*"
+      - "~/Library/Application Support/Vivaldi/component_crx_cache/*"
+      - "~/Library/Application Support/Vivaldi/extensions_crx_cache/*"
+      - "~/Library/Application Support/Vivaldi/Crashpad/completed/*"
       - "~/Library/Caches/com.vivaldi.Vivaldi/*"
 
   - id: browser-zen
