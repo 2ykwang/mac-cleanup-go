@@ -284,6 +284,121 @@ categories:
     paths:
       - "~/Library/Caches/zen/*"
 
+  - id: browser-dia
+    name: Dia Cache
+    group: browser
+    safety: safe
+    method: trash
+    note: Dia browser cache - regenerated automatically
+    paths:
+      - "~/Library/Application Support/Dia/User Data/*/Application Cache/*"
+      - "~/Library/Application Support/Dia/User Data/*/Code Cache/*"
+      - "~/Library/Application Support/Dia/User Data/*/GPUCache/*"
+      - "~/Library/Application Support/Dia/User Data/*/DawnCache/*"
+      - "~/Library/Application Support/Dia/User Data/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Dia/User Data/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/Dia/User Data/*/GrShaderCache/*"
+      - "~/Library/Application Support/Dia/User Data/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Dia/User Data/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Dia/User Data/GrShaderCache/*"
+      - "~/Library/Application Support/Dia/User Data/ShaderCache/*"
+      - "~/Library/Application Support/Dia/User Data/component_crx_cache/*"
+      - "~/Library/Application Support/Dia/User Data/extensions_crx_cache/*"
+      - "~/Library/Application Support/Dia/User Data/Crashpad/completed/*"
+      - "~/Library/Caches/Dia/*"
+      - "~/Library/Caches/company.thebrowser.dia/*"
+
+  - id: browser-helium
+    name: Helium Cache
+    group: browser
+    safety: safe
+    method: trash
+    note: Helium browser cache - regenerated automatically
+    paths:
+      - "~/Library/Application Support/net.imput.helium/*/Application Cache/*"
+      - "~/Library/Application Support/net.imput.helium/*/Code Cache/*"
+      - "~/Library/Application Support/net.imput.helium/*/GPUCache/*"
+      - "~/Library/Application Support/net.imput.helium/*/DawnCache/*"
+      - "~/Library/Application Support/net.imput.helium/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/net.imput.helium/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/net.imput.helium/*/GrShaderCache/*"
+      - "~/Library/Application Support/net.imput.helium/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/net.imput.helium/GraphiteDawnCache/*"
+      - "~/Library/Application Support/net.imput.helium/GrShaderCache/*"
+      - "~/Library/Application Support/net.imput.helium/ShaderCache/*"
+      - "~/Library/Application Support/net.imput.helium/component_crx_cache/*"
+      - "~/Library/Application Support/net.imput.helium/extensions_crx_cache/*"
+      - "~/Library/Application Support/net.imput.helium/Crashpad/completed/*"
+      - "~/Library/Caches/net.imput.helium/*"
+
+  - id: browser-yandex
+    name: Yandex Browser Cache
+    group: browser
+    safety: safe
+    method: trash
+    note: Yandex Browser cache - regenerated automatically
+    paths:
+      - "~/Library/Application Support/Yandex/YandexBrowser/*/Application Cache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/*/Code Cache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/*/GPUCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/*/DawnCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/*/GrShaderCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/GrShaderCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/ShaderCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/component_crx_cache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/extensions_crx_cache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/Crashpad/completed/*"
+
+  - id: browser-qq
+    name: QQ Browser Cache
+    group: browser
+    safety: safe
+    method: trash
+    note: QQ Browser cache - regenerated automatically
+    paths:
+      - "~/Library/Application Support/QQBrowser3/*/Application Cache/*"
+      - "~/Library/Application Support/QQBrowser3/*/Code Cache/*"
+      - "~/Library/Application Support/QQBrowser3/*/GPUCache/*"
+      - "~/Library/Application Support/QQBrowser3/*/DawnCache/*"
+      - "~/Library/Application Support/QQBrowser3/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/QQBrowser3/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/QQBrowser3/*/GrShaderCache/*"
+      - "~/Library/Application Support/QQBrowser3/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/QQBrowser3/GraphiteDawnCache/*"
+      - "~/Library/Application Support/QQBrowser3/GrShaderCache/*"
+      - "~/Library/Application Support/QQBrowser3/ShaderCache/*"
+      - "~/Library/Application Support/QQBrowser3/component_crx_cache/*"
+      - "~/Library/Application Support/QQBrowser3/extensions_crx_cache/*"
+      - "~/Library/Application Support/QQBrowser3/Crashpad/completed/*"
+      - "~/Library/Caches/com.tencent.QQBrowser3/*"
+
+  - id: browser-browseros
+    name: BrowserOS Cache
+    group: browser
+    safety: safe
+    method: trash
+    note: BrowserOS cache - regenerated automatically
+    paths:
+      - "~/Library/Application Support/BrowserOS/*/Application Cache/*"
+      - "~/Library/Application Support/BrowserOS/*/Code Cache/*"
+      - "~/Library/Application Support/BrowserOS/*/GPUCache/*"
+      - "~/Library/Application Support/BrowserOS/*/DawnCache/*"
+      - "~/Library/Application Support/BrowserOS/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/BrowserOS/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/BrowserOS/*/GrShaderCache/*"
+      - "~/Library/Application Support/BrowserOS/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/BrowserOS/GraphiteDawnCache/*"
+      - "~/Library/Application Support/BrowserOS/GrShaderCache/*"
+      - "~/Library/Application Support/BrowserOS/ShaderCache/*"
+      - "~/Library/Application Support/BrowserOS/component_crx_cache/*"
+      - "~/Library/Application Support/BrowserOS/extensions_crx_cache/*"
+      - "~/Library/Application Support/BrowserOS/Crashpad/completed/*"
+      - "~/Library/Caches/BrowserOS/*"
+
   # ===== Development =====
   - id: xcode-derived
     name: Xcode DerivedData
