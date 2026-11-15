@@ -22,31 +22,31 @@ func (m *Model) viewCleaning() string {
 		if cat.errors == 0 {
 			// Full success
 			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(cat.freedSpace))
-			b.WriteString(fmt.Sprintf("%s %s %s\n",
+			fmt.Fprintf(&b, "%s %s %s\n",
 				m.styles.SuccessStyle.Render("✓"),
 				displayName,
-				m.styles.SizeStyle.Render(size)))
+				m.styles.SizeStyle.Render(size))
 		} else if cat.cleaned > 0 {
 			// Partial success
 			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(cat.freedSpace))
-			b.WriteString(fmt.Sprintf("%s %s %s\n",
+			fmt.Fprintf(&b, "%s %s %s\n",
 				m.styles.WarningStyle.Render("△"),
 				displayName,
-				m.styles.SizeStyle.Render(size)))
+				m.styles.SizeStyle.Render(size))
 		} else {
 			// All failed
-			b.WriteString(fmt.Sprintf("%s %s %s\n",
+			fmt.Fprintf(&b, "%s %s %s\n",
 				m.styles.DangerStyle.Render("✗"),
 				displayName,
-				m.styles.MutedStyle.Render("failed")))
+				m.styles.MutedStyle.Render("failed"))
 		}
 	}
 
 	// Show current category being processed
 	if m.cleaningCategory != "" {
-		b.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&b, "%s %s\n",
 			m.spinner.View(),
-			m.cleaningCategory))
+			m.cleaningCategory)
 
 		if m.cleaningItem != "" {
 			item := m.cleaningItem
@@ -117,15 +117,15 @@ func (m *Model) renderRecentDeleted() string {
 
 		// Build line
 		if entry.Success {
-			b.WriteString(fmt.Sprintf("  %s %s %s\n",
+			fmt.Fprintf(&b, "  %s %s %s\n",
 				icon,
 				displayPath,
-				m.styles.SizeStyle.Render(size)))
+				m.styles.SizeStyle.Render(size))
 		} else {
-			b.WriteString(fmt.Sprintf("  %s %s %s\n",
+			fmt.Fprintf(&b, "  %s %s %s\n",
 				icon,
 				m.styles.MutedStyle.Render(displayPath),
-				m.styles.MutedStyle.Render(size)))
+				m.styles.MutedStyle.Render(size))
 		}
 	}
 

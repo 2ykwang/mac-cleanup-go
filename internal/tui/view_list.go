@@ -96,9 +96,9 @@ func (m *Model) listHeader(showSummary bool) string {
 	b.WriteString(m.styles.HeaderStyle.Render("Mac Cleanup"))
 	b.WriteString("\n")
 	if m.scanning {
-		b.WriteString(fmt.Sprintf("%s Scanning...  %s\n",
+		fmt.Fprintf(&b, "%s Scanning...  %s\n",
 			m.spinner.View(),
-			m.styles.MutedStyle.Render(fmt.Sprintf("%d/%d", m.scanCompleted, m.scanTotal))))
+			m.styles.MutedStyle.Render(fmt.Sprintf("%d/%d", m.scanCompleted, m.scanTotal)))
 		if pending := m.pendingScanNames(); pending != "" {
 			b.WriteString(m.styles.MutedStyle.Render(fmt.Sprintf("  └ %s", pending)))
 			b.WriteString("\n")
@@ -125,12 +125,12 @@ func (m *Model) listHeader(showSummary bool) string {
 	b.WriteString("\n")
 
 	// Legend
-	b.WriteString(fmt.Sprintf("%s Safe      %s\n",
-		m.styles.SuccessStyle.Render("●"), m.styles.MutedStyle.Render("Auto-regenerated caches")))
-	b.WriteString(fmt.Sprintf("%s Moderate  %s\n",
-		m.styles.WarningStyle.Render("●"), m.styles.MutedStyle.Render("May need re-download or re-login")))
-	b.WriteString(fmt.Sprintf("%s Risky     %s\n",
-		m.styles.DangerStyle.Render("●"), m.styles.MutedStyle.Render("May contain important data")))
+	fmt.Fprintf(&b, "%s Safe      %s\n",
+		m.styles.SuccessStyle.Render("●"), m.styles.MutedStyle.Render("Auto-regenerated caches"))
+	fmt.Fprintf(&b, "%s Moderate  %s\n",
+		m.styles.WarningStyle.Render("●"), m.styles.MutedStyle.Render("May need re-download or re-login"))
+	fmt.Fprintf(&b, "%s Risky     %s\n",
+		m.styles.DangerStyle.Render("●"), m.styles.MutedStyle.Render("May contain important data"))
 	b.WriteString("\n")
 
 	// Summary
@@ -363,13 +363,12 @@ func (m *Model) renderListSidePanel(width int) string {
 
 	b.WriteString(m.styles.HeaderStyle.Render("Summary"))
 	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf("%s %s", m.styles.MutedStyle.Render("Available:"), m.styles.SizeStyle.Render(formatSize(m.getAvailableSize()))))
+	fmt.Fprintf(&b, "%s %s", m.styles.MutedStyle.Render("Available:"), m.styles.SizeStyle.Render(formatSize(m.getAvailableSize())))
 	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf("%s %s (%s)",
+	fmt.Fprintf(&b, "%s %s (%s)",
 		m.styles.MutedStyle.Render("Selected:"),
 		m.styles.SizeStyle.Render(formatSize(m.getSelectedSize())),
-		m.styles.TextStyle.Render(fmt.Sprintf("%d", m.getSelectedCount())),
-	))
+		m.styles.TextStyle.Render(fmt.Sprintf("%d", m.getSelectedCount())))
 	b.WriteString("\n")
 	if m.hasSelection() {
 		b.WriteString("\n")
@@ -407,7 +406,7 @@ func (m *Model) renderSelectedMiniList(width int) string {
 		name := truncateToWidth(r.Category.Name, nameWidth, false)
 		name = padToWidth(name, nameWidth)
 		dot := m.styles.SafetyDot(r.Category.Safety)
-		b.WriteString(fmt.Sprintf("%s %s %s\n", dot, name, m.styles.SizeStyle.Render(sizeStr)))
+		fmt.Fprintf(&b, "%s %s %s\n", dot, name, m.styles.SizeStyle.Render(sizeStr))
 	}
 
 	if len(selected) > limit {
