@@ -327,3 +327,65 @@ func TestClean_EmptyItems_ReturnsZero(t *testing.T) {
 	assert.Equal(t, 0, result.CleanedItems)
 	assert.Empty(t, result.Errors)
 }
+
+func TestScanStaleCaches_UsesLatestNestedFileTime(t *testing.T) {
+	root := t.TempDir()
+	cache := filepath.Join(root, "node_modules")
+	require.NoError(t, os.MkdirAll(filepath.Join(cache, "nested"), 0o755))
+	file := filepath.Join(cache, "nested", "file")
+	require.NoError(t, os.WriteFile(file, []byte("abc"), 0o644))
+	cutoff := time.Unix(1700000000, 0)
+	modified := cutoff.Add(-time.Hour)
+	require.NoError(t, os.Chtimes(file, modified, modified))
+	target := newTestProjectCacheTarget(root)
+
+	items, size, count := target.scanStaleCaches([]foundCache{{path: cache}}, cutoff)
+
+	require.Len(t, items, 1)
+	assert.Equal(t, int64(3), size)
+	assert.Equal(t, int64(1), count)
+	assert.True(t, modified.Equal(items[0].ModifiedAt))
+	assert.Equal(t, "node_modules", items[0].DisplayName)
+}
+
+func TestScanStaleCaches_RecentMetadataFileProtectsCache(t *testing.T) {
+	root := t.TempDir()
+	cache := filepath.Join(root, "node_modules")
+	require.NoError(t, os.Mkdir(cache, 0o755))
+	file := filepath.Join(cache, ".DS_Store")
+	require.NoError(t, os.WriteFile(file, []byte("metadata"), 0o644))
+	cutoff := time.Unix(1700000000, 0)
+	require.NoError(t, os.Chtimes(file, cutoff, cutoff))
+	target := newTestProjectCacheTarget(root)
+
+	items, size, count := target.scanStaleCaches([]foundCache{{path: cache}}, cutoff)
+
+	assert.Empty(t, items)
+	assert.Zero(t, size)
+	assert.Zero(t, count)
+}
+
+func TestScanStaleCaches_SkipsMissingCandidate(t *testing.T) {
+	root := t.TempDir()
+	target := newTestProjectCacheTarget(root)
+
+	items, size, count := target.scanStaleCaches([]foundCache{{path: filepath.Join(root, "missing")}}, time.Now())
+
+	assert.Empty(t, items)
+	assert.Zero(t, size)
+	assert.Zero(t, count)
+}
+
+func TestScanStaleCaches_RetainsEmptyCache(t *testing.T) {
+	root := t.TempDir()
+	cache := filepath.Join(root, "node_modules")
+	require.NoError(t, os.Mkdir(cache, 0o755))
+	target := newTestProjectCacheTarget(root)
+
+	items, size, count := target.scanStaleCaches([]foundCache{{path: cache}}, time.Now())
+
+	require.Len(t, items, 1)
+	assert.Zero(t, size)
+	assert.Zero(t, count)
+	assert.True(t, items[0].ModifiedAt.IsZero())
+}
