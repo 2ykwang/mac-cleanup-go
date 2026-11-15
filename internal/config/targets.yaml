@@ -1138,6 +1138,7 @@ categories:
     paths:
       - "~/Library/Application Support/Steam/appcache/*"
       - "~/Library/Application Support/Steam/depotcache/*"
+      - "~/Library/Application Support/Steam/htmlcache/*"
       - "~/Library/Application Support/Steam/logs/*"
       - "~/Library/Application Support/Steam/steamapps/shadercache/*"
       - "~/Library/Application Support/Steam/steamapps/temp/*"
@@ -1189,6 +1190,7 @@ categories:
       - "~/Library/Application Support/Microsoft/Teams/gpucache/*"
       - "~/Library/Application Support/Microsoft/Teams/IndexedDB/*"
       - "~/Library/Application Support/Microsoft/Teams/Local Storage/*"
+      - "~/Library/Application Support/Microsoft/Teams/logs/*"
       - "~/Library/Application Support/Microsoft/Teams/tmp/*"
 
   - id: teams-new
@@ -1248,6 +1250,7 @@ categories:
       - "~/Library/Application Support/Code/CachedExtensions/*"
       - "~/Library/Application Support/Code/CachedExtensionVSIXs/*"
       - "~/Library/Application Support/Code/Code Cache/*"
+      - "~/Library/Application Support/Code/WebStorage/*/CacheStorage/*"
       - "~/Library/Application Support/Code/logs/*"
 
   - id: cursor
@@ -1259,6 +1262,7 @@ categories:
     paths:
       - "~/Library/Application Support/Cursor/Cache/*"
       - "~/Library/Application Support/Cursor/CachedData/*"
+      - "~/Library/Application Support/Cursor/CachedExtensionVSIXs/*"
       - "~/Library/Application Support/Cursor/Code Cache/*"
       - "~/Library/Application Support/Cursor/logs/*"
 
@@ -1344,6 +1348,7 @@ categories:
     paths:
       - "~/Library/Application Support/minecraft/logs/*"
       - "~/Library/Application Support/minecraft/crash-reports/*"
+      - "~/Library/Application Support/minecraft/webcache/*"
       - "~/Library/Application Support/minecraft/webcache2/*"
 
   - id: linear
@@ -1364,6 +1369,14 @@ categories:
     method: trash
     note: Claude desktop app and CLI cache
     paths:
+      - "~/Library/Application Support/Claude/Cache/*"
+      - "~/Library/Application Support/Claude/Code Cache/*"
+      - "~/Library/Application Support/Claude/GPUCache/*"
+      - "~/Library/Application Support/Claude/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Claude/DawnWebGPUCache/*"
+      - "~/Library/Application Support/Claude/GPUPersistentCache/*"
+      - "~/Library/Application Support/Claude/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Claude/sentry/*"
       - "~/Library/Caches/com.anthropic.claudefordesktop/*"
       - "~/Library/Caches/claude-cli-nodejs/*"
 
@@ -1591,6 +1604,7 @@ categories:
     method: trash
     note: Sketch design app cache - regenerated on use
     paths:
+      - "~/Library/Application Support/com.bohemiancoding.sketch3/cache/*"
       - "~/Library/Caches/com.bohemiancoding.sketch3/*"
 
   - id: final-cut
@@ -1809,6 +1823,10 @@ categories:
     note: Apple Podcasts streaming and artwork cache - regenerated on use
     paths:
       - "~/Library/Caches/com.apple.podcasts/*"
+      - "~/Library/Containers/com.apple.podcasts/Data/tmp/StreamedMedia/*"
+      - "~/Library/Containers/com.apple.podcasts/Data/tmp/*.heic"
+      - "~/Library/Containers/com.apple.podcasts/Data/tmp/*.img"
+      - "~/Library/Containers/com.apple.podcasts/Data/tmp/*CFNetworkDownload*.tmp"
 
   - id: apple-tv
     name: Apple TV Cache
@@ -1862,6 +1880,7 @@ categories:
     method: trash
     note: Legcord Discord client cache - regenerated on use
     paths:
+      - "~/Library/Application Support/legcord/Cache/*"
       - "~/Library/Caches/legcord/*"
 
   - id: sublime-text
@@ -1952,6 +1971,11 @@ categories:
     method: trash
     note: Lunar Client Minecraft launcher cache - regenerated on use
     paths:
+      - "~/.lunarclient/game-cache/*"
+      - "~/.lunarclient/launcher-cache/*"
+      - "~/.lunarclient/logs/*"
+      - "~/.lunarclient/offline/*/logs/*"
+      - "~/.lunarclient/offline/files/*/logs/*"
       - "~/Library/Caches/com.moonsworth.*/*"
 
   # ===== Storage (Risky) =====
