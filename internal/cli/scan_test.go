@@ -2,11 +2,14 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/mocks"
+	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
@@ -104,6 +107,35 @@ func TestRunScan_MissingPathIsUnavailable(t *testing.T) {
 
 	require.Len(t, out.Targets, 1)
 	assert.Equal(t, statusUnavailable, out.Targets[0].Status)
+}
+
+func TestRunCommands_ReportErrorStoredInScanResult(t *testing.T) {
+	cat := testCategory("docker", types.SafetyLevelModerate, types.MethodBuiltin)
+	result := types.NewScanResult(cat)
+	result.Error = errors.New("docker disk usage failed")
+	scanner := &mocks.MockTarget{}
+	scanner.On("Category").Return(cat)
+	scanner.On("IsAvailable").Return(true)
+	scanner.On("Scan").Return(result, nil)
+	registry := target.NewRegistry()
+	registry.Register(scanner)
+
+	original := newRegistry
+	newRegistry = func(*types.Config) (*target.Registry, error) { return registry, nil }
+	defer func() { newRegistry = original }()
+	defer stubSession(testConfig(cat), emptyUserConfig())()
+
+	scan := runScanJSON(t, "docker")
+	require.Len(t, scan.Targets, 1)
+	assert.Equal(t, statusError, scan.Targets[0].Status)
+	assert.Equal(t, result.Error.Error(), scan.Targets[0].Error)
+
+	clean := runCleanJSON(t, ExitOK, "docker", "--dry-run")
+	assert.Empty(t, clean.Targets)
+	require.Len(t, clean.Skipped, 1)
+	assert.Equal(t, skipScanFailed, clean.Skipped[0].Reason)
+	assert.Equal(t, result.Error.Error(), clean.Skipped[0].Detail)
+	scanner.AssertExpectations(t)
 }
 
 func TestRunScan_LimitReportsMoreItems(t *testing.T) {

@@ -81,6 +81,10 @@ func scanOne(registry *target.Registry, cat types.Category) scanned {
 		}
 		return s
 	}
+	if result.Error != nil {
+		s.status, s.err = statusError, result.Error
+		return s
+	}
 	s.result = result
 	return s
 }
