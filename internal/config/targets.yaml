@@ -659,6 +659,27 @@ categories:
       - "~/Library/Developer/Xcode/iOS Device Logs/*"
       - "~/Library/Developer/Xcode/watchOS Device Logs/*"
 
+  - id: clang-module-cache
+    name: Clang Module Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Precompiled Clang and Swift modules - rebuilt on next compile
+    paths:
+      - "$DARWIN_USER_CACHE_DIR/clang/ModuleCache/*"
+    blocked_by_processes:
+      - Xcode
+      - xcodebuild
+      - xctest
+      - XCTRunner
+      - XCBBuildService
+      - swift-frontend
+      - swiftc
+      - clang
+      - clangd
+      - sourcekit-lsp
+      - SourceKitService
+
   - id: pre-commit
     name: pre-commit Cache
     group: dev
