@@ -554,6 +554,7 @@ categories:
     method: trash
     note: Cached Poetry packages - re-downloaded when needed
     paths:
+      - "~/.cache/poetry/*"
       - "~/Library/Caches/pypoetry/*"
 
   - id: composer
@@ -563,6 +564,7 @@ categories:
     method: trash
     note: Cached PHP packages - re-downloaded when needed
     paths:
+      - "~/.composer/cache/*"
       - "~/Library/Caches/composer/*"
 
   - id: cargo
@@ -666,6 +668,7 @@ categories:
       - "~/.cache/typescript/*"
       - "~/.turbo/*"
       - "~/.vite/*"
+      - "~/.cache/vite/*"
       - "~/.parcel-cache/*"
       - "~/.cache/eslint/*"
       - "~/.cache/prettier/*"
@@ -727,6 +730,7 @@ categories:
     note: Swift Package Manager cache - re-downloaded when needed
     paths:
       - "~/.cache/org.swift.swiftpm/*"
+      - "~/.cache/swift-package-manager/*"
 
   - id: android-studio
     name: Android Studio Cache
@@ -803,6 +807,7 @@ categories:
     note: Node.js native addon build cache - regenerated on install
     paths:
       - "~/.node-gyp/*"
+      - "~/.cache/node-gyp/*"
 
   - id: electron-cache
     name: Electron Cache
@@ -812,6 +817,7 @@ categories:
     note: Electron framework download cache - re-downloaded when needed
     paths:
       - "~/.electron/*"
+      - "~/.cache/electron/*"
 
   - id: webpack
     name: Webpack Cache
