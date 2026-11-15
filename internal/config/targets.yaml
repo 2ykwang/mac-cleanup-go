@@ -106,6 +106,25 @@ categories:
     paths:
       - "~/Library/IdentityCaches/*"
 
+  - id: macos-service-caches
+    name: macOS Service Caches
+    group: system
+    safety: moderate
+    method: trash
+    note: Caches of built-in services such as media analysis, App Store and Memoji - rebuilt in the background
+    paths:
+      - "~/Library/Containers/com.apple.mediaanalysisd/Data/Library/Caches/*"
+      - "~/Library/Containers/com.apple.mediaanalysisd/Data/tmp/*"
+      - "~/Library/Containers/com.apple.AppStore/Data/Library/Caches/*"
+      - "~/Library/Containers/com.apple.geod/Data/tmp/*"
+      - "~/Library/Containers/com.apple.stocks/Data/Library/Caches/*"
+      - "~/Library/Containers/com.apple.AvatarUI.AvatarPickerMemojiPicker/Data/Library/Caches/*"
+      - "~/Library/Containers/com.apple.AMPArtworkAgent/Data/Library/Caches/*"
+      - "~/Library/Containers/com.apple.CoreDevice.CoreDeviceService/Data/Library/Caches/*"
+      - "~/Library/Containers/com.apple.NeptuneOneExtension/Data/Library/Caches/*"
+      - "~/Library/Containers/com.apple.AppleMediaServicesUI.UtilityExtension/Data/tmp/*"
+      - "~/Library/Containers/com.apple.configurator.xpc.InternetService/Data/tmp/*"
+
   - id: macos-installer
     name: macOS Installer Files
     group: storage
