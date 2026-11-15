@@ -50,7 +50,7 @@ Tip: Use Enter to preview, then y to proceed with deletion. Press ? to see key b
 
 ![demo](assets/demo.gif)
 
-- Update: `brew upgrade mac-cleanup-go` or `mac-cleanup --update`.
+- Update: `brew upgrade mac-cleanup-go` or `mac-cleanup update`.
 - Uninstall: `brew uninstall mac-cleanup-go`.
 - Debug: `mac-cleanup --debug` saves log to `~/.config/mac-cleanup-go/debug.log`.
 
@@ -84,13 +84,21 @@ Confirm view:
 
 ## CLI mode
 
-Configure targets and clean from the command line.
+Scan and clean without the TUI. Every command takes target IDs; `--json` gives machine-readable output.
 
 ```bash
-mac-cleanup --select                   # Configure cleanup targets
-mac-cleanup --clean --dry-run          # Preview cleanup report
-mac-cleanup --clean                    # Execute cleanup
+mac-cleanup scan                            # Sizes per target (read-only)
+mac-cleanup scan system-cache --items       # Largest items in one target
+mac-cleanup clean npm go-build --dry-run    # Preview exactly what will be cleaned
+mac-cleanup clean npm go-build              # Clean (asks to confirm; --yes skips)
 ```
+
+- `mac-cleanup targets` lists every target ID without scanning.
+- `mac-cleanup select` saves targets for `mac-cleanup clean --selected`.
+- Risky targets are only cleaned item by item with `--item <path>`.
+- Targets with a side effect (`homebrew` runs `brew cleanup`) are cleaned whole; `--item` is rejected for them.
+- Exit codes: `0` ok, `1` error, `2` usage error or confirmation needed, `3` some items failed.
+- Run `mac-cleanup help <command>` for all flags.
 
 For command-line cleanup, see the examples below.
 
@@ -100,7 +108,7 @@ For command-line cleanup, see the examples below.
 **1) Select targets**
 
 ```
-$ mac-cleanup --select
+$ mac-cleanup select
 
 Select cleanup targets                  ● safe  ○ moderate
 ─────────────────────────────────────────────────────────
@@ -120,7 +128,7 @@ Selected: 5
 **2) Preview / Clean**
 
 ```
-$ mac-cleanup --clean --dry-run
+$ mac-cleanup clean --selected --dry-run
 
 Dry Run Report
 --------------
@@ -141,6 +149,35 @@ OK      System Logs              67    259.7 MB
 ```
 
 </details>
+
+## Use with AI agents
+
+mac-cleanup ships an [Agent Skill](https://agentskills.io) that teaches coding agents (Claude Code, Codex, Copilot, ...) the scan → preview → approve → clean workflow. Agents can read it with `mac-cleanup skill` without installing it.
+
+To install the latest skill from the repository:
+
+```bash
+npx skills add https://github.com/2ykwang/mac-cleanup-go/tree/main/internal/cli/skills/mac-cleanup --skill mac-cleanup -g
+```
+
+Or save the copy bundled with your installed version:
+
+```bash
+mkdir -p ~/.claude/skills/mac-cleanup
+mac-cleanup skill > ~/.claude/skills/mac-cleanup/SKILL.md
+```
+
+Agents use `--json` output and never clean without `--yes`, which the skill only allows after you approve a dry run.
+
+Try prompts like:
+
+> Find what's using disk space in my development caches. Show me the largest cleanup candidates and what each one contains.
+
+> Clean my npm and Go build caches.
+
+> Find and clean up caches on my Mac.
+
+Installing the skill makes it available to compatible agents. Otherwise, mention `mac-cleanup` and ask the agent to read `mac-cleanup skill`.
 
 ## How it works & safety
 
