@@ -88,6 +88,11 @@ func (s *BrewTarget) Scan() (*types.ScanResult, error) {
 	return result, nil
 }
 
+// CleanSideEffect describes what Clean does outside the scanned cache.
+func (s *BrewTarget) CleanSideEffect() string {
+	return "runs `brew cleanup --prune=all -s`, which also removes old versions of installed formulae"
+}
+
 func (s *BrewTarget) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
 	result := types.NewCleanResult(s.category)
 
