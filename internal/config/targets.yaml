@@ -106,6 +106,25 @@ categories:
     paths:
       - "~/Library/IdentityCaches/*"
 
+  - id: macos-service-caches
+    name: macOS Service Caches
+    group: system
+    safety: moderate
+    method: trash
+    note: Caches of built-in services such as media analysis, App Store and Memoji - rebuilt in the background
+    paths:
+      - "~/Library/Containers/com.apple.mediaanalysisd/Data/Library/Caches/*"
+      - "~/Library/Containers/com.apple.mediaanalysisd/Data/tmp/*"
+      - "~/Library/Containers/com.apple.AppStore/Data/Library/Caches/*"
+      - "~/Library/Containers/com.apple.geod/Data/tmp/*"
+      - "~/Library/Containers/com.apple.stocks/Data/Library/Caches/*"
+      - "~/Library/Containers/com.apple.AvatarUI.AvatarPickerMemojiPicker/Data/Library/Caches/*"
+      - "~/Library/Containers/com.apple.AMPArtworkAgent/Data/Library/Caches/*"
+      - "~/Library/Containers/com.apple.CoreDevice.CoreDeviceService/Data/Library/Caches/*"
+      - "~/Library/Containers/com.apple.NeptuneOneExtension/Data/Library/Caches/*"
+      - "~/Library/Containers/com.apple.AppleMediaServicesUI.UtilityExtension/Data/tmp/*"
+      - "~/Library/Containers/com.apple.configurator.xpc.InternetService/Data/tmp/*"
+
   - id: macos-installer
     name: macOS Installer Files
     group: storage
@@ -116,7 +135,21 @@ categories:
       - "/Applications/Install macOS*.app"
       - "/macOS Install Data"
 
+  - id: device-firmware
+    name: Device Firmware Files
+    group: storage
+    safety: moderate
+    method: trash
+    note: Downloaded iPhone/iPad/iPod/Apple TV restore images - re-downloaded by Finder when needed
+    paths:
+      - "~/Library/iTunes/iPhone Software Updates/*.ipsw"
+      - "~/Library/iTunes/iPad Software Updates/*.ipsw"
+      - "~/Library/iTunes/iPod Software Updates/*.ipsw"
+      - "~/Library/iTunes/Apple TV Software Updates/*.ipsw"
+
   # ===== Browsers =====
+  # Chromium profile globs ("<root>/*/GPUCache/*") also match "<root>/GPUPersistentCache/GPUCache/*".
+  # Listing GPUPersistentCache as well would nest one item inside another.
   - id: browser-chrome
     name: Chrome Cache
     group: browser
@@ -124,9 +157,21 @@ categories:
     method: trash
     note: Web page cache and GPU cache - regenerated on browsing
     paths:
-      - "~/Library/Application Support/Google/Chrome/Default/Application Cache/*"
-      - "~/Library/Application Support/Google/Chrome/Default/GPUCache/*"
+      - "~/Library/Application Support/Google/Chrome/*/Application Cache/*"
+      - "~/Library/Application Support/Google/Chrome/*/Code Cache/*"
+      - "~/Library/Application Support/Google/Chrome/*/GPUCache/*"
+      - "~/Library/Application Support/Google/Chrome/*/DawnCache/*"
+      - "~/Library/Application Support/Google/Chrome/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Google/Chrome/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/Google/Chrome/*/GrShaderCache/*"
+      - "~/Library/Application Support/Google/Chrome/*/GraphiteDawnCache/*"
       - "~/Library/Application Support/Google/Chrome/Default/Service Worker/CacheStorage/*"
+      - "~/Library/Application Support/Google/Chrome/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Google/Chrome/GrShaderCache/*"
+      - "~/Library/Application Support/Google/Chrome/ShaderCache/*"
+      - "~/Library/Application Support/Google/Chrome/component_crx_cache/*"
+      - "~/Library/Application Support/Google/Chrome/extensions_crx_cache/*"
+      - "~/Library/Application Support/Google/Chrome/Crashpad/completed/*"
       - "~/Library/Caches/Google/Chrome/*"
 
   - id: browser-safari
@@ -145,6 +190,7 @@ categories:
     method: trash
     note: Firefox browsing cache - regenerated automatically
     paths:
+      - "~/Library/Application Support/Firefox/Profiles/*/cache2/*"
       - "~/Library/Caches/Firefox/*"
 
   - id: browser-arc
@@ -154,6 +200,20 @@ categories:
     method: trash
     note: Arc browser cache - regenerated automatically
     paths:
+      - "~/Library/Application Support/Arc/User Data/*/Application Cache/*"
+      - "~/Library/Application Support/Arc/User Data/*/Code Cache/*"
+      - "~/Library/Application Support/Arc/User Data/*/GPUCache/*"
+      - "~/Library/Application Support/Arc/User Data/*/DawnCache/*"
+      - "~/Library/Application Support/Arc/User Data/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Arc/User Data/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/Arc/User Data/*/GrShaderCache/*"
+      - "~/Library/Application Support/Arc/User Data/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Arc/User Data/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Arc/User Data/GrShaderCache/*"
+      - "~/Library/Application Support/Arc/User Data/ShaderCache/*"
+      - "~/Library/Application Support/Arc/User Data/component_crx_cache/*"
+      - "~/Library/Application Support/Arc/User Data/extensions_crx_cache/*"
+      - "~/Library/Application Support/Arc/User Data/Crashpad/completed/*"
       - "~/Library/Caches/Arc/*"
       - "~/Library/Caches/company.thebrowser.Browser/*"
 
@@ -175,8 +235,20 @@ categories:
     method: trash
     note: Brave browser cache - regenerated automatically
     paths:
-      - "~/Library/Application Support/BraveSoftware/Brave-Browser/Default/Application Cache/*"
-      - "~/Library/Application Support/BraveSoftware/Brave-Browser/Default/GPUCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/*/Application Cache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/*/Code Cache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/*/GPUCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/*/DawnCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/*/GrShaderCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/GraphiteDawnCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/GrShaderCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/ShaderCache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/component_crx_cache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/extensions_crx_cache/*"
+      - "~/Library/Application Support/BraveSoftware/Brave-Browser/Crashpad/completed/*"
       - "~/Library/Caches/BraveSoftware/*"
 
   - id: browser-edge
@@ -186,8 +258,20 @@ categories:
     method: trash
     note: Microsoft Edge cache - regenerated automatically
     paths:
-      - "~/Library/Application Support/Microsoft Edge/Default/Application Cache/*"
-      - "~/Library/Application Support/Microsoft Edge/Default/GPUCache/*"
+      - "~/Library/Application Support/Microsoft Edge/*/Application Cache/*"
+      - "~/Library/Application Support/Microsoft Edge/*/Code Cache/*"
+      - "~/Library/Application Support/Microsoft Edge/*/GPUCache/*"
+      - "~/Library/Application Support/Microsoft Edge/*/DawnCache/*"
+      - "~/Library/Application Support/Microsoft Edge/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Microsoft Edge/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/Microsoft Edge/*/GrShaderCache/*"
+      - "~/Library/Application Support/Microsoft Edge/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Microsoft Edge/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Microsoft Edge/GrShaderCache/*"
+      - "~/Library/Application Support/Microsoft Edge/ShaderCache/*"
+      - "~/Library/Application Support/Microsoft Edge/component_crx_cache/*"
+      - "~/Library/Application Support/Microsoft Edge/extensions_crx_cache/*"
+      - "~/Library/Application Support/Microsoft Edge/Crashpad/completed/*"
       - "~/Library/Caches/Microsoft Edge/*"
 
   - id: browser-opera
@@ -206,6 +290,20 @@ categories:
     method: trash
     note: Vivaldi browser cache - regenerated automatically
     paths:
+      - "~/Library/Application Support/Vivaldi/*/Application Cache/*"
+      - "~/Library/Application Support/Vivaldi/*/Code Cache/*"
+      - "~/Library/Application Support/Vivaldi/*/GPUCache/*"
+      - "~/Library/Application Support/Vivaldi/*/DawnCache/*"
+      - "~/Library/Application Support/Vivaldi/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Vivaldi/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/Vivaldi/*/GrShaderCache/*"
+      - "~/Library/Application Support/Vivaldi/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Vivaldi/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Vivaldi/GrShaderCache/*"
+      - "~/Library/Application Support/Vivaldi/ShaderCache/*"
+      - "~/Library/Application Support/Vivaldi/component_crx_cache/*"
+      - "~/Library/Application Support/Vivaldi/extensions_crx_cache/*"
+      - "~/Library/Application Support/Vivaldi/Crashpad/completed/*"
       - "~/Library/Caches/com.vivaldi.Vivaldi/*"
 
   - id: browser-zen
@@ -216,6 +314,121 @@ categories:
     note: Zen browser cache - regenerated automatically
     paths:
       - "~/Library/Caches/zen/*"
+
+  - id: browser-dia
+    name: Dia Cache
+    group: browser
+    safety: safe
+    method: trash
+    note: Dia browser cache - regenerated automatically
+    paths:
+      - "~/Library/Application Support/Dia/User Data/*/Application Cache/*"
+      - "~/Library/Application Support/Dia/User Data/*/Code Cache/*"
+      - "~/Library/Application Support/Dia/User Data/*/GPUCache/*"
+      - "~/Library/Application Support/Dia/User Data/*/DawnCache/*"
+      - "~/Library/Application Support/Dia/User Data/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Dia/User Data/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/Dia/User Data/*/GrShaderCache/*"
+      - "~/Library/Application Support/Dia/User Data/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Dia/User Data/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Dia/User Data/GrShaderCache/*"
+      - "~/Library/Application Support/Dia/User Data/ShaderCache/*"
+      - "~/Library/Application Support/Dia/User Data/component_crx_cache/*"
+      - "~/Library/Application Support/Dia/User Data/extensions_crx_cache/*"
+      - "~/Library/Application Support/Dia/User Data/Crashpad/completed/*"
+      - "~/Library/Caches/Dia/*"
+      - "~/Library/Caches/company.thebrowser.dia/*"
+
+  - id: browser-helium
+    name: Helium Cache
+    group: browser
+    safety: safe
+    method: trash
+    note: Helium browser cache - regenerated automatically
+    paths:
+      - "~/Library/Application Support/net.imput.helium/*/Application Cache/*"
+      - "~/Library/Application Support/net.imput.helium/*/Code Cache/*"
+      - "~/Library/Application Support/net.imput.helium/*/GPUCache/*"
+      - "~/Library/Application Support/net.imput.helium/*/DawnCache/*"
+      - "~/Library/Application Support/net.imput.helium/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/net.imput.helium/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/net.imput.helium/*/GrShaderCache/*"
+      - "~/Library/Application Support/net.imput.helium/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/net.imput.helium/GraphiteDawnCache/*"
+      - "~/Library/Application Support/net.imput.helium/GrShaderCache/*"
+      - "~/Library/Application Support/net.imput.helium/ShaderCache/*"
+      - "~/Library/Application Support/net.imput.helium/component_crx_cache/*"
+      - "~/Library/Application Support/net.imput.helium/extensions_crx_cache/*"
+      - "~/Library/Application Support/net.imput.helium/Crashpad/completed/*"
+      - "~/Library/Caches/net.imput.helium/*"
+
+  - id: browser-yandex
+    name: Yandex Browser Cache
+    group: browser
+    safety: safe
+    method: trash
+    note: Yandex Browser cache - regenerated automatically
+    paths:
+      - "~/Library/Application Support/Yandex/YandexBrowser/*/Application Cache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/*/Code Cache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/*/GPUCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/*/DawnCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/*/GrShaderCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/GrShaderCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/ShaderCache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/component_crx_cache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/extensions_crx_cache/*"
+      - "~/Library/Application Support/Yandex/YandexBrowser/Crashpad/completed/*"
+
+  - id: browser-qq
+    name: QQ Browser Cache
+    group: browser
+    safety: safe
+    method: trash
+    note: QQ Browser cache - regenerated automatically
+    paths:
+      - "~/Library/Application Support/QQBrowser3/*/Application Cache/*"
+      - "~/Library/Application Support/QQBrowser3/*/Code Cache/*"
+      - "~/Library/Application Support/QQBrowser3/*/GPUCache/*"
+      - "~/Library/Application Support/QQBrowser3/*/DawnCache/*"
+      - "~/Library/Application Support/QQBrowser3/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/QQBrowser3/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/QQBrowser3/*/GrShaderCache/*"
+      - "~/Library/Application Support/QQBrowser3/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/QQBrowser3/GraphiteDawnCache/*"
+      - "~/Library/Application Support/QQBrowser3/GrShaderCache/*"
+      - "~/Library/Application Support/QQBrowser3/ShaderCache/*"
+      - "~/Library/Application Support/QQBrowser3/component_crx_cache/*"
+      - "~/Library/Application Support/QQBrowser3/extensions_crx_cache/*"
+      - "~/Library/Application Support/QQBrowser3/Crashpad/completed/*"
+      - "~/Library/Caches/com.tencent.QQBrowser3/*"
+
+  - id: browser-browseros
+    name: BrowserOS Cache
+    group: browser
+    safety: safe
+    method: trash
+    note: BrowserOS cache - regenerated automatically
+    paths:
+      - "~/Library/Application Support/BrowserOS/*/Application Cache/*"
+      - "~/Library/Application Support/BrowserOS/*/Code Cache/*"
+      - "~/Library/Application Support/BrowserOS/*/GPUCache/*"
+      - "~/Library/Application Support/BrowserOS/*/DawnCache/*"
+      - "~/Library/Application Support/BrowserOS/*/DawnGraphiteCache/*"
+      - "~/Library/Application Support/BrowserOS/*/DawnWebGPUCache/*"
+      - "~/Library/Application Support/BrowserOS/*/GrShaderCache/*"
+      - "~/Library/Application Support/BrowserOS/*/GraphiteDawnCache/*"
+      - "~/Library/Application Support/BrowserOS/GraphiteDawnCache/*"
+      - "~/Library/Application Support/BrowserOS/GrShaderCache/*"
+      - "~/Library/Application Support/BrowserOS/ShaderCache/*"
+      - "~/Library/Application Support/BrowserOS/component_crx_cache/*"
+      - "~/Library/Application Support/BrowserOS/extensions_crx_cache/*"
+      - "~/Library/Application Support/BrowserOS/Crashpad/completed/*"
+      - "~/Library/Caches/BrowserOS/*"
 
   # ===== Development =====
   - id: xcode-derived
@@ -372,6 +585,7 @@ categories:
     method: trash
     note: Cached Poetry packages - re-downloaded when needed
     paths:
+      - "~/.cache/poetry/*"
       - "~/Library/Caches/pypoetry/*"
 
   - id: composer
@@ -381,6 +595,7 @@ categories:
     method: trash
     note: Cached PHP packages - re-downloaded when needed
     paths:
+      - "~/.composer/cache/*"
       - "~/Library/Caches/composer/*"
 
   - id: cargo
@@ -484,6 +699,7 @@ categories:
       - "~/.cache/typescript/*"
       - "~/.turbo/*"
       - "~/.vite/*"
+      - "~/.cache/vite/*"
       - "~/.parcel-cache/*"
       - "~/.cache/eslint/*"
       - "~/.cache/prettier/*"
@@ -545,6 +761,7 @@ categories:
     note: Swift Package Manager cache - re-downloaded when needed
     paths:
       - "~/.cache/org.swift.swiftpm/*"
+      - "~/.cache/swift-package-manager/*"
 
   - id: android-studio
     name: Android Studio Cache
@@ -621,6 +838,7 @@ categories:
     note: Node.js native addon build cache - regenerated on install
     paths:
       - "~/.node-gyp/*"
+      - "~/.cache/node-gyp/*"
 
   - id: electron-cache
     name: Electron Cache
@@ -630,6 +848,7 @@ categories:
     note: Electron framework download cache - re-downloaded when needed
     paths:
       - "~/.electron/*"
+      - "~/.cache/electron/*"
 
   - id: webpack
     name: Webpack Cache
@@ -658,6 +877,46 @@ categories:
     paths:
       - "~/Library/Developer/Xcode/iOS Device Logs/*"
       - "~/Library/Developer/Xcode/watchOS Device Logs/*"
+
+  - id: xcode-test-caches
+    name: Xcode Test & IB Caches
+    group: dev
+    safety: safe
+    method: trash
+    note: Parallel test device clones, Interface Builder cache and simulator temp files - regenerated by Xcode
+    paths:
+      - "~/Library/Developer/XCTestDevices/*"
+      - "~/Library/Developer/Xcode/UserData/IB Support/*"
+      - "~/Library/Developer/CoreSimulator/Devices/*/data/tmp/*"
+    blocked_by_processes:
+      - Xcode
+      - Simulator
+      - xcodebuild
+      - xctest
+      - XCTRunner
+      - simctl
+      - launchd_sim
+
+  - id: clang-module-cache
+    name: Clang Module Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Precompiled Clang and Swift modules - rebuilt on next compile
+    paths:
+      - "$DARWIN_USER_CACHE_DIR/clang/ModuleCache/*"
+    blocked_by_processes:
+      - Xcode
+      - xcodebuild
+      - xctest
+      - XCTRunner
+      - XCBBuildService
+      - swift-frontend
+      - swiftc
+      - clang
+      - clangd
+      - sourcekit-lsp
+      - SourceKitService
 
   - id: pre-commit
     name: pre-commit Cache
@@ -783,6 +1042,24 @@ categories:
     paths:
       - "~/.cache/opencode/*"
 
+  - id: claude-code-versions
+    name: Claude Code Old Versions
+    group: dev
+    safety: safe
+    method: builtin
+    note: Superseded Claude Code CLI binaries - keeps the active version, the one before it and any still running
+    paths:
+      - "~/.local/share/claude/versions/*"
+
+  - id: codex-daemon-releases
+    name: Codex Old Daemon Releases
+    group: dev
+    safety: safe
+    method: builtin
+    note: Superseded Codex app-server releases - keeps the active and pending releases and any still running
+    paths:
+      - "~/.codex/packages/app-server-daemon/releases/*"
+
   - id: kaku
     name: Kaku Cache
     group: dev
@@ -791,6 +1068,69 @@ categories:
     note: Kaku tool cache
     paths:
       - "~/.cache/kaku/*"
+
+  - id: pyinstaller
+    name: PyInstaller Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: PyInstaller binary cache - rebuilt on next build
+    paths:
+      - "~/Library/Application Support/pyinstaller/bincache*"
+
+  - id: corepack
+    name: Corepack Cache
+    group: dev
+    safety: moderate
+    method: trash
+    note: Package manager binaries fetched by Corepack - re-downloaded on next use
+    paths:
+      - "~/.cache/node/corepack/*"
+
+  - id: rbenv-cache
+    name: rbenv Download Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Ruby source archives kept by ruby-build - re-downloaded when needed
+    paths:
+      - "~/.rbenv/cache/*"
+
+  - id: cpan
+    name: CPAN Build Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Perl module build directories - rebuilt on next install
+    paths:
+      - "~/.cpan/build/*"
+
+  - id: hex
+    name: Hex Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Elixir Hex package cache - re-downloaded when needed
+    paths:
+      - "~/.hex/cache/*"
+
+  - id: vagrant-tmp
+    name: Vagrant Temp Files
+    group: dev
+    safety: safe
+    method: trash
+    note: Vagrant temporary files left after box and plugin operations
+    paths:
+      - "~/.vagrant.d/tmp/*"
+
+  - id: podman-tmp
+    name: Podman Storage Temp
+    group: dev
+    safety: safe
+    method: trash
+    note: Leftover container storage temp files
+    paths:
+      - "~/.local/share/containers/storage/tmp/*"
 
   - id: curl-cache
     name: curl Cache
@@ -829,6 +1169,7 @@ categories:
     paths:
       - "~/Library/Application Support/Steam/appcache/*"
       - "~/Library/Application Support/Steam/depotcache/*"
+      - "~/Library/Application Support/Steam/htmlcache/*"
       - "~/Library/Application Support/Steam/logs/*"
       - "~/Library/Application Support/Steam/steamapps/shadercache/*"
       - "~/Library/Application Support/Steam/steamapps/temp/*"
@@ -880,6 +1221,7 @@ categories:
       - "~/Library/Application Support/Microsoft/Teams/gpucache/*"
       - "~/Library/Application Support/Microsoft/Teams/IndexedDB/*"
       - "~/Library/Application Support/Microsoft/Teams/Local Storage/*"
+      - "~/Library/Application Support/Microsoft/Teams/logs/*"
       - "~/Library/Application Support/Microsoft/Teams/tmp/*"
 
   - id: teams-new
@@ -939,6 +1281,7 @@ categories:
       - "~/Library/Application Support/Code/CachedExtensions/*"
       - "~/Library/Application Support/Code/CachedExtensionVSIXs/*"
       - "~/Library/Application Support/Code/Code Cache/*"
+      - "~/Library/Application Support/Code/WebStorage/*/CacheStorage/*"
       - "~/Library/Application Support/Code/logs/*"
 
   - id: cursor
@@ -950,6 +1293,7 @@ categories:
     paths:
       - "~/Library/Application Support/Cursor/Cache/*"
       - "~/Library/Application Support/Cursor/CachedData/*"
+      - "~/Library/Application Support/Cursor/CachedExtensionVSIXs/*"
       - "~/Library/Application Support/Cursor/Code Cache/*"
       - "~/Library/Application Support/Cursor/logs/*"
 
@@ -1035,6 +1379,7 @@ categories:
     paths:
       - "~/Library/Application Support/minecraft/logs/*"
       - "~/Library/Application Support/minecraft/crash-reports/*"
+      - "~/Library/Application Support/minecraft/webcache/*"
       - "~/Library/Application Support/minecraft/webcache2/*"
 
   - id: linear
@@ -1055,6 +1400,14 @@ categories:
     method: trash
     note: Claude desktop app and CLI cache
     paths:
+      - "~/Library/Application Support/Claude/Cache/*"
+      - "~/Library/Application Support/Claude/Code Cache/*"
+      - "~/Library/Application Support/Claude/GPUCache/*"
+      - "~/Library/Application Support/Claude/DawnGraphiteCache/*"
+      - "~/Library/Application Support/Claude/DawnWebGPUCache/*"
+      - "~/Library/Application Support/Claude/GPUPersistentCache/*"
+      - "~/Library/Application Support/Claude/GraphiteDawnCache/*"
+      - "~/Library/Application Support/Claude/sentry/*"
       - "~/Library/Caches/com.anthropic.claudefordesktop/*"
       - "~/Library/Caches/claude-cli-nodejs/*"
 
@@ -1282,6 +1635,7 @@ categories:
     method: trash
     note: Sketch design app cache - regenerated on use
     paths:
+      - "~/Library/Application Support/com.bohemiancoding.sketch3/cache/*"
       - "~/Library/Caches/com.bohemiancoding.sketch3/*"
 
   - id: final-cut
@@ -1500,6 +1854,10 @@ categories:
     note: Apple Podcasts streaming and artwork cache - regenerated on use
     paths:
       - "~/Library/Caches/com.apple.podcasts/*"
+      - "~/Library/Containers/com.apple.podcasts/Data/tmp/StreamedMedia/*"
+      - "~/Library/Containers/com.apple.podcasts/Data/tmp/*.heic"
+      - "~/Library/Containers/com.apple.podcasts/Data/tmp/*.img"
+      - "~/Library/Containers/com.apple.podcasts/Data/tmp/*CFNetworkDownload*.tmp"
 
   - id: apple-tv
     name: Apple TV Cache
@@ -1553,6 +1911,7 @@ categories:
     method: trash
     note: Legcord Discord client cache - regenerated on use
     paths:
+      - "~/Library/Application Support/legcord/Cache/*"
       - "~/Library/Caches/legcord/*"
 
   - id: sublime-text
@@ -1643,7 +2002,171 @@ categories:
     method: trash
     note: Lunar Client Minecraft launcher cache - regenerated on use
     paths:
+      - "~/.lunarclient/game-cache/*"
+      - "~/.lunarclient/launcher-cache/*"
+      - "~/.lunarclient/logs/*"
+      - "~/.lunarclient/offline/*/logs/*"
+      - "~/.lunarclient/offline/files/*/logs/*"
       - "~/Library/Caches/com.moonsworth.*/*"
+
+  - id: zed-cache
+    name: Zed Node Cache
+    group: app
+    safety: safe
+    method: trash
+    note: npm cache Zed uses to install language servers - re-downloaded when needed
+    paths:
+      - "~/Library/Application Support/Zed/node/cache/*"
+
+  - id: microsoft-office
+    name: Microsoft Office Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Word and Excel container caches and logs - documents are not touched
+    paths:
+      - "~/Library/Containers/com.microsoft.Word/Data/Library/Caches/*"
+      - "~/Library/Containers/com.microsoft.Word/Data/Library/Logs/*"
+      - "~/Library/Containers/com.microsoft.Excel/Data/Library/Caches/*"
+      - "~/Library/Containers/com.microsoft.Excel/Data/Library/Logs/*"
+
+  - id: utm
+    name: UTM Cache
+    group: app
+    safety: safe
+    method: trash
+    note: UTM sandbox cache and temp files - virtual machines are not touched
+    paths:
+      - "~/Library/Containers/com.utmapp.UTM/Data/Library/Caches/*"
+      - "~/Library/Containers/com.utmapp.UTM/Data/tmp/*"
+    blocked_by_processes:
+      - UTM
+
+  - id: vesktop
+    name: Vesktop Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Vesktop Discord client cache - regenerated on use
+    paths:
+      - "~/Library/Application Support/vesktop/sessionData/Cache/*"
+      - "~/Library/Application Support/vesktop/sessionData/Code Cache/*"
+
+  - id: mihomo-party
+    name: Mihomo Party Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Mihomo Party app cache and logs - regenerated on use
+    paths:
+      - "~/Library/Application Support/mihomo-party/Cache/*"
+      - "~/Library/Application Support/mihomo-party/Code Cache/*"
+      - "~/Library/Application Support/mihomo-party/GPUCache/*"
+      - "~/Library/Application Support/mihomo-party/DawnGraphiteCache/*"
+      - "~/Library/Application Support/mihomo-party/DawnWebGPUCache/*"
+      - "~/Library/Application Support/mihomo-party/logs/*"
+
+  - id: codebuddy
+    name: CodeBuddy Cache
+    group: app
+    safety: safe
+    method: trash
+    note: CodeBuddy IDE cache and logs - regenerated on use
+    paths:
+      - "~/Library/Application Support/CodeBuddy CN/Cache/*"
+      - "~/Library/Application Support/CodeBuddy CN/CachedData/*"
+      - "~/Library/Application Support/CodeBuddy CN/CachedExtensionVSIXs/*"
+      - "~/Library/Application Support/CodeBuddy CN/Code Cache/*"
+      - "~/Library/Application Support/CodeBuddy CN/GPUCache/*"
+      - "~/Library/Application Support/CodeBuddy CN/DawnGraphiteCache/*"
+      - "~/Library/Application Support/CodeBuddy CN/DawnWebGPUCache/*"
+      - "~/Library/Application Support/CodeBuddy CN/logs/*"
+
+  - id: spacedrive
+    name: Spacedrive Thumbnails
+    group: app
+    safety: safe
+    method: trash
+    note: Generated file thumbnails - regenerated when browsing
+    paths:
+      - "~/Library/Application Support/spacedrive/thumbnails/*"
+
+  - id: netnewswire
+    name: NetNewsWire Cache
+    group: app
+    safety: safe
+    method: trash
+    note: NetNewsWire feed reader cache - regenerated on use
+    paths:
+      - "~/Library/Containers/com.ranchero.NetNewsWire-Evergreen/Data/Library/Caches/*"
+
+  - id: mindnode
+    name: MindNode Cache
+    group: app
+    safety: safe
+    method: trash
+    note: MindNode app cache - documents are not touched
+    paths:
+      - "~/Library/Containers/com.ideasoncanvas.mindnode/Data/Library/Caches/*"
+
+  - id: folo
+    name: Folo Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Folo feed reader web cache - regenerated on use
+    paths:
+      - "~/Library/Containers/is.follow/Data/Library/Application Support/Folo/Cache/Cache_Data/*"
+
+  - id: wondershare-installer
+    name: Wondershare Installer Files
+    group: app
+    safety: moderate
+    method: trash
+    note: Downloaded Wondershare installer payloads - installed apps are not touched
+    paths:
+      - "~/Library/Application Support/com.wondershare.Installer/*"
+
+  - id: dingtalk
+    name: DingTalk Logs
+    group: app
+    safety: safe
+    method: trash
+    note: DingTalk diagnostic logs - chats and files are not touched
+    paths:
+      - "~/Library/Application Support/iDingTalk/log/*"
+      - "~/Library/Application Support/iDingTalk/holmeslogs/*"
+
+  - id: quark
+    name: Quark Video Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Quark browser video cache - regenerated on playback
+    paths:
+      - "~/Library/Application Support/Quark/Cache/videoCache/*"
+
+  - id: qq-music
+    name: QQ Music Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Streaming cache, logs and temp files - offline downloads are not touched
+    paths:
+      - "~/Library/Containers/com.tencent.QQMusicMac/Data/Library/Caches/*"
+      - "~/Library/Containers/com.tencent.QQMusicMac/Data/Library/Application Support/QQMusicMac/iRRCache/*"
+      - "~/Library/Containers/com.tencent.QQMusicMac/Data/Library/Application Support/QQMusicMac/iLog/*"
+      - "~/Library/Containers/com.tencent.QQMusicMac/Data/Library/Application Support/QQMusicMac/iCache/*"
+      - "~/Library/Containers/com.tencent.QQMusicMac/Data/Library/Application Support/QQMusicMac/iTemp/*"
+
+  - id: senplayer
+    name: SenPlayer Video Cache
+    group: app
+    safety: safe
+    method: trash
+    note: SenPlayer streaming video cache - regenerated on playback
+    paths:
+      - "~/Library/Containers/com.wuziqi.SenPlayer/Data/tmp/videoCache/*"
 
   # ===== Storage (Risky) =====
   - id: ios-backups

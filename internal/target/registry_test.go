@@ -82,6 +82,25 @@ func TestIsBuiltinID_RegisteredBuiltin_ReturnsTrue(t *testing.T) {
 	assert.True(t, IsBuiltinID("old-downloads"))
 }
 
+func TestDefaultRegistry_OldReleaseCategories_UseOldReleaseTarget(t *testing.T) {
+	cfg := &types.Config{
+		Categories: []types.Category{
+			{ID: "claude-code-versions", Method: types.MethodBuiltin, Safety: types.SafetyLevelSafe, Paths: []string{"/tmp/claude/versions/*"}},
+			{ID: "codex-daemon-releases", Method: types.MethodBuiltin, Safety: types.SafetyLevelSafe, Paths: []string{"/tmp/codex/releases/*"}},
+		},
+	}
+
+	registry, err := DefaultRegistry(cfg)
+
+	require.NoError(t, err)
+	for _, id := range []string{"claude-code-versions", "codex-daemon-releases"} {
+		target, ok := registry.Get(id)
+		require.True(t, ok, id)
+		_, isOldRelease := target.(*OldReleaseTarget)
+		assert.True(t, isOldRelease, id)
+	}
+}
+
 func TestIsBuiltinID_UnregisteredID_ReturnsFalse(t *testing.T) {
 	assert.False(t, IsBuiltinID("unknown"))
 	assert.False(t, IsBuiltinID("custom-category"))

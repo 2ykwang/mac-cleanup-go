@@ -13,11 +13,13 @@ type BuiltinFactory func(cat types.Category, categories []types.Category) Target
 // builtinIDs is the static set of known builtin target IDs.
 // Used for config validation independent of factory registration.
 var builtinIDs = map[string]struct{}{
-	"homebrew":      {},
-	"docker":        {},
-	"old-downloads": {},
-	"system-cache":  {},
-	"project-cache": {},
+	"homebrew":              {},
+	"docker":                {},
+	"old-downloads":         {},
+	"system-cache":          {},
+	"project-cache":         {},
+	"claude-code-versions":  {},
+	"codex-daemon-releases": {},
 }
 
 var builtinFactories = map[string]BuiltinFactory{}
@@ -49,6 +51,12 @@ func registerAllBuiltins() {
 	})
 	RegisterBuiltin("project-cache", func(cat types.Category, _ []types.Category) Target {
 		return NewProjectCacheTarget(cat)
+	})
+	RegisterBuiltin("claude-code-versions", func(cat types.Category, _ []types.Category) Target {
+		return NewOldReleaseTarget(cat, claudeCodeReleasePolicy)
+	})
+	RegisterBuiltin("codex-daemon-releases", func(cat types.Category, _ []types.Category) Target {
+		return NewOldReleaseTarget(cat, codexDaemonReleasePolicy)
 	})
 }
 

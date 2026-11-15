@@ -35,6 +35,28 @@ func DefaultWorkers() int {
 	return workers
 }
 
+// darwinUserCacheDirPrefix stands for the per-user cache root reported by
+// `getconf DARWIN_USER_CACHE_DIR` (/var/folders/<a>/<b>/C).
+const darwinUserCacheDirPrefix = "$DARWIN_USER_CACHE_DIR/"
+
+// darwinUserCacheDir runs getconf once per process. On failure, paths that use
+// the prefix stay unexpanded so their globs match nothing.
+var darwinUserCacheDir = sync.OnceValues(lookupDarwinUserCacheDir)
+
+func lookupDarwinUserCacheDir() (string, error) {
+	out, err := execCommand("getconf", "DARWIN_USER_CACHE_DIR").Output()
+	if err != nil {
+		logger.Warn("darwin user cache dir lookup failed", "error", err)
+		return "", fmt.Errorf("getconf DARWIN_USER_CACHE_DIR: %w", err)
+	}
+	dir := strings.TrimSpace(string(out))
+	if !filepath.IsAbs(dir) {
+		logger.Warn("darwin user cache dir lookup returned non-absolute path", "output", dir)
+		return "", fmt.Errorf("getconf DARWIN_USER_CACHE_DIR: unexpected output %q", dir)
+	}
+	return dir, nil
+}
+
 func ExpandPath(path string) string {
 	if strings.HasPrefix(path, "~/") {
 		home, err := osUserHomeDir()
@@ -42,6 +64,13 @@ func ExpandPath(path string) string {
 			return path
 		}
 		return filepath.Join(home, path[2:])
+	}
+	if strings.HasPrefix(path, darwinUserCacheDirPrefix) {
+		dir, err := darwinUserCacheDir()
+		if err != nil {
+			return path
+		}
+		return filepath.Join(dir, path[len(darwinUserCacheDirPrefix):])
 	}
 	return path
 }
