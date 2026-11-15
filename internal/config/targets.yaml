@@ -159,6 +159,7 @@ categories:
     method: trash
     note: Firefox browsing cache - regenerated automatically
     paths:
+      - "~/Library/Application Support/Firefox/Profiles/*/cache2/*"
       - "~/Library/Caches/Firefox/*"
 
   - id: browser-arc
