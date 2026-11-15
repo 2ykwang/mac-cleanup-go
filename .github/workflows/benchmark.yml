@@ -28,7 +28,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Install benchstat
-        run: go install golang.org/x/perf/cmd/benchstat@latest
+        run: go install golang.org/x/perf/cmd/benchstat@v0.0.0-20260813145340-fd4a688df892
 
       - name: Run benchmarks
         run: |
