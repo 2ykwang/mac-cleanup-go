@@ -135,6 +135,18 @@ categories:
       - "/Applications/Install macOS*.app"
       - "/macOS Install Data"
 
+  - id: device-firmware
+    name: Device Firmware Files
+    group: storage
+    safety: moderate
+    method: trash
+    note: Downloaded iPhone/iPad/iPod/Apple TV restore images - re-downloaded by Finder when needed
+    paths:
+      - "~/Library/iTunes/iPhone Software Updates/*.ipsw"
+      - "~/Library/iTunes/iPad Software Updates/*.ipsw"
+      - "~/Library/iTunes/iPod Software Updates/*.ipsw"
+      - "~/Library/iTunes/Apple TV Software Updates/*.ipsw"
+
   # ===== Browsers =====
   # Chromium profile globs ("<root>/*/GPUCache/*") also match "<root>/GPUPersistentCache/GPUCache/*".
   # Listing GPUPersistentCache as well would nest one item inside another.
