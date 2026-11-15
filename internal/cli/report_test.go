@@ -19,7 +19,7 @@ func TestFormatReport_DryRunNoItems(t *testing.T) {
 		Duration:   50 * time.Millisecond,
 	}
 
-	output := FormatReport(report, true, styles.New(true))
+	output := FormatReport(report, true, styles.New(true), true)
 
 	assert.Contains(t, output, "Dry Run Report")
 	assert.Contains(t, output, "Summary")
@@ -49,7 +49,7 @@ func TestFormatReport_IncludesGroups(t *testing.T) {
 		},
 	}
 
-	output := FormatReport(report, false, styles.New(true))
+	output := FormatReport(report, false, styles.New(true), true)
 
 	assert.Contains(t, output, "Cleanup Report")
 	assert.Contains(t, output, "Summary")
@@ -59,4 +59,17 @@ func TestFormatReport_IncludesGroups(t *testing.T) {
 	assert.Contains(t, output, "Recovered")
 	assert.True(t, strings.Contains(output, "Cache") || strings.Contains(output, "Logs"))
 	assert.Contains(t, output, "failed to remove")
+}
+
+func TestFormatReport_NoColor_HasNoEscapes(t *testing.T) {
+	report := &types.Report{
+		FreedSpace:   1024,
+		CleanedItems: 1,
+		Results:      []types.CleanResult{{Category: types.Category{Name: "Cache"}, CleanedItems: 1, FreedSpace: 1024}},
+	}
+
+	output := FormatReport(report, false, styles.New(true), false)
+
+	assert.Contains(t, output, "Cleanup Report")
+	assert.NotContains(t, output, "\x1b[")
 }

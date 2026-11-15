@@ -107,7 +107,7 @@ func (m *Model) listHeader(showSummary bool) string {
 
 	// Update available notification
 	if m.updateAvailable && m.latestVersion != "" {
-		updateMsg := fmt.Sprintf("[↑] Update available: %s → %s (run with --update)",
+		updateMsg := fmt.Sprintf("[↑] Update available: %s → %s (run: mac-cleanup update)",
 			m.currentVersion, m.latestVersion)
 		b.WriteString(m.styles.SuccessStyle.Render(updateMsg))
 		b.WriteString("\n")

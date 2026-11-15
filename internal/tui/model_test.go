@@ -188,7 +188,7 @@ func TestViewList_ShowsUpdateNotification(t *testing.T) {
 	assert.Contains(t, output, "Update available")
 	assert.Contains(t, output, "1.0.0")
 	assert.Contains(t, output, "1.2.0")
-	assert.Contains(t, output, "--update")
+	assert.Contains(t, output, "mac-cleanup update")
 }
 
 func TestViewList_HidesUpdateNotification_WhenNoUpdate(t *testing.T) {
