@@ -1978,6 +1978,165 @@ categories:
       - "~/.lunarclient/offline/files/*/logs/*"
       - "~/Library/Caches/com.moonsworth.*/*"
 
+  - id: zed-cache
+    name: Zed Node Cache
+    group: app
+    safety: safe
+    method: trash
+    note: npm cache Zed uses to install language servers - re-downloaded when needed
+    paths:
+      - "~/Library/Application Support/Zed/node/cache/*"
+
+  - id: microsoft-office
+    name: Microsoft Office Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Word and Excel container caches and logs - documents are not touched
+    paths:
+      - "~/Library/Containers/com.microsoft.Word/Data/Library/Caches/*"
+      - "~/Library/Containers/com.microsoft.Word/Data/Library/Logs/*"
+      - "~/Library/Containers/com.microsoft.Excel/Data/Library/Caches/*"
+      - "~/Library/Containers/com.microsoft.Excel/Data/Library/Logs/*"
+
+  - id: utm
+    name: UTM Cache
+    group: app
+    safety: safe
+    method: trash
+    note: UTM sandbox cache and temp files - virtual machines are not touched
+    paths:
+      - "~/Library/Containers/com.utmapp.UTM/Data/Library/Caches/*"
+      - "~/Library/Containers/com.utmapp.UTM/Data/tmp/*"
+    blocked_by_processes:
+      - UTM
+
+  - id: vesktop
+    name: Vesktop Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Vesktop Discord client cache - regenerated on use
+    paths:
+      - "~/Library/Application Support/vesktop/sessionData/Cache/*"
+      - "~/Library/Application Support/vesktop/sessionData/Code Cache/*"
+
+  - id: mihomo-party
+    name: Mihomo Party Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Mihomo Party app cache and logs - regenerated on use
+    paths:
+      - "~/Library/Application Support/mihomo-party/Cache/*"
+      - "~/Library/Application Support/mihomo-party/Code Cache/*"
+      - "~/Library/Application Support/mihomo-party/GPUCache/*"
+      - "~/Library/Application Support/mihomo-party/DawnGraphiteCache/*"
+      - "~/Library/Application Support/mihomo-party/DawnWebGPUCache/*"
+      - "~/Library/Application Support/mihomo-party/logs/*"
+
+  - id: codebuddy
+    name: CodeBuddy Cache
+    group: app
+    safety: safe
+    method: trash
+    note: CodeBuddy IDE cache and logs - regenerated on use
+    paths:
+      - "~/Library/Application Support/CodeBuddy CN/Cache/*"
+      - "~/Library/Application Support/CodeBuddy CN/CachedData/*"
+      - "~/Library/Application Support/CodeBuddy CN/CachedExtensionVSIXs/*"
+      - "~/Library/Application Support/CodeBuddy CN/Code Cache/*"
+      - "~/Library/Application Support/CodeBuddy CN/GPUCache/*"
+      - "~/Library/Application Support/CodeBuddy CN/DawnGraphiteCache/*"
+      - "~/Library/Application Support/CodeBuddy CN/DawnWebGPUCache/*"
+      - "~/Library/Application Support/CodeBuddy CN/logs/*"
+
+  - id: spacedrive
+    name: Spacedrive Thumbnails
+    group: app
+    safety: safe
+    method: trash
+    note: Generated file thumbnails - regenerated when browsing
+    paths:
+      - "~/Library/Application Support/spacedrive/thumbnails/*"
+
+  - id: netnewswire
+    name: NetNewsWire Cache
+    group: app
+    safety: safe
+    method: trash
+    note: NetNewsWire feed reader cache - regenerated on use
+    paths:
+      - "~/Library/Containers/com.ranchero.NetNewsWire-Evergreen/Data/Library/Caches/*"
+
+  - id: mindnode
+    name: MindNode Cache
+    group: app
+    safety: safe
+    method: trash
+    note: MindNode app cache - documents are not touched
+    paths:
+      - "~/Library/Containers/com.ideasoncanvas.mindnode/Data/Library/Caches/*"
+
+  - id: folo
+    name: Folo Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Folo feed reader web cache - regenerated on use
+    paths:
+      - "~/Library/Containers/is.follow/Data/Library/Application Support/Folo/Cache/Cache_Data/*"
+
+  - id: wondershare-installer
+    name: Wondershare Installer Files
+    group: app
+    safety: moderate
+    method: trash
+    note: Downloaded Wondershare installer payloads - installed apps are not touched
+    paths:
+      - "~/Library/Application Support/com.wondershare.Installer/*"
+
+  - id: dingtalk
+    name: DingTalk Logs
+    group: app
+    safety: safe
+    method: trash
+    note: DingTalk diagnostic logs - chats and files are not touched
+    paths:
+      - "~/Library/Application Support/iDingTalk/log/*"
+      - "~/Library/Application Support/iDingTalk/holmeslogs/*"
+
+  - id: quark
+    name: Quark Video Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Quark browser video cache - regenerated on playback
+    paths:
+      - "~/Library/Application Support/Quark/Cache/videoCache/*"
+
+  - id: qq-music
+    name: QQ Music Cache
+    group: app
+    safety: safe
+    method: trash
+    note: Streaming cache, logs and temp files - offline downloads are not touched
+    paths:
+      - "~/Library/Containers/com.tencent.QQMusicMac/Data/Library/Caches/*"
+      - "~/Library/Containers/com.tencent.QQMusicMac/Data/Library/Application Support/QQMusicMac/iRRCache/*"
+      - "~/Library/Containers/com.tencent.QQMusicMac/Data/Library/Application Support/QQMusicMac/iLog/*"
+      - "~/Library/Containers/com.tencent.QQMusicMac/Data/Library/Application Support/QQMusicMac/iCache/*"
+      - "~/Library/Containers/com.tencent.QQMusicMac/Data/Library/Application Support/QQMusicMac/iTemp/*"
+
+  - id: senplayer
+    name: SenPlayer Video Cache
+    group: app
+    safety: safe
+    method: trash
+    note: SenPlayer streaming video cache - regenerated on playback
+    paths:
+      - "~/Library/Containers/com.wuziqi.SenPlayer/Data/tmp/videoCache/*"
+
   # ===== Storage (Risky) =====
   - id: ios-backups
     name: iOS Backups
