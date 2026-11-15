@@ -144,7 +144,9 @@ var CommandExists = func(cmd string) bool {
 type SizeOption func(*sizeOpts)
 
 type sizeOpts struct {
-	ignoreNames map[string]bool
+	ignoreNames   map[string]bool
+	collectNewest bool
+	cutoff        time.Time
 }
 
 // WithIgnoreNames excludes files whose basename matches any of the given names
@@ -165,24 +167,41 @@ func GetDirSizeWithCount(path string, opts ...SizeOption) (int64, int64, error) 
 	for _, opt := range opts {
 		opt(&cfg)
 	}
+	stats, err := getDirStats(path, cfg)
+	return stats.Size, stats.FileCount, err
+}
 
+func getDirStats(path string, cfg sizeOpts) (DirStats, error) {
 	info, err := os.Lstat(path)
 	if err != nil {
-		return 0, 0, err
-	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return info.Size(), 1, nil
+		return DirStats{}, err
 	}
 	if !info.IsDir() {
-		return info.Size(), 1, nil
+		stats := DirStats{Size: info.Size(), FileCount: 1}
+		if cfg.collectNewest {
+			stats.NewestFileTime = info.ModTime()
+			stats.Recent = !cfg.cutoff.IsZero() && !info.ModTime().Before(cfg.cutoff)
+			if cfg.ignoreNames[info.Name()] {
+				stats.Size = 0
+				stats.FileCount = 0
+			}
+		}
+		return stats, nil
 	}
 
 	dirWorkers := DefaultWorkers()
 	if dirWorkers < 2 {
-		return getDirSizeWithCountSequential(path, cfg)
+		if cfg.collectNewest {
+			return getDirStatsSequential(path, cfg)
+		}
+		size, count, err := getDirSizeWithCountSequential(path, cfg)
+		return DirStats{Size: size, FileCount: count}, err
 	}
 
 	var size, count int64
+	var newest time.Time
+	var recent bool
+	var stop atomic.Bool
 	var (
 		mu      sync.Mutex
 		cond    = sync.NewCond(&mu)
@@ -212,9 +231,11 @@ func GetDirSizeWithCount(path string, opts ...SizeOption) (int64, int64, error) 
 				mu.Unlock()
 
 				var (
-					localSize  int64
-					localCount int64
-					subDirs    []string
+					localSize   int64
+					localCount  int64
+					subDirs     []string
+					localNewest time.Time
+					localRecent bool
 				)
 
 				dirFile, err := os.Open(dir)
@@ -235,6 +256,9 @@ func GetDirSizeWithCount(path string, opts ...SizeOption) (int64, int64, error) 
 						statErrs := 0
 
 						for _, entry := range entries {
+							if cfg.collectNewest && stop.Load() {
+								break
+							}
 							entryName := entry.Name()
 							entryType := entry.Type()
 							// Do not follow symlinked directories to avoid cycles or surprises.
@@ -244,7 +268,7 @@ func GetDirSizeWithCount(path string, opts ...SizeOption) (int64, int64, error) 
 								continue
 							}
 
-							if cfg.ignoreNames[entryName] {
+							if !cfg.collectNewest && cfg.ignoreNames[entryName] {
 								continue
 							}
 
@@ -257,6 +281,20 @@ func GetDirSizeWithCount(path string, opts ...SizeOption) (int64, int64, error) 
 								entryPath := dirPrefix + entryName
 								subDirs = append(subDirs, entryPath)
 								continue
+							}
+							if cfg.collectNewest {
+								modified := time.Unix(stat.Mtim.Sec, stat.Mtim.Nsec)
+								if modified.After(localNewest) {
+									localNewest = modified
+								}
+								if !cfg.cutoff.IsZero() && !modified.Before(cfg.cutoff) {
+									localRecent = true
+									stop.Store(true)
+									break
+								}
+								if cfg.ignoreNames[entryName] {
+									continue
+								}
 							}
 							localSize += stat.Size
 							localCount++
@@ -276,13 +314,21 @@ func GetDirSizeWithCount(path string, opts ...SizeOption) (int64, int64, error) 
 				}
 
 				mu.Lock()
-				if len(subDirs) > 0 {
+				if localNewest.After(newest) {
+					newest = localNewest
+				}
+				if localRecent {
+					recent = true
+					done = true
+					cond.Broadcast()
+				}
+				if !done && len(subDirs) > 0 {
 					queue = append(queue, subDirs...)
 					pending += len(subDirs)
 					cond.Broadcast()
 				}
 				pending--
-				if pending == 0 {
+				if !done && pending == 0 {
 					done = true
 					cond.Broadcast()
 				}
@@ -292,7 +338,7 @@ func GetDirSizeWithCount(path string, opts ...SizeOption) (int64, int64, error) 
 	}
 
 	wg.Wait()
-	return size, count, nil
+	return DirStats{Size: size, FileCount: count, NewestFileTime: newest, Recent: recent}, nil
 }
 
 func getDirSizeWithCountSequential(path string, cfg sizeOpts) (int64, int64, error) {
