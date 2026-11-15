@@ -1038,6 +1038,69 @@ categories:
     paths:
       - "~/.cache/kaku/*"
 
+  - id: pyinstaller
+    name: PyInstaller Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: PyInstaller binary cache - rebuilt on next build
+    paths:
+      - "~/Library/Application Support/pyinstaller/bincache*"
+
+  - id: corepack
+    name: Corepack Cache
+    group: dev
+    safety: moderate
+    method: trash
+    note: Package manager binaries fetched by Corepack - re-downloaded on next use
+    paths:
+      - "~/.cache/node/corepack/*"
+
+  - id: rbenv-cache
+    name: rbenv Download Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Ruby source archives kept by ruby-build - re-downloaded when needed
+    paths:
+      - "~/.rbenv/cache/*"
+
+  - id: cpan
+    name: CPAN Build Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Perl module build directories - rebuilt on next install
+    paths:
+      - "~/.cpan/build/*"
+
+  - id: hex
+    name: Hex Cache
+    group: dev
+    safety: safe
+    method: trash
+    note: Elixir Hex package cache - re-downloaded when needed
+    paths:
+      - "~/.hex/cache/*"
+
+  - id: vagrant-tmp
+    name: Vagrant Temp Files
+    group: dev
+    safety: safe
+    method: trash
+    note: Vagrant temporary files left after box and plugin operations
+    paths:
+      - "~/.vagrant.d/tmp/*"
+
+  - id: podman-tmp
+    name: Podman Storage Temp
+    group: dev
+    safety: safe
+    method: trash
+    note: Leftover container storage temp files
+    paths:
+      - "~/.local/share/containers/storage/tmp/*"
+
   - id: curl-cache
     name: curl Cache
     group: system
