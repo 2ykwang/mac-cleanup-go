@@ -28,6 +28,17 @@ type releasePolicy struct {
 }
 
 var (
+	claudeCodeReleasePolicy = releasePolicy{
+		activeLink:   "~/.local/bin/claude",
+		keepPrevious: 1,
+	}
+	codexDaemonReleasePolicy = releasePolicy{
+		activeLink: "~/.codex/packages/app-server-daemon/current",
+		pinFiles:   []string{"~/.codex/packages/app-server-daemon/auto-update-version"},
+	}
+)
+
+var (
 	errReleaseRootConfig  = errors.New(`old release category needs exactly one "<dir>/*" path`)
 	errReleaseNotOld      = errors.New("no longer an unused old release")
 	releaseVersionPattern = regexp.MustCompile(`^\d+(\.\d+)*`)

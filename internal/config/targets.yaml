@@ -804,6 +804,24 @@ categories:
     paths:
       - "~/.cache/opencode/*"
 
+  - id: claude-code-versions
+    name: Claude Code Old Versions
+    group: dev
+    safety: safe
+    method: builtin
+    note: Superseded Claude Code CLI binaries - keeps the active version, the one before it and any still running
+    paths:
+      - "~/.local/share/claude/versions/*"
+
+  - id: codex-daemon-releases
+    name: Codex Old Daemon Releases
+    group: dev
+    safety: safe
+    method: builtin
+    note: Superseded Codex app-server releases - keeps the active and pending releases and any still running
+    paths:
+      - "~/.codex/packages/app-server-daemon/releases/*"
+
   - id: kaku
     name: Kaku Cache
     group: dev
