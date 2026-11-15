@@ -198,8 +198,8 @@ func (m *Model) previewHeader() string {
 	b.WriteString(m.styles.HeaderStyle.Render("Cleanup Preview"))
 	b.WriteString("\n\n")
 
-	b.WriteString(fmt.Sprintf("Selected: %d  │  Estimated: %s  │  Sort: %s\n",
-		m.getSelectedCount(), m.styles.SizeStyle.Render(formatSize(m.getSelectedSize())), m.sortOrder.Label()))
+	fmt.Fprintf(&b, "Selected: %d  │  Estimated: %s  │  Sort: %s\n",
+		m.getSelectedCount(), m.styles.SizeStyle.Render(formatSize(m.getSelectedSize())), m.sortOrder.Label())
 	b.WriteString("\n")
 	b.WriteString(m.styles.MutedStyle.Render("Next: press ") + m.styles.SelectedStyle.Render("Y") + m.styles.MutedStyle.Render(" to open delete confirmation") + "\n")
 	b.WriteString(m.styles.Divider(60) + "\n")

@@ -49,7 +49,7 @@ mac-cleanup
 
 ![demo](demo.gif)
 
-- 업데이트: `brew upgrade mac-cleanup-go` 또는 `mac-cleanup --update`.
+- 업데이트: `brew upgrade mac-cleanup-go` 또는 `mac-cleanup update`.
 - 삭제: `brew uninstall mac-cleanup-go`.
 - 디버그: `mac-cleanup --debug`로 로그 저장 (`~/.config/mac-cleanup-go/debug.log`).
 
@@ -83,13 +83,21 @@ mac-cleanup
 
 ## CLI 모드
 
-명령줄에서 대상을 설정하고 정리를 실행합니다.
+TUI 없이 스캔하고 정리합니다. 모든 명령은 대상 ID를 받고, `--json`을 붙이면 기계가 읽기 쉬운 출력을 냅니다.
 
 ```bash
-mac-cleanup --select                   # 정리 대상 설정
-mac-cleanup --clean --dry-run          # 정리 리포트 미리보기
-mac-cleanup --clean                    # 정리 실행
+mac-cleanup scan                            # 대상별 용량 (읽기 전용)
+mac-cleanup scan system-cache --items       # 한 대상의 큰 항목 보기
+mac-cleanup clean npm go-build --dry-run    # 정리될 내용을 미리 확인
+mac-cleanup clean npm go-build              # 정리 실행 (확인 후 진행, --yes로 생략)
 ```
+
+- `mac-cleanup targets`는 스캔 없이 전체 대상 ID를 보여줍니다.
+- `mac-cleanup select`로 저장한 대상은 `mac-cleanup clean --selected`로 정리합니다.
+- 위험(risky) 대상은 `--item <path>`로 항목을 지정해야만 정리됩니다.
+- 부수 효과가 있는 대상(`brew cleanup`을 실행하는 `homebrew`)은 통째로만 정리되며 `--item`을 거부합니다.
+- 종료 코드: `0` 성공, `1` 오류, `2` 사용법 오류 또는 확인 필요, `3` 일부 항목 실패.
+- 전체 플래그는 `mac-cleanup help <command>`로 확인하세요.
 
 명령줄 정리에 대한 자세한 내용은 아래 예시를 참고하세요.
 
@@ -99,7 +107,7 @@ mac-cleanup --clean                    # 정리 실행
 **1) 대상 선택**
 
 ```
-$ mac-cleanup --select
+$ mac-cleanup select
 
 Select cleanup targets                  ● safe  ○ moderate
 ─────────────────────────────────────────────────────────
@@ -119,7 +127,7 @@ Selected: 5
 **2) 미리보기 / 정리**
 
 ```
-$ mac-cleanup --clean --dry-run
+$ mac-cleanup clean --selected --dry-run
 
 Dry Run Report
 --------------
@@ -140,6 +148,35 @@ OK      System Logs              67    259.7 MB
 ```
 
 </details>
+
+## AI 에이전트와 함께 쓰기
+
+mac-cleanup은 코딩 에이전트(Claude Code, Codex, Copilot 등)에게 스캔 → 미리보기 → 승인 → 정리 흐름을 알려주는 [Agent Skill](https://agentskills.io)을 제공합니다. 설치하지 않아도 에이전트가 `mac-cleanup skill`로 읽을 수 있습니다.
+
+저장소의 최신 스킬을 설치하려면:
+
+```bash
+npx skills add https://github.com/2ykwang/mac-cleanup-go/tree/main/internal/cli/skills/mac-cleanup --skill mac-cleanup -g
+```
+
+또는 설치된 버전에 포함된 스킬을 저장하세요.
+
+```bash
+mkdir -p ~/.claude/skills/mac-cleanup
+mac-cleanup skill > ~/.claude/skills/mac-cleanup/SKILL.md
+```
+
+에이전트는 `--json` 출력을 사용하며, 사용자가 미리보기를 승인하기 전에는 `--yes`로 정리하지 않습니다.
+
+다음과 같이 요청해 보세요.
+
+> 개발 캐시가 디스크를 얼마나 쓰는지 확인하고, 정리 후보 중 큰 항목과 그 안의 내용을 보여줘.
+
+> npm 캐시와 Go 빌드 캐시를 정리해 줘.
+
+> 맥에서 정리할 수 있는 캐시를 찾아서 정리해 줘.
+
+스킬을 설치하면 호환되는 에이전트에서 사용할 수 있습니다. 설치하지 않았다면 프롬프트에 `mac-cleanup`을 사용하고 `mac-cleanup skill`을 읽으라고 덧붙일 수 있습니다.
 
 ## 작동 방식 및 안전 정책
 

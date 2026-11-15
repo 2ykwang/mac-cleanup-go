@@ -15,12 +15,12 @@ func (m *Model) reportHeader() string {
 	b.WriteString("\n\n")
 
 	// Summary
-	b.WriteString(fmt.Sprintf("Freed:     %s\n", m.styles.SizeStyle.Render(formatSize(m.report.FreedSpace))))
-	b.WriteString(fmt.Sprintf("Succeeded: %s\n", m.styles.SuccessStyle.Render(fmt.Sprintf("%d", m.report.CleanedItems))))
+	fmt.Fprintf(&b, "Freed:     %s\n", m.styles.SizeStyle.Render(formatSize(m.report.FreedSpace)))
+	fmt.Fprintf(&b, "Succeeded: %s\n", m.styles.SuccessStyle.Render(fmt.Sprintf("%d", m.report.CleanedItems)))
 	if m.report.FailedItems > 0 {
-		b.WriteString(fmt.Sprintf("Failed:    %s\n", m.styles.DangerStyle.Render(fmt.Sprintf("%d", m.report.FailedItems))))
+		fmt.Fprintf(&b, "Failed:    %s\n", m.styles.DangerStyle.Render(fmt.Sprintf("%d", m.report.FailedItems)))
 	}
-	b.WriteString(fmt.Sprintf("Time:      %s\n\n", m.report.Duration.Round(time.Millisecond)))
+	fmt.Fprintf(&b, "Time:      %s\n\n", m.report.Duration.Round(time.Millisecond))
 
 	b.WriteString(m.styles.Divider(m.reportDividerWidth()) + "\n")
 

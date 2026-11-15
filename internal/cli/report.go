@@ -21,13 +21,14 @@ const (
 	blockGap           = 2
 )
 
-// FormatReport renders a plain-text report for CLI output.
-func FormatReport(report *types.Report, dryRun bool, theme styles.Styles) string {
+// FormatReport renders a plain-text report for CLI output. color=false
+// yields output without ANSI escapes, for pipes and NO_COLOR.
+func FormatReport(report *types.Report, dryRun bool, theme styles.Styles, color bool) string {
 	if report == nil {
 		return "No report available.\n"
 	}
 
-	styles := newReportStyles(theme)
+	styles := newReportStyles(theme, color)
 
 	title := "Cleanup Report"
 	if dryRun {
@@ -224,8 +225,7 @@ type reportStyles struct {
 	muted   lipgloss.Style
 }
 
-func newReportStyles(theme styles.Styles) reportStyles {
-	enabled := shouldColorize()
+func newReportStyles(theme styles.Styles, enabled bool) reportStyles {
 	return reportStyles{
 		enabled: enabled,
 		title:   lipgloss.NewStyle().Foreground(theme.Primary).Bold(true),
@@ -293,10 +293,6 @@ func (s reportStyles) Line(text string) string {
 		return text
 	}
 	return text
-}
-
-func shouldColorize() bool {
-	return true
 }
 
 func renderBlock(title string, lines []string, width int, styles reportStyles) string {

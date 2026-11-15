@@ -21,7 +21,7 @@ body:
     id: command
     attributes:
       label: Command you ran
-      placeholder: "mac-cleanup --dry-run"
+      placeholder: "mac-cleanup clean npm --dry-run"
   - type: textarea
     id: what_happened
     attributes:

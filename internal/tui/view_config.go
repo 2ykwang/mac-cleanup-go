@@ -382,7 +382,7 @@ func (m *ConfigModel) introDialog() string {
 	// Description
 	b.WriteString(m.styles.TextStyle.Render("Configure cleanup targets for CLI mode."))
 	b.WriteString("\n")
-	b.WriteString(m.styles.TextStyle.Render("Selected targets run with ") + m.styles.SelectedStyle.Render("--clean") + m.styles.TextStyle.Render(" flag."))
+	b.WriteString(m.styles.TextStyle.Render("Selected targets run with ") + m.styles.SelectedStyle.Render("clean --selected") + m.styles.TextStyle.Render("."))
 	b.WriteString("\n")
 	b.WriteString(m.styles.TextStyle.Render("Files are moved to Trash (recoverable)."))
 	b.WriteString("\n\n")
@@ -403,9 +403,9 @@ func (m *ConfigModel) introDialog() string {
 
 	// Commands
 	infoLabel := lipgloss.NewStyle().Foreground(m.styles.Muted).Width(10)
-	b.WriteString(infoLabel.Render("Clean") + m.styles.MutedStyle.Render("mac-cleanup ") + m.styles.SelectedStyle.Render("--clean"))
+	b.WriteString(infoLabel.Render("Clean") + m.styles.MutedStyle.Render("mac-cleanup ") + m.styles.SelectedStyle.Render("clean --selected"))
 	b.WriteString("\n")
-	b.WriteString(infoLabel.Render("Dry run") + m.styles.MutedStyle.Render("mac-cleanup ") + m.styles.SelectedStyle.Render("--clean --dry-run"))
+	b.WriteString(infoLabel.Render("Dry run") + m.styles.MutedStyle.Render("mac-cleanup ") + m.styles.SelectedStyle.Render("clean --selected --dry-run"))
 	b.WriteString("\n\n")
 
 	// Button

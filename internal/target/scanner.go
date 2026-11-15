@@ -13,6 +13,12 @@ type BuiltinCleaner interface {
 	Clean(items []types.CleanableItem) (*types.CleanResult, error)
 }
 
+// SideEffectCleaner is implemented by builtin targets whose cleanup reaches
+// beyond the scanned items, so they cannot be cleaned item by item.
+type SideEffectCleaner interface {
+	CleanSideEffect() string
+}
+
 type Registry struct {
 	targets map[string]Target
 }
