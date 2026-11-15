@@ -22,7 +22,7 @@ var (
 	execLookPath  = exec.LookPath
 )
 
-const defaultWorkersMax = 16
+const defaultWorkersMax = 4
 
 func DefaultWorkers() int {
 	workers := runtime.GOMAXPROCS(0)

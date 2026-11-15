@@ -164,7 +164,17 @@ func TestDefaultWorkers_RespectsBounds(t *testing.T) {
 	assert.Equal(t, 2, DefaultWorkers())
 
 	runtime.GOMAXPROCS(32)
-	assert.Equal(t, 16, DefaultWorkers())
+	assert.Equal(t, 4, DefaultWorkers())
+}
+
+func TestDefaultWorkers_DoesNotChangeGOMAXPROCS(t *testing.T) {
+	previous := runtime.GOMAXPROCS(12)
+	defer runtime.GOMAXPROCS(previous)
+
+	workers := DefaultWorkers()
+
+	assert.Equal(t, 4, workers)
+	assert.Equal(t, 12, runtime.GOMAXPROCS(0))
 }
 
 func TestGetDirSize(t *testing.T) {
