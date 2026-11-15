@@ -195,6 +195,30 @@ func TestOldReleaseTargetScan_SkipsSymlinkRelease(t *testing.T) {
 	assert.Equal(t, []string{filepath.Join(fx.root, "1.1.0")}, itemPaths(result.Items))
 }
 
+func TestOldReleaseTargetScan_KeepsRealRollbackRelease_WhenNewerEntryIsDanglingSymlink(t *testing.T) {
+	fx := newTestReleaseFixture(t, "1.3.0", "1.1.0", "1.0.0")
+	require.NoError(t, os.Symlink(filepath.Join(fx.root, "missing"), filepath.Join(fx.root, "1.2.0")))
+	stubReleaseLocks(t, nil, nil)
+	target := newTestOldReleaseTarget(fx, releasePolicy{keepPrevious: 1})
+
+	result, err := target.Scan()
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{filepath.Join(fx.root, "1.0.0")}, itemPaths(result.Items))
+}
+
+func TestOldReleaseTargetScan_CountsHardLinkedReleaseAsRollback(t *testing.T) {
+	fx := newTestReleaseFixture(t, "1.2.0", "1.1.0", "1.0.0")
+	require.NoError(t, os.Link(filepath.Join(fx.root, "1.1.0"), filepath.Join(fx.base, "app-binary")))
+	stubReleaseLocks(t, nil, nil)
+	target := newTestOldReleaseTarget(fx, releasePolicy{keepPrevious: 1})
+
+	result, err := target.Scan()
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{filepath.Join(fx.root, "1.0.0")}, itemPaths(result.Items))
+}
+
 func TestOldReleaseTargetScan_SkipsUnversionedAndHiddenEntries(t *testing.T) {
 	fx := newTestReleaseFixture(t, "1.2.0", "1.0.0", "staging", ".1.1.0")
 	stubReleaseLocks(t, nil, nil)

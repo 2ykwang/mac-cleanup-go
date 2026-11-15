@@ -182,6 +182,11 @@ func (t *OldReleaseTarget) oldReleases(root string) ([]string, error) {
 		if strings.HasPrefix(name, ".") || pinned[name] {
 			continue
 		}
+		// Only real files and directories are releases, so a symlink can't
+		// take the rollback slot.
+		if !e.Type().IsDir() && !e.Type().IsRegular() {
+			continue
+		}
 		version, ok := releaseVersion(name)
 		// Releases at or above the active version may be an update in progress.
 		if !ok || compareVersions(version, activeVersion) >= 0 {
