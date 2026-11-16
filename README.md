@@ -1,6 +1,6 @@
 <div align="center">
   <h1>mac-cleanup-go</h1>
-  <p>Preview-first TUI for cleaning macOS caches, logs, and temporary files.</p>
+  <p>Preview-first TUI and CLI for cleaning macOS caches, logs, and temporary files.</p>
 </div>
 
 <p align="center">
@@ -19,7 +19,7 @@
 ## Overview
 
 - Select items that take up space and delete them yourself.
-- By default, items go to Trash; only the Trash category empties it permanently.
+- By default, items go to Trash; only the Trash and Shell History Residue categories delete permanently.
 - Risky categories are unselected by default; even when selected, items are auto-excluded. (Include them in Preview to delete.)
 - Manual categories show guides only.
 - Scope: caches/logs/temp and selected app data (no system optimization or uninstaller).
@@ -84,7 +84,7 @@ Confirm view:
 
 ## CLI mode
 
-Scan and clean without the TUI. Every command takes target IDs; `--json` gives machine-readable output.
+Scan and clean without the TUI. `targets`, `scan`, and `clean` take target IDs; `--json` gives machine-readable output.
 
 ```bash
 mac-cleanup scan                            # Sizes per target (read-only)
@@ -99,8 +99,6 @@ mac-cleanup clean npm go-build              # Clean (asks to confirm; --yes skip
 - Targets with a side effect (`homebrew` runs `brew cleanup`) are cleaned whole; `--item` is rejected for them.
 - Exit codes: `0` ok, `1` error, `2` usage error or confirmation needed, `3` some items failed.
 - Run `mac-cleanup help <command>` for all flags.
-
-For command-line cleanup, see the examples below.
 
 <details>
 <summary><strong>Example output</strong></summary>
@@ -157,7 +155,7 @@ mac-cleanup ships an [Agent Skill](https://agentskills.io) that teaches coding a
 To install the latest skill from the repository:
 
 ```bash
-npx skills add https://github.com/2ykwang/mac-cleanup-go/tree/main/internal/cli/skills/mac-cleanup --skill mac-cleanup -g
+npx skills add 2ykwang/mac-cleanup-go --skill mac-cleanup -g
 ```
 
 Or save the copy bundled with your installed version:
@@ -176,8 +174,6 @@ Try prompts like:
 > Clean my npm and Go build caches.
 
 > Find and clean up caches on my Mac.
-
-Installing the skill makes it available to compatible agents. Otherwise, mention `mac-cleanup` and ask the agent to read `mac-cleanup skill`.
 
 ## How it works & safety
 
@@ -199,7 +195,7 @@ Installing the skill makes it available to compatible agents. Otherwise, mention
 - Total targets: 202.
 - Groups: System 14, Browsers 15, Development 71, Applications 97, Storage 5.
 - Cleanup methods: trash 192, permanent 2, builtin 6, manual 2.
-- Builtins: homebrew, docker, old-downloads, project-cache, claude-code-versions, codex-daemon-releases (built-in scanners using command output, last-modified time, or the active release).
+- Builtins: homebrew, docker, old-downloads, project-cache, claude-code-versions, codex-daemon-releases.
 - Manual: telegram, kakaotalk (no automatic deletion; surfaces large data like chat caches).
 - Counts are release-based and may change over time.
 

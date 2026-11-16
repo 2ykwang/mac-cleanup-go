@@ -1,6 +1,6 @@
 <div align="center">
   <h1>mac-cleanup-go</h1>
-  <p>TUI 기반으로 삭제할 항목을 선택하여 macOS 캐시, 로그, 임시 파일을 정리합니다.</p>
+  <p>TUI 또는 CLI로 삭제할 항목을 선택하여 macOS 캐시, 로그, 임시 파일을 정리합니다.</p>
 </div>
 
 <p align="center">
@@ -19,7 +19,7 @@
 ## 개요
 
 - 용량을 불필요하게 차지하는 항목을 직접 선택하여 삭제할 수 있습니다.
-- 기본은 휴지통으로 이동하고, '휴지통' 카테고리만 영구 삭제합니다.
+- 기본은 휴지통으로 이동하고, '휴지통'과 'Shell History Residue' 카테고리만 영구 삭제합니다.
 - risky 카테고리는 기본 미선택이며, 선택해도 항목은 자동 제외됩니다. (삭제하려면 미리보기에서 포함해야 합니다.)
 - manual 카테고리는 삭제 가이드만 표시합니다.
 - 작업 범위: 캐시/로그/임시 파일과 일부 앱 데이터. 시스템 최적화/앱 제거는 하지 않습니다.
@@ -68,8 +68,8 @@ mac-cleanup
 
 - `Up`/`Down` 또는 `k`/`j`: 이동
 - `h`/`l`: 이전/다음 카테고리
-- `Space`: 제외 토글
-- `Enter`: 디렉터리 드릴다운
+- `Space`: 제외/포함 전환
+- `Enter`: 하위 디렉터리로 이동
 - `/`: 검색, `s`: 정렬, `o`: Finder 열기
 - `a`: 전체 포함, `d`: 전체 제외
 - `y`: 삭제(확인 포함), `esc`: 뒤로
@@ -83,7 +83,7 @@ mac-cleanup
 
 ## CLI 모드
 
-TUI 없이 스캔하고 정리합니다. 모든 명령은 대상 ID를 받고, `--json`을 붙이면 기계가 읽기 쉬운 출력을 냅니다.
+TUI 없이 스캔하고 정리합니다. `targets`, `scan`, `clean`은 대상 ID를 받고, `--json`을 붙이면 에이전트나 스크립트가 처리하기 쉬운 JSON으로 출력합니다.
 
 ```bash
 mac-cleanup scan                            # 대상별 용량 (읽기 전용)
@@ -95,11 +95,9 @@ mac-cleanup clean npm go-build              # 정리 실행 (확인 후 진행, 
 - `mac-cleanup targets`는 스캔 없이 전체 대상 ID를 보여줍니다.
 - `mac-cleanup select`로 저장한 대상은 `mac-cleanup clean --selected`로 정리합니다.
 - 위험(risky) 대상은 `--item <path>`로 항목을 지정해야만 정리됩니다.
-- 부수 효과가 있는 대상(`brew cleanup`을 실행하는 `homebrew`)은 통째로만 정리되며 `--item`을 거부합니다.
+- 부수 효과가 있는 대상(`brew cleanup`을 실행하는 `homebrew`)은 통째로만 정리되며 `--item`을 지정할 수 없습니다.
 - 종료 코드: `0` 성공, `1` 오류, `2` 사용법 오류 또는 확인 필요, `3` 일부 항목 실패.
 - 전체 플래그는 `mac-cleanup help <command>`로 확인하세요.
-
-명령줄 정리에 대한 자세한 내용은 아래 예시를 참고하세요.
 
 <details>
 <summary><strong>실행 예시</strong></summary>
@@ -156,10 +154,10 @@ mac-cleanup은 코딩 에이전트(Claude Code, Codex, Copilot 등)에게 스캔
 저장소의 최신 스킬을 설치하려면:
 
 ```bash
-npx skills add https://github.com/2ykwang/mac-cleanup-go/tree/main/internal/cli/skills/mac-cleanup --skill mac-cleanup -g
+npx skills add 2ykwang/mac-cleanup-go --skill mac-cleanup -g
 ```
 
-또는 설치된 버전에 포함된 스킬을 저장하세요.
+또는 설치한 바이너리에 포함된 스킬을 파일로 저장해도 됩니다.
 
 ```bash
 mkdir -p ~/.claude/skills/mac-cleanup
@@ -176,21 +174,19 @@ mac-cleanup skill > ~/.claude/skills/mac-cleanup/SKILL.md
 
 > 맥에서 정리할 수 있는 캐시를 찾아서 정리해 줘.
 
-스킬을 설치하면 호환되는 에이전트에서 사용할 수 있습니다. 설치하지 않았다면 프롬프트에 `mac-cleanup`을 사용하고 `mac-cleanup skill`을 읽으라고 덧붙일 수 있습니다.
-
 ## 작동 방식 및 안전 정책
 
 - 앱/도구별 알려진 캐시, 로그, 임시 경로를 병렬로 스캔합니다.
 - 삭제 전 미리보기에서 항목을 제외할 수 있습니다.
 - 영향도 라벨(safe, moderate, risky, manual)을 표시합니다.
 - SIP 보호 경로는 스캔/정리 대상에서 제외됩니다.
-- Homebrew, Docker, 오래된 다운로드 파일, 오래된 프로젝트 빌드 캐시, Claude Code/Codex 지난 릴리스에 대한 전용 스캐너가 있습니다 (명령 출력, 마지막 수정 시각 또는 활성 릴리스 기준).
+- Homebrew, Docker, 오래된 다운로드 파일, 오래된 프로젝트 빌드 캐시, Claude Code/Codex 지난 릴리스에 대한 전용 스캐너가 있습니다. 이 스캐너는 고정 경로 대신 명령 출력, 마지막 수정 시각, 현재 사용 중인 릴리스를 기준으로 항목을 찾습니다.
 
 ## 영향도 분류 기준
 
 - safe: 자동 재생성되는 캐시/로그.
 - moderate: 재다운로드 또는 재로그인이 필요할 수 있음.
-- risky: 사용자 데이터가 포함될 수 있음; 항목 기본 제외.
+- risky: 사용자 데이터가 포함될 수 있어 항목이 기본으로 제외됨.
 - manual: 자동 삭제 없이 앱 가이드만 표시.
 
 ## 대상 (v1.7.0 기준)
@@ -198,8 +194,8 @@ mac-cleanup skill > ~/.claude/skills/mac-cleanup/SKILL.md
 - 전체 대상: 202개.
 - 그룹: System 14, Browsers 15, Development 71, Applications 97, Storage 5.
 - 처리 방법: trash 192, permanent 2, builtin 6, manual 2.
-- builtin: homebrew, docker, old-downloads, project-cache, claude-code-versions, codex-daemon-releases (고정 경로가 아닌 명령 결과, 마지막 수정 시각 또는 활성 릴리스 기준 스캔).
-- manual: telegram, kakaotalk (자동 삭제하지 않고, 채팅 데이터 등 대용량 항목 안내 목적).
+- builtin: homebrew, docker, old-downloads, project-cache, claude-code-versions, codex-daemon-releases.
+- manual: telegram, kakaotalk (자동으로 삭제하지 않고, 채팅 데이터처럼 용량이 큰 항목을 안내만 함).
 - 수치는 릴리스 기준이며 변동될 수 있습니다.
 
 ## 대안 오픈소스
