@@ -11,6 +11,13 @@ Most targets move files to the Trash. This skill is printed by
 `mac-cleanup skill`, so it matches the installed binary. If a flag here
 disagrees with `mac-cleanup help <command>`, trust the binary.
 
+## Scope
+
+`scan` measures only known cleanup targets (caches, logs, build artifacts,
+backups, old downloads). It doesn't see documents, photos, apps, or other
+user files, and it doesn't report total disk usage. When the user asks what
+is using their disk, say this up front. Use `df -h /` if they want the total.
+
 ## Rules
 
 - Never run bare `mac-cleanup` or `mac-cleanup select`. They open an
