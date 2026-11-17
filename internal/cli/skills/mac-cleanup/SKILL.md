@@ -86,7 +86,10 @@ mac-cleanup clean slack --item "/Users/me/Library/Application Support/Slack/Cach
   - `builtin`: uses target-specific cleanup. Homebrew moves only the scanned
     download cache to Trash, keeps installed formula versions, and accepts
     `--item` for the scanned cache root. Project build caches also move to
-    Trash. Docker items are images, volumes, and the build cache.
+    Trash. `docker` cleans images and build cache, keeping volumes and
+    containers. `docker-volumes` is risky: named and anonymous volumes can
+    hold persistent data. Scan it with `--items`, then pass only each approved
+    `--item docker:volume:<name>`. Docker cleanup is permanent.
   - `manual`: never cleaned by the CLI. Relay `guide` from
     `mac-cleanup targets <id> --json` to the user.
 - `status` `blocked` with `blocked_by`: that app must be quit first. Ask the

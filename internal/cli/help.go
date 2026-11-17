@@ -79,6 +79,8 @@ Flags:
 
 Never cleaned: manual targets, risky targets without --item, locked items,
 targets whose blocking process is running. These appear under "skipped".
+docker cleans images and build cache. docker-volumes is risky and needs an
+approved --item docker:volume:<name> for each named or anonymous volume.
 JSON dry-runs include item_paths for each planned target. Clean rescans before
 execution; a dry-run is not a frozen plan.
 
