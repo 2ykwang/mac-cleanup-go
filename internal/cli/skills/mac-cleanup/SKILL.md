@@ -51,9 +51,8 @@ is using their disk, say this up front. Use `df -h /` if they want the total.
    mac-cleanup clean docker npm --dry-run --json
    ```
    Check `targets` (what will be cleaned) and `skipped` (what will not, and why).
-   Show `item_paths` to the user. For targets without `side_effect`, pass
-   approved paths with `--item` in both preview and execution when the user
-   wants to limit cleanup to those items.
+   Show `item_paths` to the user. Pass approved paths with `--item` in both
+   preview and execution when the user wants to limit cleanup to those items.
 5. After the user approves, run the same command with `--yes` instead of
    `--dry-run`.
    ```sh
@@ -84,12 +83,10 @@ mac-cleanup clean slack --item "/Users/me/Library/Application Support/Slack/Cach
   - `trash`: moved to the Trash, recoverable until it is emptied.
   - `permanent`: deleted for good. The `trash` target empties the Trash.
     Ask about it separately.
-  - `builtin`: runs the tool's own cleanup (brew, docker, project build
-    caches). Docker items are images, volumes, and the build cache.
-    Targets with `side_effect` in scan output (`homebrew` runs `brew cleanup`,
-    which also removes old formula versions) only clean as a whole: tell the
-    user the side effect before asking. `--item` on them fails with
-    `item_not_supported`.
+  - `builtin`: uses target-specific cleanup. Homebrew moves only the scanned
+    download cache to Trash, keeps installed formula versions, and accepts
+    `--item` for the scanned cache root. Project build caches also move to
+    Trash. Docker items are images, volumes, and the build cache.
   - `manual`: never cleaned by the CLI. Relay `guide` from
     `mac-cleanup targets <id> --json` to the user.
 - `status` `blocked` with `blocked_by`: that app must be quit first. Ask the
@@ -119,6 +116,5 @@ Exit codes:
 
 Error codes you may see: `confirmation_required` (add `--dry-run` or, after
 approval, `--yes`), `unknown_target`, `unknown_item` (path not in the scan;
-copy it exactly and include its target ID), `missing_target`,
-`item_not_supported` (target has a `side_effect`; clean it whole or not at
-all), `no_selection`, `invalid_flag`, `not_a_terminal`, `moved_command`.
+copy it exactly and include its target ID), `missing_target`, `no_selection`,
+`invalid_flag`, `not_a_terminal`, `moved_command`.

@@ -637,7 +637,7 @@ categories:
     group: dev
     safety: safe
     method: builtin
-    note: Runs brew cleanup, then moves cache to trash
+    note: Moves the scanned download cache to Trash; installed formula versions are kept
 
   - id: docker
     name: Docker

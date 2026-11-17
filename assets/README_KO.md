@@ -95,7 +95,7 @@ mac-cleanup clean npm go-build              # 정리 실행 (확인 후 진행, 
 - `mac-cleanup targets`는 스캔 없이 전체 대상 ID를 보여줍니다.
 - `mac-cleanup select`로 저장한 대상은 `mac-cleanup clean --selected`로 정리합니다.
 - 위험(risky) 대상은 `--item <path>`로 항목을 지정해야만 정리됩니다.
-- 부수 효과가 있는 대상(`brew cleanup`을 실행하는 `homebrew`)은 통째로만 정리되며 `--item`을 지정할 수 없습니다.
+- `homebrew`는 스캔한 다운로드 캐시만 휴지통으로 이동합니다. 설치된 formula 버전은 유지하며, 스캔된 캐시 루트를 `--item`으로 지정할 수 있습니다.
 - 종료 코드: `0` 성공, `1` 오류, `2` 사용법 오류 또는 확인 필요, `3` 일부 항목 실패.
 - 전체 플래그는 `mac-cleanup help <command>`로 확인하세요.
 
@@ -134,13 +134,13 @@ Mode: Dry Run
 Summary                             Highlights
 Freed (dry-run): 8.6 GB             1. App Caches - 3.2 GB (523 items)
                                     2. Docker - 2.8 GB (12 items)
-                                    3. Homebrew Cache - 1.5 GB (34 items)
+                                    3. Homebrew Cache - 1.5 GB (1 items)
 
 Details
 STATUS  CATEGORY              ITEMS        SIZE
 OK      App Caches              523      3.2 GB
 OK      Docker                   12      2.8 GB
-OK      Homebrew Cache           34      1.5 GB
+OK      Homebrew Cache            1      1.5 GB
 OK      Go Build Cache           89    845.0 MB
 OK      System Logs              67    259.7 MB
 ```

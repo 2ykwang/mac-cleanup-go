@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
 
@@ -126,53 +125,6 @@ func TestRunClean_UnknownItem_ReturnsUsageError(t *testing.T) {
 
 	assert.Equal(t, ExitUsage, code)
 	assert.Equal(t, "unknown_item", decodeError(t, app.err.Bytes()).Code)
-}
-
-type sideEffectTarget struct {
-	target.Target
-}
-
-func (sideEffectTarget) CleanSideEffect() string { return "also prunes elsewhere" }
-
-// stubSideEffect wraps the target id so it reports a cleanup side effect.
-func stubSideEffect(id string) func() {
-	orig := newRegistry
-	newRegistry = func(cfg *types.Config) (*target.Registry, error) {
-		registry, err := orig(cfg)
-		if err != nil {
-			return nil, err
-		}
-		tgt, _ := registry.Get(id)
-		registry.Register(sideEffectTarget{tgt})
-		return registry, nil
-	}
-	return func() { newRegistry = orig }
-}
-
-func TestRunClean_ItemOnSideEffectTarget_IsRejected(t *testing.T) {
-	dir := t.TempDir()
-	files := writeFiles(t, dir, map[string]int{"a.log": 10})
-	defer stubSession(testConfig(testCategory("logs", types.SafetyLevelSafe, types.MethodPermanent, dir+"/*")), emptyUserConfig())()
-	defer stubSideEffect("logs")()
-	app := newTestApp("")
-
-	code := app.Run([]string{"clean", "logs", "--item", files["a.log"], "--yes", "--json"})
-
-	assert.Equal(t, ExitUsage, code)
-	assert.Equal(t, "item_not_supported", decodeError(t, app.err.Bytes()).Code)
-	assert.FileExists(t, files["a.log"])
-}
-
-func TestRunClean_SideEffectTarget_IsDisclosedInDryRun(t *testing.T) {
-	dir := t.TempDir()
-	writeFiles(t, dir, map[string]int{"a.log": 10})
-	defer stubSession(testConfig(testCategory("logs", types.SafetyLevelSafe, types.MethodPermanent, dir+"/*")), emptyUserConfig())()
-	defer stubSideEffect("logs")()
-
-	out := runCleanJSON(t, ExitOK, "logs", "--dry-run")
-
-	require.Len(t, out.Targets, 1)
-	assert.Equal(t, "also prunes elsewhere", out.Targets[0].SideEffect)
 }
 
 func TestRunClean_RiskyAndManual_AreSkipped(t *testing.T) {

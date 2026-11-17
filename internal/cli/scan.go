@@ -27,12 +27,11 @@ const (
 
 // scanned is one target's scan outcome. result is nil unless status is ok.
 type scanned struct {
-	cat        types.Category
-	result     *types.ScanResult
-	status     string
-	blockedBy  string
-	sideEffect string
-	err        error
+	cat       types.Category
+	result    *types.ScanResult
+	status    string
+	blockedBy string
+	err       error
 }
 
 // scanCategories scans in parallel and returns results in input order.
@@ -65,9 +64,6 @@ func scanOne(registry *target.Registry, cat types.Category) scanned {
 	if !ok {
 		s.status, s.err = statusError, fmt.Errorf("no scanner registered")
 		return s
-	}
-	if se, ok := tgt.(target.SideEffectCleaner); ok {
-		s.sideEffect = se.CleanSideEffect()
 	}
 	if !tgt.IsAvailable() {
 		s.status = statusUnavailable
@@ -112,7 +108,6 @@ type scanEntry struct {
 	BlockedBy      string              `json:"blocked_by,omitempty"`
 	Error          string              `json:"error,omitempty"`
 	Guide          string              `json:"guide,omitempty"`
-	SideEffect     string              `json:"side_effect,omitempty"`
 	Items          []itemInfo          `json:"items,omitempty"`
 	MoreItems      int                 `json:"more_items,omitempty"`
 }
@@ -174,7 +169,7 @@ func buildScanOutput(results []scanned, userCfg *userconfig.UserConfig, withItem
 func newScanEntry(s scanned, userCfg *userconfig.UserConfig, withItems bool, limit int) scanEntry {
 	entry := scanEntry{
 		ID: s.cat.ID, Name: s.cat.Name, Safety: s.cat.Safety, Method: s.cat.Method,
-		Status: s.status, BlockedBy: s.blockedBy, SideEffect: s.sideEffect,
+		Status: s.status, BlockedBy: s.blockedBy,
 	}
 	if s.err != nil {
 		entry.Error = s.err.Error()
@@ -235,9 +230,6 @@ func (a *App) printScan(out scanOutput, withItems bool) {
 		}
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\t%s\n",
 			t.ID, t.Safety, t.Method, t.ItemCount, utils.FormatSize(t.SizeBytes), t.Name)
-		if t.SideEffect != "" {
-			notes = append(notes, fmt.Sprintf("%s: clean %s", t.ID, t.SideEffect))
-		}
 		if withItems {
 			a.printItems(tw, t)
 		}

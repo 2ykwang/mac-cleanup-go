@@ -56,7 +56,6 @@ type cleanEntry struct {
 	FailedItems int                 `json:"failed_items,omitempty"`
 	SIPSkipped  int                 `json:"sip_skipped_items,omitempty"`
 	FreedBytes  int64               `json:"freed_bytes"`
-	SideEffect  string              `json:"side_effect,omitempty"`
 	Errors      []string            `json:"errors,omitempty"`
 	ItemPaths   []string            `json:"item_paths,omitempty"`
 }
@@ -107,7 +106,7 @@ func (a *App) runClean(args []string) error {
 
 	if !opts.yes {
 		a.writeCleanText(plan, buildDryRunReport(jobs), true)
-		if !a.confirm(plan, jobs) {
+		if !a.confirm(jobs) {
 			return runtimeErrorf("cancelled", "", "cancelled; nothing was changed")
 		}
 		// Re-check blocking processes: time passed while the user read the plan.
@@ -206,10 +205,9 @@ func resolveCleanIDs(opts cleanOptions, cfg *types.Config, userCfg *userconfig.U
 
 // cleanPlan holds the scan results narrowed to what will be cleaned.
 type cleanPlan struct {
-	results     map[string]*types.ScanResult
-	order       []string
-	skipped     []skippedTarget
-	sideEffects map[string]string
+	results map[string]*types.ScanResult
+	order   []string
+	skipped []skippedTarget
 }
 
 // jobs builds jobs through the cleaner so its last-moment process check
@@ -244,19 +242,13 @@ func planClean(results []scanned, userCfg *userconfig.UserConfig, itemPaths []st
 	}
 	found := make(map[string]bool, len(wanted))
 
-	plan := &cleanPlan{results: make(map[string]*types.ScanResult), sideEffects: make(map[string]string)}
+	plan := &cleanPlan{results: make(map[string]*types.ScanResult)}
 	var unscanned []string
 	for _, s := range results {
 		if skip, ok := skipBeforeItems(s, len(wanted) > 0); ok {
 			plan.skipped = append(plan.skipped, skip)
 			unscanned = append(unscanned, skip.ID+" ("+skip.Reason+")")
 			continue
-		}
-
-		if len(wanted) > 0 && s.sideEffect != "" && hasWantedItem(s.result.Items, wanted) {
-			return nil, usageErrorf("item_not_supported",
-				"clean the whole target after the user approves it: `mac-cleanup clean "+s.cat.ID+" --dry-run`",
-				"%s cannot be cleaned item by item: it %s", s.cat.ID, s.sideEffect)
 		}
 
 		picked, skipped := pickItems(s, userCfg, wanted, found)
@@ -269,9 +261,6 @@ func planClean(results []scanned, userCfg *userconfig.UserConfig, itemPaths []st
 		narrowed.Items = picked
 		plan.results[s.cat.ID] = &narrowed
 		plan.order = append(plan.order, s.cat.ID)
-		if s.sideEffect != "" {
-			plan.sideEffects[s.cat.ID] = s.sideEffect
-		}
 	}
 
 	for _, p := range itemPaths {
@@ -285,10 +274,6 @@ func planClean(results []scanned, userCfg *userconfig.UserConfig, itemPaths []st
 		return nil, usageErrorf("unknown_item", hint, "%q is not a scanned item of the given targets", p)
 	}
 	return plan, nil
-}
-
-func hasWantedItem(items []types.CleanableItem, wanted map[string]bool) bool {
-	return slices.ContainsFunc(items, func(item types.CleanableItem) bool { return wanted[item.Path] })
 }
 
 func cleanItemPath(p string) string {
@@ -342,7 +327,7 @@ func skipBeforeItems(s scanned, hasItemFilter bool) (skippedTarget, bool) {
 	return skip, true
 }
 
-func (a *App) confirm(plan *cleanPlan, jobs []cleaner.CleanJob) bool {
+func (a *App) confirm(jobs []cleaner.CleanJob) bool {
 	var permanent []string
 	for _, job := range jobs {
 		if job.Category.Method == types.MethodPermanent {
@@ -352,11 +337,6 @@ func (a *App) confirm(plan *cleanPlan, jobs []cleaner.CleanJob) bool {
 	fmt.Fprintln(a.Err)
 	if len(permanent) > 0 {
 		fmt.Fprintf(a.Err, "Permanently deletes (not recoverable): %s\n", strings.Join(permanent, ", "))
-	}
-	for _, job := range jobs {
-		if effect := plan.sideEffects[job.Category.ID]; effect != "" {
-			fmt.Fprintf(a.Err, "Also: %s %s\n", job.Category.ID, effect)
-		}
 	}
 	fmt.Fprint(a.Err, "Proceed? [y/N] ")
 	line, _ := bufio.NewReader(a.In).ReadString('\n') // EOF counts as "no"
@@ -380,11 +360,6 @@ func (a *App) writeCleanText(plan *cleanPlan, report *types.Report, dryRun bool)
 		theme = styles.New(lipgloss.HasDarkBackground(os.Stdin, os.Stdout))
 	}
 	fmt.Fprint(a.Out, FormatReport(report, dryRun, theme, color))
-	for _, r := range report.Results {
-		if effect := plan.sideEffects[r.Category.ID]; effect != "" {
-			fmt.Fprintf(a.Out, "\nNote: %s %s\n", r.Category.ID, effect)
-		}
-	}
 	if len(plan.skipped) > 0 {
 		fmt.Fprintln(a.Out, "\nSkipped")
 		for _, s := range plan.skipped {
@@ -425,7 +400,6 @@ func newCleanOutput(report *types.Report, plan *cleanPlan, dryRun bool) cleanOut
 			FailedItems: len(r.Errors),
 			SIPSkipped:  r.SkippedItems,
 			FreedBytes:  r.FreedSpace,
-			SideEffect:  plan.sideEffects[r.Category.ID],
 			Errors:      r.Errors,
 		}
 		if dryRun {

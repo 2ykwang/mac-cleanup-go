@@ -57,7 +57,6 @@ JSON fields per target:
   cleanable_bytes  What ` + "`clean <id>`" + ` would remove: excludes locked and saved-excluded
                    items; 0 for risky (needs --item) and manual targets
   blocked_by       Running process that must quit first (status blocked)
-  side_effect      What clean does beyond the listed items (e.g. homebrew)
   items[]          path, name, display_name, size_bytes, file_count,
                    modified_at, locked, excluded
 `
@@ -66,7 +65,8 @@ const cleanUsage = `Usage: mac-cleanup clean <id>... [flags]
        mac-cleanup clean --selected [flags]
 
 Scan the given targets and clean them. Most targets move items to Trash;
-check "method" in scan output: permanent deletes, builtin runs brew/docker.
+check "method" in scan output: permanent deletes, builtin uses target-specific
+cleanup. Homebrew moves only its scanned cache to Trash and keeps formula versions.
 
 Flags:
   --dry-run        Show what would be cleaned; change nothing
@@ -74,7 +74,6 @@ Flags:
   --item <path>    Clean only this scanned item path (repeatable). Required
                    for risky targets. Paths must come from ` + "`scan --items`" + `.
                    An explicit --item also overrides a saved exclusion.
-                   Not allowed for targets with a side_effect: clean those whole
   --selected       Use targets saved with ` + "`mac-cleanup select`" + `
   --json           Print JSON
 
