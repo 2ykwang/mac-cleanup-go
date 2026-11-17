@@ -15,6 +15,7 @@ type BuiltinFactory func(cat types.Category, categories []types.Category) Target
 var builtinIDs = map[string]struct{}{
 	"homebrew":              {},
 	"docker":                {},
+	"docker-volumes":        {},
 	"old-downloads":         {},
 	"system-cache":          {},
 	"project-cache":         {},
@@ -42,6 +43,9 @@ func registerAllBuiltins() {
 	})
 	RegisterBuiltin("docker", func(cat types.Category, _ []types.Category) Target {
 		return NewDockerTarget(cat)
+	})
+	RegisterBuiltin("docker-volumes", func(cat types.Category, _ []types.Category) Target {
+		return NewDockerVolumesTarget(cat)
 	})
 	RegisterBuiltin("old-downloads", func(cat types.Category, _ []types.Category) Target {
 		return NewOldDownloadTarget(cat, defaultDaysOld)

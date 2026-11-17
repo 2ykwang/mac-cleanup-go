@@ -644,7 +644,14 @@ categories:
     group: dev
     safety: moderate
     method: builtin
-    note: Unused images, containers, volumes, and build cache
+    note: Unused images and build cache (volumes and containers are kept)
+
+  - id: docker-volumes
+    name: Docker Volumes
+    group: dev
+    safety: risky
+    method: builtin
+    note: Named and anonymous volumes may contain databases or other persistent data
 
   - id: flutter
     name: Flutter Cache

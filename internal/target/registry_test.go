@@ -77,6 +77,7 @@ func TestIsBuiltinID_RegisteredBuiltin_ReturnsTrue(t *testing.T) {
 	registerAllBuiltins()
 
 	assert.True(t, IsBuiltinID("docker"))
+	assert.True(t, IsBuiltinID("docker-volumes"))
 	assert.True(t, IsBuiltinID("homebrew"))
 	assert.True(t, IsBuiltinID("system-cache"))
 	assert.True(t, IsBuiltinID("old-downloads"))
