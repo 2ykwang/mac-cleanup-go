@@ -40,13 +40,19 @@ func configPath() (string, error) {
 func Load() (*UserConfig, error) {
 	path, err := configPath()
 	if err != nil {
-		return &UserConfig{ExcludedPaths: make(map[string][]string)}, nil
+		return &UserConfig{
+			ExcludedPaths:   make(map[string][]string),
+			SelectedTargets: make([]string, 0),
+		}, nil
 	}
 
 	data, err := osReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return &UserConfig{ExcludedPaths: make(map[string][]string)}, nil
+			return &UserConfig{
+				ExcludedPaths:   make(map[string][]string),
+				SelectedTargets: make([]string, 0),
+			}, nil
 		}
 		return nil, err
 	}

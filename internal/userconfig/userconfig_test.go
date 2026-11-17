@@ -12,11 +12,25 @@ import (
 )
 
 func TestLoad_NoConfigFile(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
 	cfg, err := Load()
 	require.NoError(t, err)
 	require.NotNil(t, cfg)
 	assert.NotNil(t, cfg.ExcludedPaths, "ExcludedPaths should be initialized")
 	assert.NotNil(t, cfg.SelectedTargets, "SelectedTargets should be initialized")
+}
+
+func TestLoad_NoHomeReturnsInitializedDefaults(t *testing.T) {
+	t.Setenv("HOME", "")
+
+	cfg, err := Load()
+
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+	assert.NotNil(t, cfg.ExcludedPaths)
+	assert.NotNil(t, cfg.SelectedTargets)
+	assert.Empty(t, cfg.SelectedTargets)
 }
 
 func TestUserConfig_ExcludedPaths(t *testing.T) {
