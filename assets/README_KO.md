@@ -19,7 +19,7 @@
 ## 개요
 
 - 용량을 불필요하게 차지하는 항목을 직접 선택하여 삭제할 수 있습니다.
-- 기본은 휴지통으로 이동하고, '휴지통'과 'Shell History Residue' 카테고리만 영구 삭제합니다.
+- 대부분 휴지통으로 이동합니다. Docker, '휴지통', 'Shell History Residue'는 영구 삭제합니다. Homebrew는 영구 정리와 휴지통 이동을 함께 수행합니다.
 - risky 카테고리는 기본 미선택이며, 선택해도 항목은 자동 제외됩니다. (삭제하려면 미리보기에서 포함해야 합니다.)
 - manual 카테고리는 삭제 가이드만 표시합니다.
 - 작업 범위: 캐시/로그/임시 파일과 일부 앱 데이터. 시스템 최적화/앱 제거는 하지 않습니다.
@@ -130,22 +130,41 @@ $ mac-cleanup clean --selected --dry-run
 Dry Run Report
 --------------
 Mode: Dry Run
+Sizes are scan estimates, not freed disk space.
 
 Summary                             Highlights
-Freed (dry-run): 8.6 GB             1. App Caches - 3.2 GB (523 items)
+Planned: 8.6 GB                    1. App Caches - 3.2 GB (523 items)
                                     2. Docker - 2.8 GB (12 items)
                                     3. Homebrew Cache - 1.5 GB (34 items)
 
 Details
-STATUS  CATEGORY              ITEMS        SIZE
-OK      App Caches              523      3.2 GB
-OK      Docker                   12      2.8 GB
-OK      Homebrew Cache           34      1.5 GB
-OK      Go Build Cache           89    845.0 MB
-OK      System Logs              67    259.7 MB
+STATUS  CATEGORY              ITEMS        SIZE  ACTION
+OK      App Caches              523      3.2 GB  Trash
+OK      Docker                   12      2.8 GB  Permanent
+OK      Homebrew Cache           34      1.5 GB  Trash + permanent
+  Additional cleanup size unknown.
+OK      Go Build Cache           89    845.0 MB  Trash
+OK      System Logs              67    259.7 MB  Trash
 ```
 
 </details>
+
+`method`는 실행 경로이고 `disposal`은 실제 처분 방식입니다.
+`trash`, `permanent`, `mixed`, `manual`, `unknown`으로 구분합니다.
+Docker는 영구 삭제하고, 프로젝트 캐시와 오래된 다운로드 및 릴리스는 휴지통으로 이동합니다.
+Homebrew는 혼합 정리를 하며 스캔한 캐시 밖의 추가 정리 크기는 측정하지 않습니다.
+
+리포트는 계획 크기, 확인된 휴지통 이동 크기, 영구 삭제 추정 크기를 나눕니다.
+휴지통을 비우기 전에는 데이터가 남으며 어떤 값도 실제 확보한 디스크 공간을 뜻하지 않습니다.
+JSON의 `planned_bytes`, `trashed_bytes`, `permanently_deleted_bytes`는 총계와 대상별로 제공됩니다.
+dry-run에서 두 성공 크기는 0입니다. 이미 없는 항목, 확인 안 된 결과, 건너뛴 항목은
+`already_absent_items`, `unconfirmed_items`, `skipped_items`로 구분하고 성공 크기에 더하지 않습니다.
+`processed_items`는 확인된 처리 수입니다.
+대상별 `sip_skipped_items`는 `skipped_items`의 기존 별칭이며 SIP 외 정책에 따른 건너뜀도 포함합니다.
+
+`freed_bytes`는 deprecated입니다. dry-run의 계획 크기와 실제 정리의 기존 성공 집계를
+호환성을 위해 유지하므로 이미 없는 경로나 이동 확인 없이 사라진 경로도 포함합니다.
+`cleaned_items`와 대상별 `items`도 기존 집계입니다. 새 연동에는 명시적인 결과 필드를 사용합니다.
 
 ## AI 에이전트와 함께 쓰기
 

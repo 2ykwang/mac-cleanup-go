@@ -19,7 +19,7 @@
 ## Overview
 
 - Select items that take up space and delete them yourself.
-- By default, items go to Trash; only the Trash and Shell History Residue categories delete permanently.
+- Most targets move items to Trash. Docker, Trash and Shell History Residue delete permanently. Homebrew mixes permanent cleanup with Trash movement.
 - Risky categories are unselected by default; even when selected, items are auto-excluded. (Include them in Preview to delete.)
 - Manual categories show guides only.
 - Scope: caches/logs/temp and selected app data (no system optimization or uninstaller).
@@ -131,22 +131,44 @@ $ mac-cleanup clean --selected --dry-run
 Dry Run Report
 --------------
 Mode: Dry Run
+Sizes are scan estimates, not freed disk space.
 
 Summary                             Highlights
-Freed (dry-run): 8.6 GB             1. App Caches - 3.2 GB (523 items)
+Planned: 8.6 GB                    1. App Caches - 3.2 GB (523 items)
                                     2. Docker - 2.8 GB (12 items)
                                     3. Homebrew Cache - 1.5 GB (34 items)
 
 Details
-STATUS  CATEGORY              ITEMS        SIZE
-OK      App Caches              523      3.2 GB
-OK      Docker                   12      2.8 GB
-OK      Homebrew Cache           34      1.5 GB
-OK      Go Build Cache           89    845.0 MB
-OK      System Logs              67    259.7 MB
+STATUS  CATEGORY              ITEMS        SIZE  ACTION
+OK      App Caches              523      3.2 GB  Trash
+OK      Docker                   12      2.8 GB  Permanent
+OK      Homebrew Cache           34      1.5 GB  Trash + permanent
+  Additional cleanup size unknown.
+OK      Go Build Cache           89    845.0 MB  Trash
+OK      System Logs              67    259.7 MB  Trash
 ```
 
 </details>
+
+`method` selects the cleanup executor. `disposal` describes recovery behavior:
+`trash`, `permanent`, `mixed`, `manual`, or `unknown`. Docker deletes permanently;
+project caches, old downloads, and old releases move to Trash. Homebrew currently
+runs mixed cleanup, including unmeasured changes outside its scanned cache.
+
+Clean reports separate planned size, confirmed Trash movements, and permanent
+deletion estimates. Trash keeps data until emptied. None measures actual free
+disk space. JSON exposes `planned_bytes`, `trashed_bytes`, and
+`permanently_deleted_bytes` in totals and each target. Dry-runs leave successful
+size fields at 0. `already_absent_items`, `unconfirmed_items`, and `skipped_items`
+explain outcomes that do not contribute to successful sizes. `processed_items`
+counts confirmed cleanup outcomes.
+Per-target `sip_skipped_items` is a legacy alias of `skipped_items` for all policy
+skips, including those unrelated to SIP.
+
+`freed_bytes` is deprecated and preserves its legacy value: planned scan sizes
+in dry-run, legacy successful-item scan sizes in clean, including already absent
+paths and unconfirmed disappearances. `cleaned_items` and per-target `items`
+also retain legacy counts. Use the explicit outcome fields for new integrations.
 
 ## Use with AI agents
 
