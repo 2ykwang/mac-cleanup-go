@@ -181,7 +181,9 @@ Try prompts like:
 - Lets you preview items and exclude what you want to keep.
 - Labels targets by impact level (safe, moderate, risky, manual).
 - SIP-protected paths are excluded from scan/cleanup.
-- Built-in scans for Homebrew, Docker, old downloads, stale project build caches, and old Claude Code/Codex releases (command output, last-modified time, or the active release).
+- Built-in scans for Homebrew, Docker, old downloads, project cache candidates, and old Claude Code/Codex releases (command output, last-modified time, or the active release).
+
+`project-cache` matches dependency/build directory names and parent project markers, then checks whether the newest internal file modification is older than 7 days. Reading or running dependencies may leave those files unchanged, so current work's `.venv` or `node_modules` can still appear. **Age does not prove a project is unused.** Review candidates with `mac-cleanup scan project-cache --items`.
 
 ## Impact levels
 

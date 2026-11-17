@@ -197,7 +197,7 @@ func TestScan_RespectsMaxDepth(t *testing.T) {
 func TestScan_FiltersStaleCachesOnly(t *testing.T) {
 	root := t.TempDir()
 
-	// Stale project (30 days old) — file inside .venv is also old
+	// The file inside this .venv was modified 30 days ago.
 	staleProject := filepath.Join(root, "stale")
 	require.NoError(t, os.MkdirAll(filepath.Join(staleProject, ".venv", "lib"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(staleProject, "requirements.txt"), []byte(""), 0o644))
@@ -205,11 +205,11 @@ func TestScan_FiltersStaleCachesOnly(t *testing.T) {
 	require.NoError(t, os.WriteFile(staleFile, []byte(""), 0o644))
 	makeStale(t, staleFile)
 
-	// Active project — file inside .venv is recent
-	activeProject := filepath.Join(root, "active")
-	require.NoError(t, os.MkdirAll(filepath.Join(activeProject, ".venv", "lib"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(activeProject, "requirements.txt"), []byte(""), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(activeProject, ".venv", "lib", "site.py"), []byte(""), 0o644))
+	// The file inside this .venv was modified recently.
+	recentProject := filepath.Join(root, "recent")
+	require.NoError(t, os.MkdirAll(filepath.Join(recentProject, ".venv", "lib"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(recentProject, "requirements.txt"), []byte(""), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(recentProject, ".venv", "lib", "site.py"), []byte(""), 0o644))
 
 	target := newTestProjectCacheTarget(root)
 	target.staleDays = 7
@@ -219,6 +219,31 @@ func TestScan_FiltersStaleCachesOnly(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, result.Items, 1)
 	assert.Contains(t, result.Items[0].DisplayName, "stale")
+}
+
+func TestScan_IncludesOldDependenciesWithRecentSource(t *testing.T) {
+	root := t.TempDir()
+	project := filepath.Join(root, "current-work")
+	dependencies := filepath.Join(project, "node_modules")
+	require.NoError(t, os.MkdirAll(dependencies, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(project, "package.json"), []byte("{}"), 0o644))
+	dependencyFile := filepath.Join(dependencies, "index.js")
+	content := []byte("module.exports = {};")
+	require.NoError(t, os.WriteFile(dependencyFile, content, 0o644))
+	old := time.Now().AddDate(0, 0, -30)
+	require.NoError(t, os.Chtimes(dependencyFile, old, old))
+	require.NoError(t, os.WriteFile(filepath.Join(project, "app.js"), []byte("require('./node_modules');"), 0o644))
+	target := newTestProjectCacheTarget(root)
+	target.staleDays = defaultStaleDays
+
+	result, err := target.Scan()
+
+	require.NoError(t, err)
+	require.Len(t, result.Items, 1)
+	assert.Equal(t, dependencies, result.Items[0].Path)
+	assert.Equal(t, int64(len(content)), result.Items[0].Size)
+	assert.Equal(t, int64(1), result.Items[0].FileCount)
+	assert.WithinDuration(t, old, result.Items[0].ModifiedAt, time.Second)
 }
 
 // --- Scan: Edge cases ---

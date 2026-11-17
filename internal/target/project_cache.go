@@ -13,13 +13,13 @@ import (
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
-// cachePattern defines a build artifact directory and its project marker files.
-// A directory is identified as a project cache only when:
+// cachePattern defines a dependency or build artifact directory and its project markers.
+// A directory is a candidate only when:
 //  1. Its name matches DirName, AND
 //  2. At least one MarkerFiles exists in the parent directory
 //
-// This two-step validation distinguishes project caches (safe to delete)
-// from system tool dependencies (e.g. ~/.nvm/**/node_modules).
+// Parent markers help distinguish project directories from tool installation trees.
+// They don't establish whether a project is unused or safe to clean.
 type cachePattern struct {
 	DirName     string
 	MarkerFiles []string
@@ -82,8 +82,8 @@ type walkItem struct {
 	depth int
 }
 
-// ProjectCacheTarget scans $HOME recursively for stale build caches
-// inside project directories, using marker-file validation to avoid false positives.
+// ProjectCacheTarget scans $HOME for known project dependency and artifact directories
+// with old internal file mtimes. Reading or running dependencies may not update mtimes.
 type ProjectCacheTarget struct {
 	category  types.Category
 	scanRoot  string // overridable for testing
@@ -126,7 +126,7 @@ func (t *ProjectCacheTarget) Scan() (*types.ScanResult, error) {
 
 	allItems, _, _ := t.calculateSizes(found)
 
-	// Filter to stale caches only — protect active projects
+	// This filters internal file modification times, not project activity.
 	cutoff := time.Now().AddDate(0, 0, -t.staleDays)
 	for _, item := range allItems {
 		if item.ModifiedAt.Before(cutoff) {

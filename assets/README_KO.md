@@ -180,7 +180,9 @@ mac-cleanup skill > ~/.claude/skills/mac-cleanup/SKILL.md
 - 삭제 전 미리보기에서 항목을 제외할 수 있습니다.
 - 영향도 라벨(safe, moderate, risky, manual)을 표시합니다.
 - SIP 보호 경로는 스캔/정리 대상에서 제외됩니다.
-- Homebrew, Docker, 오래된 다운로드 파일, 오래된 프로젝트 빌드 캐시, Claude Code/Codex 지난 릴리스에 대한 전용 스캐너가 있습니다. 이 스캐너는 고정 경로 대신 명령 출력, 마지막 수정 시각, 현재 사용 중인 릴리스를 기준으로 항목을 찾습니다.
+- Homebrew, Docker, 오래된 다운로드 파일, 프로젝트 캐시 후보, Claude Code/Codex 지난 릴리스에 대한 전용 스캐너가 있습니다. 이 스캐너는 고정 경로 대신 명령 출력, 마지막 수정 시각, 현재 사용 중인 릴리스를 기준으로 항목을 찾습니다.
+
+`project-cache`는 의존성과 빌드 디렉터리 이름, 부모 프로젝트의 marker 파일이 일치하고, 내부 파일 중 가장 최신 수정 시각이 7일보다 오래된 항목을 제안합니다. 의존성을 읽거나 실행해도 파일이 수정되지 않을 수 있어 현재 작업 중인 `.venv`, `node_modules`도 후보에 포함될 수 있습니다. **오래됐다는 사실이 프로젝트를 사용하지 않는다는 증거는 아닙니다.** `mac-cleanup scan project-cache --items`로 후보를 확인하세요.
 
 ## 영향도 분류 기준
 

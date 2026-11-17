@@ -66,7 +66,12 @@ const cleanUsage = `Usage: mac-cleanup clean <id>... [flags]
        mac-cleanup clean --selected [flags]
 
 Scan the given targets and clean them. Most targets move items to Trash;
-check "method" in scan output: permanent deletes, builtin runs brew/docker.
+check "method" in scan output: permanent deletes, builtin is target-specific.
+
+For project-cache, review each path, size, and latest modification with
+` + "`scan project-cache --items --limit 0 --json`" + `. Old dependencies may still
+be in use. Use --item to limit cleanup to approved directories and their
+contents. Selected project-cache directories move to Trash.
 
 Flags:
   --dry-run        Show what would be cleaned; change nothing

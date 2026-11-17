@@ -630,7 +630,7 @@ categories:
     group: dev
     safety: moderate
     method: builtin
-    note: "Stale build caches (7+ days) in project directories (.venv, node_modules, .tox)"
+    note: "Dependency/build dirs (.venv, node_modules) next to project markers; files unmodified for over 7 days. May still be in use"
 
   - id: homebrew
     name: Homebrew Cache

@@ -84,8 +84,8 @@ mac-cleanup clean slack --item "/Users/me/Library/Application Support/Slack/Cach
   - `trash`: moved to the Trash, recoverable until it is emptied.
   - `permanent`: deleted for good. The `trash` target empties the Trash.
     Ask about it separately.
-  - `builtin`: runs the tool's own cleanup (brew, docker, project build
-    caches). Docker items are images, volumes, and the build cache.
+  - `builtin`: uses target-specific cleanup. Project build caches move to
+    the Trash. Docker items are images, volumes, and the build cache.
     Targets with `side_effect` in scan output (`homebrew` runs `brew cleanup`,
     which also removes old formula versions) only clean as a whole: tell the
     user the side effect before asking. `--item` on them fails with
@@ -97,6 +97,33 @@ mac-cleanup clean slack --item "/Users/me/Library/Application Support/Slack/Cach
 - Items with `locked: true` are in use and are skipped. Items with
   `excluded: true` were excluded by the user and are skipped unless passed
   with `--item`.
+
+## Project cache candidates
+
+`project-cache` matches known directory names and marker files in their parent
+project directory. It keeps candidates whose newest internal file mtime is
+older than 7 days. `modified_at` is that latest file modification, not the
+project's last use. Reading or running dependencies may not change those files.
+`.venv` and `node_modules` can belong to current work. Age does not prove that
+a project is unused.
+
+Before proposing project cache cleanup:
+
+1. Run `mac-cleanup scan project-cache --items --limit 0 --json`.
+2. Show each candidate's exact `path`, `size_bytes`, and `modified_at` when
+   present. Empty directories omit `modified_at` in JSON (`-` in text); describe
+   them as containing no files, without inventing a date. Explain that cleanup
+   moves the entire directory and its contents to Trash and may require
+   reinstalling dependencies or rebuilding.
+3. Get approval for each directory's scope. Pass only those exact paths with
+   repeated `--item` in both the dry-run and the approved execution. Do not
+   treat approval for other caches as approval for project dependencies.
+
+Saved exclusions match exact scanned item paths within a target. Excluding a
+project root or a child file does not exclude a scanned dependency directory.
+An explicit `--item` overrides a saved exclusion, so call that out and get
+approval before including an excluded path. TUI Preview exclusions apply to
+whole scanned items; drill-down is read-only.
 
 ## Reference
 
