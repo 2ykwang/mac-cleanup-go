@@ -378,6 +378,7 @@ func TestOldReleaseTargetClean_SkipsAll_WhenLockCheckFails(t *testing.T) {
 	require.Error(t, err)
 	require.NotNil(t, result)
 	assert.Equal(t, 1, result.SkippedItems)
+	assert.Equal(t, int64(5), result.PlannedBytes)
 	assert.Equal(t, 0, result.CleanedItems)
 	assert.FileExists(t, old)
 }

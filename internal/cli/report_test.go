@@ -25,13 +25,14 @@ func TestFormatReport_DryRunNoItems(t *testing.T) {
 	assert.Contains(t, output, "Summary")
 	assert.Contains(t, output, "Highlights")
 	assert.Contains(t, output, "No items to clean.")
-	assert.Contains(t, output, "Freed (dry-run)")
+	assert.Contains(t, output, "Planned:")
 }
 
 func TestFormatReport_IncludesGroups(t *testing.T) {
 	t.Setenv("COLUMNS", "100")
 	report := &types.Report{
 		FreedSpace:   1024,
+		TrashedBytes: 1024,
 		CleanedItems: 2,
 		FailedItems:  1,
 		Results: []types.CleanResult{
@@ -56,7 +57,7 @@ func TestFormatReport_IncludesGroups(t *testing.T) {
 	assert.Contains(t, output, "Highlights")
 	assert.Contains(t, output, "Details")
 	assert.Contains(t, output, "STATUS")
-	assert.Contains(t, output, "Recovered")
+	assert.Contains(t, output, "Moved to Trash:")
 	assert.True(t, strings.Contains(output, "Cache") || strings.Contains(output, "Logs"))
 	assert.Contains(t, output, "failed to remove")
 }

@@ -48,26 +48,41 @@ type skippedTarget struct {
 }
 
 type cleanEntry struct {
-	ID          string              `json:"id"`
-	Name        string              `json:"name"`
-	Method      types.CleanupMethod `json:"method"`
-	Status      string              `json:"status"`
-	Items       int                 `json:"items"`
-	FailedItems int                 `json:"failed_items,omitempty"`
-	SIPSkipped  int                 `json:"sip_skipped_items,omitempty"`
-	FreedBytes  int64               `json:"freed_bytes"`
-	SideEffect  string              `json:"side_effect,omitempty"`
-	Errors      []string            `json:"errors,omitempty"`
-	ItemPaths   []string            `json:"item_paths,omitempty"`
+	ID                      string              `json:"id"`
+	Name                    string              `json:"name"`
+	Method                  types.CleanupMethod `json:"method"`
+	Status                  string              `json:"status"`
+	Items                   int                 `json:"items"`
+	FailedItems             int                 `json:"failed_items,omitempty"`
+	SIPSkipped              int                 `json:"sip_skipped_items,omitempty"`
+	FreedBytes              int64               `json:"freed_bytes"`
+	SideEffect              string              `json:"side_effect,omitempty"`
+	Errors                  []string            `json:"errors,omitempty"`
+	ItemPaths               []string            `json:"item_paths,omitempty"`
+	Disposal                types.DisposalMode  `json:"disposal"`
+	PlannedBytes            int64               `json:"planned_bytes"`
+	TrashedBytes            int64               `json:"trashed_bytes"`
+	PermanentlyDeletedBytes int64               `json:"permanently_deleted_bytes"`
+	AlreadyAbsentItems      int                 `json:"already_absent_items"`
+	UnconfirmedItems        int                 `json:"unconfirmed_items"`
+	SkippedItems            int                 `json:"skipped_items"`
+	ProcessedItems          int                 `json:"processed_items"`
 }
 
 type cleanOutput struct {
-	DryRun       bool            `json:"dry_run"`
-	FreedBytes   int64           `json:"freed_bytes"`
-	CleanedItems int             `json:"cleaned_items"`
-	FailedItems  int             `json:"failed_items"`
-	Targets      []cleanEntry    `json:"targets"`
-	Skipped      []skippedTarget `json:"skipped"`
+	DryRun                  bool            `json:"dry_run"`
+	FreedBytes              int64           `json:"freed_bytes"`
+	CleanedItems            int             `json:"cleaned_items"`
+	FailedItems             int             `json:"failed_items"`
+	Targets                 []cleanEntry    `json:"targets"`
+	Skipped                 []skippedTarget `json:"skipped"`
+	PlannedBytes            int64           `json:"planned_bytes"`
+	TrashedBytes            int64           `json:"trashed_bytes"`
+	PermanentlyDeletedBytes int64           `json:"permanently_deleted_bytes"`
+	AlreadyAbsentItems      int             `json:"already_absent_items"`
+	UnconfirmedItems        int             `json:"unconfirmed_items"`
+	SkippedItems            int             `json:"skipped_items"`
+	ProcessedItems          int             `json:"processed_items"`
 }
 
 type cleanOptions struct {
@@ -343,17 +358,9 @@ func skipBeforeItems(s scanned, hasItemFilter bool) (skippedTarget, bool) {
 }
 
 func (a *App) confirm(plan *cleanPlan, jobs []cleaner.CleanJob) bool {
-	var permanent []string
-	for _, job := range jobs {
-		if job.Category.Method == types.MethodPermanent {
-			permanent = append(permanent, job.Category.ID)
-		}
-	}
 	fmt.Fprintln(a.Err)
-	if len(permanent) > 0 {
-		fmt.Fprintf(a.Err, "Permanently deletes (not recoverable): %s\n", strings.Join(permanent, ", "))
-	}
 	for _, job := range jobs {
+		fmt.Fprintf(a.Err, "%s: %s\n", job.Category.ID, job.Category.DisposalMode().Label())
 		if effect := plan.sideEffects[job.Category.ID]; effect != "" {
 			fmt.Fprintf(a.Err, "Also: %s %s\n", job.Category.ID, effect)
 		}
@@ -405,28 +412,43 @@ func (a *App) writeCleanText(plan *cleanPlan, report *types.Report, dryRun bool)
 
 func newCleanOutput(report *types.Report, plan *cleanPlan, dryRun bool) cleanOutput {
 	out := cleanOutput{
-		DryRun:       dryRun,
-		FreedBytes:   report.FreedSpace,
-		CleanedItems: report.CleanedItems,
-		FailedItems:  report.FailedItems,
-		Targets:      make([]cleanEntry, 0, len(report.Results)),
-		Skipped:      plan.skipped,
+		ProcessedItems:          report.ProcessedItems,
+		PlannedBytes:            report.PlannedBytes,
+		TrashedBytes:            report.TrashedBytes,
+		PermanentlyDeletedBytes: report.PermanentlyDeletedBytes,
+		AlreadyAbsentItems:      report.AlreadyAbsentItems,
+		UnconfirmedItems:        report.UnconfirmedItems,
+		SkippedItems:            report.SkippedItems,
+		DryRun:                  dryRun,
+		FreedBytes:              report.FreedSpace,
+		CleanedItems:            report.CleanedItems,
+		FailedItems:             report.FailedItems,
+		Targets:                 make([]cleanEntry, 0, len(report.Results)),
+		Skipped:                 plan.skipped,
 	}
 	if out.Skipped == nil {
 		out.Skipped = []skippedTarget{}
 	}
 	for _, r := range report.Results {
 		entry := cleanEntry{
-			ID:          r.Category.ID,
-			Name:        r.Category.Name,
-			Method:      r.Category.Method,
-			Status:      cleanStatus(r, dryRun),
-			Items:       r.CleanedItems,
-			FailedItems: len(r.Errors),
-			SIPSkipped:  r.SkippedItems,
-			FreedBytes:  r.FreedSpace,
-			SideEffect:  plan.sideEffects[r.Category.ID],
-			Errors:      r.Errors,
+			SkippedItems:            r.SkippedItems,
+			ProcessedItems:          r.ProcessedItems,
+			ID:                      r.Category.ID,
+			Name:                    r.Category.Name,
+			Method:                  r.Category.Method,
+			Disposal:                r.Category.DisposalMode(),
+			PlannedBytes:            r.PlannedBytes,
+			TrashedBytes:            r.TrashedBytes,
+			PermanentlyDeletedBytes: r.PermanentlyDeletedBytes,
+			AlreadyAbsentItems:      r.AlreadyAbsentItems,
+			UnconfirmedItems:        r.UnconfirmedItems,
+			Status:                  cleanStatus(r, dryRun),
+			Items:                   r.CleanedItems,
+			FailedItems:             len(r.Errors),
+			SIPSkipped:              r.SkippedItems,
+			FreedBytes:              r.FreedSpace,
+			SideEffect:              plan.sideEffects[r.Category.ID],
+			Errors:                  r.Errors,
 		}
 		if dryRun {
 			for _, item := range plan.results[r.Category.ID].Items {
@@ -458,11 +480,10 @@ func buildDryRunReport(jobs []cleaner.CleanJob) *types.Report {
 		result := types.NewCleanResult(job.Category)
 		for _, item := range job.Items {
 			result.FreedSpace += item.Size
+			result.PlannedBytes += item.Size
 			result.CleanedItems++
 		}
-		report.FreedSpace += result.FreedSpace
-		report.CleanedItems += result.CleanedItems
-		report.Results = append(report.Results, *result)
+		report.AddResult(result)
 	}
 
 	return report

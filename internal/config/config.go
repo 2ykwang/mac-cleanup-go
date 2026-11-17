@@ -45,6 +45,9 @@ func validateConfig(cfg *types.Config) error {
 	}
 
 	for _, cat := range cfg.Categories {
+		if err := validateDisposal(cat); err != nil {
+			return err
+		}
 		// Validate method
 		if !validMethods[cat.Method] {
 			logger.Warn("config validation failed: invalid method",
@@ -68,5 +71,26 @@ func validateConfig(cfg *types.Config) error {
 	}
 
 	logger.Info("config validated", "categories", len(cfg.Categories))
+	return nil
+}
+
+func validateDisposal(cat types.Category) error {
+	if cat.Disposal == "" {
+		return nil
+	}
+	switch cat.Disposal {
+	case types.DisposalTrash, types.DisposalPermanent, types.DisposalMixed, types.DisposalManual, types.DisposalUnknown:
+	default:
+		return fmt.Errorf("category '%s': invalid disposal '%s'", cat.ID, cat.Disposal)
+	}
+	if cat.Method == types.MethodBuiltin {
+		if cat.Disposal == types.DisposalManual {
+			return fmt.Errorf("category '%s': builtin disposal cannot be manual", cat.ID)
+		}
+		return nil
+	}
+	if cat.Disposal != cat.DisposalMode() {
+		return fmt.Errorf("category '%s': disposal '%s' conflicts with method '%s'", cat.ID, cat.Disposal, cat.Method)
+	}
 	return nil
 }

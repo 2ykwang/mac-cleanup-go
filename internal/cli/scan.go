@@ -115,6 +115,7 @@ type scanEntry struct {
 	SideEffect     string              `json:"side_effect,omitempty"`
 	Items          []itemInfo          `json:"items,omitempty"`
 	MoreItems      int                 `json:"more_items,omitempty"`
+	Disposal       types.DisposalMode  `json:"disposal"`
 }
 
 type scanOutput struct {
@@ -175,6 +176,7 @@ func newScanEntry(s scanned, userCfg *userconfig.UserConfig, withItems bool, lim
 	entry := scanEntry{
 		ID: s.cat.ID, Name: s.cat.Name, Safety: s.cat.Safety, Method: s.cat.Method,
 		Status: s.status, BlockedBy: s.blockedBy, SideEffect: s.sideEffect,
+		Disposal: s.cat.DisposalMode(),
 	}
 	if s.err != nil {
 		entry.Error = s.err.Error()
@@ -215,7 +217,7 @@ func newScanEntry(s scanned, userCfg *userconfig.UserConfig, withItems bool, lim
 
 func (a *App) printScan(out scanOutput, withItems bool) {
 	tw := tabwriter.NewWriter(a.Out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "ID\tSAFETY\tMETHOD\tITEMS\tSIZE\tNAME")
+	fmt.Fprintln(tw, "ID\tSAFETY\tMETHOD\tACTION\tITEMS\tSIZE\tNAME")
 	var empty, unavailable int
 	var notes []string
 	for _, t := range out.Targets {
@@ -233,8 +235,8 @@ func (a *App) printScan(out scanOutput, withItems bool) {
 			empty++
 			continue
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\t%s\n",
-			t.ID, t.Safety, t.Method, t.ItemCount, utils.FormatSize(t.SizeBytes), t.Name)
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%d\t%s\t%s\n",
+			t.ID, t.Safety, t.Method, t.Disposal.ShortLabel(), t.ItemCount, utils.FormatSize(t.SizeBytes), t.Name)
 		if t.SideEffect != "" {
 			notes = append(notes, fmt.Sprintf("%s: clean %s", t.ID, t.SideEffect))
 		}
@@ -245,6 +247,7 @@ func (a *App) printScan(out scanOutput, withItems bool) {
 	tw.Flush()
 
 	fmt.Fprintf(a.Out, "\nCleanable: %s of %s found\n", utils.FormatSize(out.CleanableBytes), utils.FormatSize(out.SizeBytes))
+	fmt.Fprintln(a.Out, "Sizes are scan estimates, not freed disk space.")
 	if review := reviewBytes(out.Targets); review > 0 {
 		fmt.Fprintf(a.Out, "Review first: %s in risky or manual targets (clean needs --item or manual steps)\n", utils.FormatSize(review))
 	}
@@ -280,10 +283,10 @@ func (a *App) printItems(tw *tabwriter.Writer, t scanEntry) {
 		if len(tags) > 0 {
 			tag = " [" + strings.Join(tags, ", ") + "]"
 		}
-		fmt.Fprintf(tw, "\t\t\t\t%s\t  %4s  %s%s\n",
+		fmt.Fprintf(tw, "\t\t\t\t\t%s\t  %4s  %s%s\n",
 			utils.FormatSize(item.SizeBytes), utils.FormatAge(item.ModifiedAt), item.Path, tag)
 	}
 	if t.MoreItems > 0 {
-		fmt.Fprintf(tw, "\t\t\t\t\t  ... %d more (--limit 0 shows all)\n", t.MoreItems)
+		fmt.Fprintf(tw, "\t\t\t\t\t\t  ... %d more (--limit 0 shows all)\n", t.MoreItems)
 	}
 }

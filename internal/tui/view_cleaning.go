@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
@@ -12,6 +13,7 @@ func (m *Model) viewCleaning() string {
 
 	b.WriteString(m.styles.HeaderStyle.Render("Cleaning..."))
 	b.WriteString("\n\n")
+	b.WriteString("Processed sizes (scan estimates)\n\n")
 
 	rowWidth := m.cleaningRowWidth()
 	nameWidth, sizeWidth := m.cleaningColumnWidths(2)
@@ -19,26 +21,28 @@ func (m *Model) viewCleaning() string {
 	// Show completed categories
 	for _, cat := range m.cleaningCompleted {
 		displayName := padToWidth(truncateToWidth(cat.name, nameWidth, false), nameWidth)
-		if cat.errors == 0 {
+		if cat.errors == 0 && cat.cleaned > 0 {
 			// Full success
 			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(cat.freedSpace))
 			fmt.Fprintf(&b, "%s %s %s\n",
 				m.styles.SuccessStyle.Render("✓"),
 				displayName,
-				m.styles.SizeStyle.Render(size))
+				size)
 		} else if cat.cleaned > 0 {
 			// Partial success
 			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(cat.freedSpace))
 			fmt.Fprintf(&b, "%s %s %s\n",
 				m.styles.WarningStyle.Render("△"),
 				displayName,
-				m.styles.SizeStyle.Render(size))
-		} else {
+				size)
+		} else if cat.errors > 0 {
 			// All failed
 			fmt.Fprintf(&b, "%s %s %s\n",
 				m.styles.DangerStyle.Render("✗"),
 				displayName,
 				m.styles.MutedStyle.Render("failed"))
+		} else {
+			fmt.Fprintf(&b, "%s %s %s\n", m.styles.WarningStyle.Render("-"), displayName, "no confirmed changes")
 		}
 	}
 
@@ -53,7 +57,7 @@ func (m *Model) viewCleaning() string {
 			if len(item) > 45 {
 				item = "..." + item[len(item)-42:]
 			}
-			b.WriteString(m.styles.MutedStyle.Render(fmt.Sprintf("  └ %s\n", item)))
+			fmt.Fprintf(&b, "%s%s\n", m.styles.MutedStyle.Render("  └ "), item)
 		}
 	}
 
@@ -76,7 +80,7 @@ func (m *Model) viewCleaning() string {
 			percent = m.cleaningCurrent * 100 / m.cleaningTotal
 		}
 		progress := fmt.Sprintf("%d%% (%d/%d)", percent, m.cleaningCurrent, m.cleaningTotal)
-		b.WriteString(m.styles.MutedStyle.Render(progress))
+		b.WriteString(progress)
 	}
 
 	return b.String()
@@ -105,6 +109,8 @@ func (m *Model) renderRecentDeleted() string {
 		var icon string
 		if entry.Success {
 			icon = m.styles.SuccessStyle.Render("✓")
+		} else if entry.Outcome == types.ItemOutcomeSkipped || entry.Outcome == types.ItemOutcomeAbsent || entry.Outcome == types.ItemOutcomeUnconfirmed {
+			icon = m.styles.MutedStyle.Render("-")
 		} else {
 			icon = m.styles.DangerStyle.Render("✗")
 		}
@@ -115,18 +121,7 @@ func (m *Model) renderRecentDeleted() string {
 		// Format size
 		size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(entry.Size))
 
-		// Build line
-		if entry.Success {
-			fmt.Fprintf(&b, "  %s %s %s\n",
-				icon,
-				displayPath,
-				m.styles.SizeStyle.Render(size))
-		} else {
-			fmt.Fprintf(&b, "  %s %s %s\n",
-				icon,
-				m.styles.MutedStyle.Render(displayPath),
-				m.styles.MutedStyle.Render(size))
-		}
+		fmt.Fprintf(&b, "  %s %s %s\n", icon, displayPath, size)
 	}
 
 	return b.String()

@@ -44,6 +44,10 @@ func FormatReport(report *types.Report, dryRun bool, theme styles.Styles, color 
 		modeLine = "Mode: Dry Run"
 	}
 	b.WriteString(styles.Muted(modeLine) + "\n")
+	b.WriteString("Sizes are scan estimates, not freed disk space.\n")
+	if !dryRun {
+		b.WriteString("Trash keeps data until emptied.\n")
+	}
 
 	results := filterResults(report.Results)
 	width := reportWidth()
@@ -57,7 +61,10 @@ func FormatReport(report *types.Report, dryRun bool, theme styles.Styles, color 
 
 	b.WriteString("\n")
 	b.WriteString(styles.Section("Details") + "\n")
-	b.WriteString(renderDetails(styles, results, layout, width))
+	if layout == layoutNarrow {
+		b.WriteString("Unmarked actions move to Trash.\n")
+	}
+	b.WriteString(renderDetails(styles, results, layout, width, dryRun))
 
 	return b.String()
 }
@@ -65,7 +72,7 @@ func FormatReport(report *types.Report, dryRun bool, theme styles.Styles, color 
 func filterResults(results []types.CleanResult) []types.CleanResult {
 	filtered := make([]types.CleanResult, 0, len(results))
 	for _, r := range results {
-		if r.CleanedItems == 0 && len(r.Errors) == 0 {
+		if r.CleanedItems == 0 && len(r.Errors) == 0 && r.SkippedItems == 0 && r.PlannedBytes == 0 {
 			continue
 		}
 		filtered = append(filtered, r)
@@ -81,12 +88,31 @@ func renderSummaryAndHighlights(
 	layout reportLayout,
 	width int,
 ) string {
-	freedLabel := "Recovered"
-	if dryRun {
-		freedLabel = "Freed (dry-run)"
-	}
 	summaryLines := []string{
-		fmt.Sprintf("%s: %s", freedLabel, styles.Success(utils.FormatSize(report.FreedSpace))),
+		fmt.Sprintf("Planned: %s", utils.FormatSize(report.PlannedBytes)),
+	}
+	if !dryRun {
+		if report.TrashedBytes > 0 {
+			summaryLines = append(summaryLines, fmt.Sprintf("Moved to Trash: %s", utils.FormatSize(report.TrashedBytes)))
+		}
+		if report.PermanentlyDeletedBytes > 0 {
+			summaryLines = append(summaryLines, fmt.Sprintf("Deleted permanently (est.): %s", utils.FormatSize(report.PermanentlyDeletedBytes)))
+		}
+		if report.AlreadyAbsentItems > 0 {
+			summaryLines = append(summaryLines, fmt.Sprintf("Already absent: %d", report.AlreadyAbsentItems))
+		}
+		if report.UnconfirmedItems > 0 {
+			summaryLines = append(summaryLines, fmt.Sprintf("Unconfirmed: %d", report.UnconfirmedItems))
+		}
+		if report.SkippedItems > 0 {
+			summaryLines = append(summaryLines, fmt.Sprintf("Skipped: %d", report.SkippedItems))
+		}
+		if report.ProcessedItems > 0 {
+			summaryLines = append(summaryLines, fmt.Sprintf("Succeeded: %d", report.ProcessedItems))
+		}
+		if report.FailedItems > 0 {
+			summaryLines = append(summaryLines, fmt.Sprintf("Failed: %d", report.FailedItems))
+		}
 	}
 
 	switch layout {
@@ -96,26 +122,26 @@ func renderSummaryAndHighlights(
 			return renderSummaryAndHighlights(styles, report, results, dryRun, layoutMedium, width)
 		}
 		summaryBlock := renderBlock("Summary", summaryLines, blockWidth, styles)
-		highlightsBlock := renderBlock("Highlights", buildHighlights(styles, results, 3), blockWidth, styles)
+		highlightsBlock := renderBlock("Highlights", buildHighlights(styles, results, 3, dryRun), blockWidth, styles)
 		return joinBlocks(summaryBlock, highlightsBlock)
 	case layoutMedium:
 		summaryBlock := renderBlock("Summary", summaryLines, width, styles)
-		highlightsBlock := renderBlock("Highlights", buildHighlights(styles, results, 3), width, styles)
+		highlightsBlock := renderBlock("Highlights", buildHighlights(styles, results, 3, dryRun), width, styles)
 		return summaryBlock + "\n\n" + highlightsBlock
 	default:
 		summaryBlock := renderBlock("Summary", summaryLines, width, styles)
-		highlightsBlock := renderBlock("Highlights", buildHighlights(styles, results, 3), width, styles)
+		highlightsBlock := renderBlock("Highlights", buildHighlights(styles, results, 3, dryRun), width, styles)
 		return summaryBlock + "\n\n" + highlightsBlock
 	}
 }
 
-func buildHighlights(styles reportStyles, results []types.CleanResult, limit int) []string {
+func buildHighlights(styles reportStyles, results []types.CleanResult, limit int, dryRun bool) []string {
 	if len(results) == 0 {
 		return []string{styles.Muted("No categories to summarize.")}
 	}
 
 	sort.Slice(results, func(i, j int) bool {
-		return results[i].FreedSpace > results[j].FreedSpace
+		return reportSize(results[i], dryRun) > reportSize(results[j], dryRun)
 	})
 
 	if limit > len(results) {
@@ -125,25 +151,36 @@ func buildHighlights(styles reportStyles, results []types.CleanResult, limit int
 	lines := make([]string, 0, limit)
 	for i := 0; i < limit; i++ {
 		r := results[i]
+		items := r.ProcessedItems
+		if dryRun {
+			items = r.CleanedItems
+		}
 		line := fmt.Sprintf("%d. %s - %s (%d items)",
 			i+1,
 			r.Category.Name,
-			utils.FormatSize(r.FreedSpace),
-			r.CleanedItems,
+			utils.FormatSize(reportSize(r, dryRun)),
+			items,
 		)
 		lines = append(lines, styles.Line(line))
 	}
 	return lines
 }
 
-func renderDetails(styles reportStyles, results []types.CleanResult, layout reportLayout, width int) string {
+func renderDetails(styles reportStyles, results []types.CleanResult, layout reportLayout, width int, dryRun bool) string {
 	if layout == layoutNarrow {
-		return renderDetailsStack(styles, results)
+		return renderDetailsStack(styles, results, width, dryRun)
 	}
-	return renderDetailsTable(styles, results, width)
+	return renderDetailsTable(styles, results, width, dryRun)
 }
 
-func renderDetailsTable(styles reportStyles, results []types.CleanResult, width int) string {
+func reportSize(r types.CleanResult, dryRun bool) int64 {
+	if dryRun {
+		return r.PlannedBytes
+	}
+	return r.TrashedBytes + r.PermanentlyDeletedBytes
+}
+
+func renderDetailsTable(styles reportStyles, results []types.CleanResult, width int, dryRun bool) string {
 	if width <= 0 {
 		width = defaultReportWidth
 	}
@@ -151,10 +188,11 @@ func renderDetailsTable(styles reportStyles, results []types.CleanResult, width 
 	statusW := 6
 	itemsW := 7
 	sizeW := 10
+	actionW := 17
 	gap := "  "
-	gaps := lipgloss.Width(gap) * 3
+	gaps := lipgloss.Width(gap) * 4
 	minName := 16
-	nameW := width - statusW - itemsW - sizeW - gaps
+	nameW := width - statusW - itemsW - sizeW - actionW - gaps
 	if nameW < minName {
 		nameW = minName
 	}
@@ -163,44 +201,82 @@ func renderDetailsTable(styles reportStyles, results []types.CleanResult, width 
 	nameCol := lipgloss.NewStyle().Width(nameW).Align(lipgloss.Left)
 	itemsCol := lipgloss.NewStyle().Width(itemsW).Align(lipgloss.Right)
 	sizeCol := lipgloss.NewStyle().Width(sizeW).Align(lipgloss.Right)
+	actionCol := lipgloss.NewStyle().Width(actionW)
 
 	header := statusCol.Render("STATUS") +
 		gap + nameCol.Render("CATEGORY") +
 		gap + itemsCol.Render("ITEMS") +
-		gap + sizeCol.Render("SIZE")
+		gap + sizeCol.Render("SIZE") +
+		gap + actionCol.Render("ACTION")
 
 	var b strings.Builder
 	b.WriteString(styles.Muted(header) + "\n")
 
 	for _, r := range results {
 		status := statusLabel(r)
+		items := r.ProcessedItems
+		if dryRun {
+			items = r.CleanedItems
+		}
 		row := statusCol.Render(styles.Status(status)) +
 			gap + nameCol.Render(truncateText(r.Category.Name, nameW)) +
-			gap + itemsCol.Render(strconv.Itoa(r.CleanedItems)) +
-			gap + sizeCol.Render(utils.FormatSize(r.FreedSpace))
+			gap + itemsCol.Render(strconv.Itoa(items)) +
+			gap + sizeCol.Render(utils.FormatSize(reportSize(r, dryRun))) +
+			gap + actionCol.Render(r.Category.DisposalMode().ShortLabel())
 		b.WriteString(row + "\n")
-
-		if len(r.Errors) > 0 {
-			for _, err := range r.Errors {
-				b.WriteString(styles.Muted("  - "+truncateError(err, width-6)) + "\n")
-			}
-		}
+		b.WriteString(renderResultNotes(r, width))
 	}
 
 	return b.String()
 }
 
-func renderDetailsStack(styles reportStyles, results []types.CleanResult) string {
+func renderDetailsStack(styles reportStyles, results []types.CleanResult, width int, dryRun bool) string {
 	var b strings.Builder
 	for _, r := range results {
 		status := styles.Status(statusLabel(r))
-		line := fmt.Sprintf("%s %s — %s (%d items)", status, r.Category.Name, utils.FormatSize(r.FreedSpace), r.CleanedItems)
-		b.WriteString(line + "\n")
-		if len(r.Errors) > 0 {
-			for _, err := range r.Errors {
-				b.WriteString(styles.Muted("  - "+truncateError(err, 60)) + "\n")
-			}
+		items := r.ProcessedItems
+		if dryRun {
+			items = r.CleanedItems
 		}
+		suffix := fmt.Sprintf(": %s (%d items)", utils.FormatSize(reportSize(r, dryRun)), items)
+		nameWidth := max(1, width-len(statusLabel(r))-1-lipgloss.Width(suffix))
+		line := fmt.Sprintf("%s %s%s", status, truncateText(r.Category.Name, nameWidth), suffix)
+		b.WriteString(line + "\n")
+		if r.Category.DisposalMode() != types.DisposalTrash {
+			fmt.Fprintf(&b, "  Action: %s\n", r.Category.DisposalMode().ShortLabel())
+		}
+		b.WriteString(renderResultNotes(r, width))
+	}
+	return b.String()
+}
+
+func renderResultNotes(r types.CleanResult, width int) string {
+	var notes []string
+	if r.Category.DisposalMode() == types.DisposalMixed {
+		notes = append(notes, "Additional cleanup size unknown.")
+	}
+	var exceptions []string
+	if r.AlreadyAbsentItems > 0 {
+		exceptions = append(exceptions, fmt.Sprintf("Already absent: %d", r.AlreadyAbsentItems))
+	}
+	if r.UnconfirmedItems > 0 {
+		exceptions = append(exceptions, fmt.Sprintf("Unconfirmed: %d", r.UnconfirmedItems))
+	}
+	if r.SkippedItems > 0 {
+		exceptions = append(exceptions, fmt.Sprintf("Skipped: %d", r.SkippedItems))
+	}
+	if len(exceptions) > 0 {
+		notes = append(notes, strings.Join(exceptions, ", "))
+	}
+	var b strings.Builder
+	for _, note := range notes {
+		wrapped := lipgloss.NewStyle().Width(width).PaddingLeft(2).Render(note)
+		for _, line := range strings.Split(wrapped, "\n") {
+			b.WriteString(strings.TrimRight(line, " ") + "\n")
+		}
+	}
+	for _, err := range r.Errors {
+		fmt.Fprintf(&b, "  - %s\n", truncateError(err, width-4))
 	}
 	return b.String()
 }

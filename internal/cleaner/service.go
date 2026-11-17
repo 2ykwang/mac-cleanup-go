@@ -1,8 +1,6 @@
 package cleaner
 
 import (
-	"strings"
-
 	"github.com/2ykwang/mac-cleanup-go/internal/logger"
 	"github.com/2ykwang/mac-cleanup-go/internal/target"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
@@ -57,17 +55,17 @@ func (s *CleanService) Clean(jobs []CleanJob, callbacks types.CleanCallbacks) *t
 		}
 
 		if result != nil {
-			report.Results = append(report.Results, *result)
-			report.FreedSpace += result.FreedSpace
-			report.CleanedItems += result.CleanedItems
-			report.FailedItems += len(result.Errors)
+			report.AddResult(result)
 
 			if callbacks.OnCategoryDone != nil {
 				callbacks.OnCategoryDone(types.CategoryCleanedResult{
-					CategoryName: job.Category.Name,
-					FreedSpace:   result.FreedSpace,
-					CleanedItems: result.CleanedItems,
-					ErrorCount:   len(result.Errors),
+					CategoryName:            job.Category.Name,
+					FreedSpace:              result.FreedSpace,
+					TrashedBytes:            result.TrashedBytes,
+					PermanentlyDeletedBytes: result.PermanentlyDeletedBytes,
+					CleanedItems:            result.CleanedItems,
+					ProcessedItems:          result.ProcessedItems,
+					ErrorCount:              len(result.Errors),
 				})
 			}
 		}
@@ -217,27 +215,15 @@ func (s *CleanService) sendBatchItemCallbacks(batch []types.CleanableItem, batch
 		return
 	}
 
-	// Build error map from batch result errors (format: "itemPath: error")
-	errorMap := make(map[string]string)
-	for _, errStr := range batchResult.Errors {
-		for _, item := range batch {
-			prefix := item.Path + ": "
-			if strings.HasPrefix(errStr, prefix) {
-				errorMap[item.Path] = errStr[len(prefix):]
-				break
-			}
+	names := make(map[string]string, len(batch))
+	for _, item := range batch {
+		if _, exists := names[item.Path]; !exists {
+			names[item.Path] = item.Name
 		}
 	}
-
-	for _, item := range batch {
-		errMsg, hasFailed := errorMap[item.Path]
-		callbacks.OnItemDone(types.ItemCleanedResult{
-			Path:    item.Path,
-			Name:    item.Name,
-			Size:    item.Size,
-			Success: !hasFailed,
-			ErrMsg:  errMsg,
-		})
+	for _, outcome := range batchResult.ItemResults {
+		outcome.Name = names[outcome.Path]
+		callbacks.OnItemDone(outcome)
 	}
 }
 
@@ -263,17 +249,32 @@ func (s *CleanService) cleanByItem(job CleanJob, callbacks types.CleanCallbacks,
 		result.Merge(singleResult)
 
 		if callbacks.OnItemDone != nil {
-			success := len(singleResult.Errors) == 0
-			errMsg := ""
-			if !success {
-				errMsg = singleResult.Errors[0]
+			success := singleResult.ProcessedItems > 0
+			outcome := types.ItemOutcomeFailed
+			switch {
+			case success:
+				outcome = types.ItemOutcomeProcessed
+			case singleResult.SkippedItems > 0:
+				outcome = types.ItemOutcomeSkipped
+			case singleResult.AlreadyAbsentItems > 0:
+				outcome = types.ItemOutcomeAbsent
+			case singleResult.UnconfirmedItems > 0:
+				outcome = types.ItemOutcomeUnconfirmed
 			}
+			errMsg := ""
+			if len(singleResult.Errors) > 0 {
+				errMsg = singleResult.Errors[0]
+			} else if !success {
+				errMsg = "skipped or already absent"
+			}
+			size := singleResult.PermanentlyDeletedBytes
 			callbacks.OnItemDone(types.ItemCleanedResult{
 				Path:    item.Path,
 				Name:    item.Name,
-				Size:    item.Size,
+				Size:    size,
 				Success: success,
 				ErrMsg:  errMsg,
+				Outcome: outcome,
 			})
 		}
 	}
@@ -288,6 +289,7 @@ func (s *CleanService) cleanUnsupported(job CleanJob) *types.CleanResult {
 		"items", len(job.Items))
 
 	result := types.NewCleanResult(job.Category)
+	result.PlannedBytes = types.PlannedSize(job.Items)
 	result.Errors = append(result.Errors, "unsupported method: "+string(job.Category.Method))
 	return result
 }

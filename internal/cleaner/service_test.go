@@ -696,14 +696,14 @@ func TestClean_CallsOnItemDone(t *testing.T) {
 
 	assert.Equal(t, "/path1", itemResults[0].Path)
 	assert.Equal(t, "File 1", itemResults[0].Name)
-	assert.Equal(t, int64(100), itemResults[0].Size)
-	assert.True(t, itemResults[0].Success)
-	assert.Empty(t, itemResults[0].ErrMsg)
+	assert.Zero(t, itemResults[0].Size)
+	assert.False(t, itemResults[0].Success)
+	assert.Equal(t, "already absent", itemResults[0].ErrMsg)
 
 	assert.Equal(t, "/path2", itemResults[1].Path)
 	assert.Equal(t, "File 2", itemResults[1].Name)
-	assert.Equal(t, int64(200), itemResults[1].Size)
-	assert.True(t, itemResults[1].Success)
+	assert.Zero(t, itemResults[1].Size)
+	assert.False(t, itemResults[1].Success)
 }
 
 func TestClean_CallsOnItemDone_WithError(t *testing.T) {
@@ -731,9 +731,8 @@ func TestClean_CallsOnItemDone_WithError(t *testing.T) {
 
 	require.Len(t, itemResults, 2)
 
-	// First item succeeded
-	assert.True(t, itemResults[0].Success)
-	assert.Empty(t, itemResults[0].ErrMsg)
+	assert.False(t, itemResults[0].Success)
+	assert.Equal(t, "already absent", itemResults[0].ErrMsg)
 
 	// Second item failed
 	assert.False(t, itemResults[1].Success)

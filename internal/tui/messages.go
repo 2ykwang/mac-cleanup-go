@@ -70,6 +70,7 @@ type DeletedItemEntry struct {
 	Size    int64  // Size in bytes
 	Success bool   // true if deletion succeeded
 	ErrMsg  string // Error message if failed (empty if success)
+	Outcome types.ItemOutcome
 }
 
 // cleanItemDoneMsg signals that a single item deletion is complete
@@ -79,6 +80,7 @@ type cleanItemDoneMsg struct {
 	size    int64
 	success bool
 	errMsg  string
+	outcome types.ItemOutcome
 }
 
 // versionCheckMsg contains the result of async version check

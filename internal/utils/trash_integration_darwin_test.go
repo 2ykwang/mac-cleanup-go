@@ -51,6 +51,10 @@ func TestBatchTrash_RecyclesTenFilesInOneNativeOperation(t *testing.T) {
 	assert.Equal(t, 1, calls)
 	assert.Equal(t, 10, result.CleanedItems)
 	assert.Equal(t, int64(40), result.FreedSpace)
+	assert.Equal(t, int64(40), result.TrashedBytes)
+	assert.Equal(t, 10, result.ProcessedItems)
+	assert.Zero(t, result.AlreadyAbsentItems)
+	assert.Zero(t, result.UnconfirmedItems)
 	assert.Empty(t, result.Errors)
 	for _, item := range items {
 		_, err := os.Lstat(item.Path)

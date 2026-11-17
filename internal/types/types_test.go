@@ -55,13 +55,17 @@ func TestCleanResult_Merge_AccumulatesAllFields(t *testing.T) {
 		CleanedItems: 2,
 		SkippedItems: 1,
 		FreedSpace:   100,
-		Errors:       []string{"err1"},
+		PlannedBytes: 1000, TrashedBytes: 60, PermanentlyDeletedBytes: 40,
+		AlreadyAbsentItems: 1, UnconfirmedItems: 2,
+		Errors: []string{"err1"},
 	}
 	other := &CleanResult{
 		CleanedItems: 3,
 		SkippedItems: 2,
 		FreedSpace:   200,
-		Errors:       []string{"err2", "err3"},
+		PlannedBytes: 2000, TrashedBytes: 120, PermanentlyDeletedBytes: 80,
+		AlreadyAbsentItems: 2, UnconfirmedItems: 3,
+		Errors: []string{"err2", "err3"},
 	}
 
 	r.Merge(other)
@@ -69,7 +73,39 @@ func TestCleanResult_Merge_AccumulatesAllFields(t *testing.T) {
 	assert.Equal(t, 5, r.CleanedItems)
 	assert.Equal(t, 3, r.SkippedItems)
 	assert.Equal(t, int64(300), r.FreedSpace)
+	assert.Equal(t, int64(3000), r.PlannedBytes)
+	assert.Equal(t, int64(180), r.TrashedBytes)
+	assert.Equal(t, int64(120), r.PermanentlyDeletedBytes)
+	assert.Equal(t, 3, r.AlreadyAbsentItems)
+	assert.Equal(t, 5, r.UnconfirmedItems)
 	assert.Equal(t, []string{"err1", "err2", "err3"}, r.Errors)
+}
+
+func TestCategory_DisposalMode_UnknownBuiltinStaysUnknown(t *testing.T) {
+	category := Category{Method: MethodBuiltin}
+
+	mode := category.DisposalMode()
+
+	assert.Equal(t, DisposalUnknown, mode)
+	assert.Equal(t, "Unknown disposal", mode.Label())
+}
+
+func TestReport_AddResult_AccumulatesOutcomeSizes(t *testing.T) {
+	report := &Report{}
+	trash := &CleanResult{PlannedBytes: 100, TrashedBytes: 60, FreedSpace: 80, CleanedItems: 2, AlreadyAbsentItems: 1}
+	permanent := &CleanResult{PlannedBytes: 300, PermanentlyDeletedBytes: 200, FreedSpace: 200, CleanedItems: 1, SkippedItems: 1, Errors: []string{"failed"}}
+
+	report.AddResult(trash)
+	report.AddResult(permanent)
+
+	assert.Equal(t, int64(400), report.PlannedBytes)
+	assert.Equal(t, int64(60), report.TrashedBytes)
+	assert.Equal(t, int64(200), report.PermanentlyDeletedBytes)
+	assert.Equal(t, int64(280), report.FreedSpace)
+	assert.Equal(t, 1, report.AlreadyAbsentItems)
+	assert.Equal(t, 1, report.SkippedItems)
+	assert.Equal(t, 1, report.FailedItems)
+	assert.Len(t, report.Results, 2)
 }
 
 func TestCleanResult_Merge_EmptyOther(t *testing.T) {
@@ -124,4 +160,11 @@ func TestNewCleanResult_InitializesDefaults(t *testing.T) {
 	assert.Zero(t, result.CleanedItems)
 	assert.Zero(t, result.SkippedItems)
 	assert.Zero(t, result.FreedSpace)
+	assert.Zero(t, result.PlannedBytes)
+	assert.Zero(t, result.TrashedBytes)
+	assert.Zero(t, result.PermanentlyDeletedBytes)
+	assert.Zero(t, result.AlreadyAbsentItems)
+	assert.Zero(t, result.UnconfirmedItems)
+	assert.Zero(t, result.ProcessedItems)
+	assert.Empty(t, result.ItemResults)
 }

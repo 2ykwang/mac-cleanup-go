@@ -285,6 +285,7 @@ func (s *DockerTarget) appendBuildCache(result *types.ScanResult) {
 
 func (s *DockerTarget) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
 	result := types.NewCleanResult(s.category)
+	result.PlannedBytes = types.PlannedSize(items)
 
 	for _, item := range items {
 		var cmd *exec.Cmd
@@ -316,8 +317,12 @@ func (s *DockerTarget) Clean(items []types.CleanableItem) (*types.CleanResult, e
 			} else {
 				logger.Debug("docker prune succeeded", "resourceType", item.Path, "size", item.Size)
 				result.FreedSpace += item.Size
+				result.PermanentlyDeletedBytes += item.Size
+				result.ProcessedItems++
 				result.CleanedItems++
 			}
+		} else {
+			result.SkippedItems++
 		}
 	}
 

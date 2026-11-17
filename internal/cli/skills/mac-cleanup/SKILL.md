@@ -26,7 +26,8 @@ is using their disk, say this up front. Use `df -h /` if they want the total.
   `{"error":{"code","message","hint"}}`. Follow the `hint`.
 - Never run `clean ... --yes` until the user has approved the exact targets
   and items from a `--dry-run` you showed them.
-- Sizes are integer bytes. Convert to GB/MB when talking to the user.
+- Sizes are integer scan estimates. They are not measured free disk space.
+  Convert to GB/MB when talking to the user. Trash retains data until emptied.
 
 ## Workflow
 
@@ -36,15 +37,15 @@ is using their disk, say this up front. Use `df -h /` if they want the total.
    mac-cleanup scan --group dev --json        # system, browser, dev, app, storage
    mac-cleanup scan docker npm --json         # specific target IDs
    ```
-   Each target has `status`, `safety`, `method`, `size_bytes`, and
-   `cleanable_bytes` (what `clean <id>` would actually remove). Ignore
+   Each target has `status`, `safety`, `method`, `disposal`, `size_bytes`, and
+   `cleanable_bytes` (eligible scan estimate). Ignore
    targets with `status` `unavailable` or `item_count` 0.
 2. Look inside targets before proposing them, especially large ones.
    ```sh
    mac-cleanup scan system-cache --items --json   # top 20 items by size
    mac-cleanup scan system-cache --items --limit 0 --json
    ```
-3. Propose a plan to the user: target IDs, sizes, safety, and method.
+3. Propose a plan to the user: target IDs, estimated sizes, safety, and disposal.
    Point out anything risky or permanent (see Safety).
 4. Preview exactly what will happen.
    ```sh
@@ -59,7 +60,22 @@ is using their disk, say this up front. Use `df -h /` if they want the total.
    ```sh
    mac-cleanup clean docker npm --yes --json
    ```
-6. Report `freed_bytes`, then any `failed_items` and `skipped` entries.
+6. Report `trashed_bytes` as moved to Trash and `permanently_deleted_bytes`
+   as permanent deletion estimates. Report `processed_items`, `already_absent_items`,
+   `unconfirmed_items`, `failed_items`, and `skipped` entries separately.
+
+`planned_bytes` is the scan size of prepared items and can include later skips or
+failures. A dry-run fills only this size field; both successful size fields stay 0.
+All three size fields appear in totals and each target. Additional builtin cleanup
+outside scanned items has unmeasured size.
+
+`freed_bytes` is deprecated. It retains its legacy value: planned scan bytes in a
+dry-run, legacy successful-item scan bytes in a clean, including paths already
+absent or gone without a confirmed Trash movement. It is not free disk space.
+`cleaned_items` and per-target `items` also retain legacy success/planned counts.
+Use `processed_items` for confirmed cleanup outcomes.
+Per-target `sip_skipped_items` is a legacy alias of `skipped_items`. Both include
+all policy skips, not only SIP-protected paths.
 
 Each clean invocation rescans; a dry-run is not a frozen plan. Contents of
 listed directories may change too. Explain this before approval, and re-preview
@@ -84,14 +100,18 @@ mac-cleanup clean slack --item "/Users/me/Library/Application Support/Slack/Cach
   - `trash`: moved to the Trash, recoverable until it is emptied.
   - `permanent`: deleted for good. The `trash` target empties the Trash.
     Ask about it separately.
-  - `builtin`: runs the tool's own cleanup (brew, docker, project build
-    caches). Docker items are images, volumes, and the build cache.
+  - `builtin`: dispatches to a target-specific cleaner. It does not promise
+    Trash or permanent deletion. Docker items are images, volumes, and the build cache.
     Targets with `side_effect` in scan output (`homebrew` runs `brew cleanup`,
     which also removes old formula versions) only clean as a whole: tell the
     user the side effect before asking. `--item` on them fails with
     `item_not_supported`.
   - `manual`: never cleaned by the CLI. Relay `guide` from
     `mac-cleanup targets <id> --json` to the user.
+- `disposal` describes the actual action: `trash`, `permanent`, `mixed`,
+  `manual`, or `unknown`. Docker is permanent. Project caches, old downloads,
+  and old releases go to Trash. Homebrew uses mixed cleanup in this version.
+  Never infer disposal from `builtin`, or promise recovery for `unknown`.
 - `status` `blocked` with `blocked_by`: that app must be quit first. Ask the
   user to quit it, then scan again. Do not kill processes yourself.
 - Items with `locked: true` are in use and are skipped. Items with

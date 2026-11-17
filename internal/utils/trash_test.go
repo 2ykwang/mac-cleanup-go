@@ -115,6 +115,11 @@ func TestBatchTrash_TreatsMissingPathAsCleaned(t *testing.T) {
 	assert.False(t, called)
 	assert.Equal(t, 1, result.CleanedItems)
 	assert.Equal(t, int64(42), result.FreedSpace)
+	assert.Equal(t, int64(42), result.PlannedBytes)
+	assert.Zero(t, result.TrashedBytes)
+	assert.Equal(t, 1, result.AlreadyAbsentItems)
+	require.Len(t, result.ItemResults, 1)
+	assert.Equal(t, types.ItemOutcomeAbsent, result.ItemResults[0].Outcome)
 	assert.Empty(t, result.Errors)
 }
 
@@ -145,6 +150,11 @@ func TestBatchTrash_UsesReportedPathsAndFinalState(t *testing.T) {
 
 	assert.Equal(t, 2, result.CleanedItems)
 	assert.Equal(t, items[0].Size+items[1].Size, result.FreedSpace)
+	assert.Equal(t, items[0].Size, result.TrashedBytes)
+	assert.Equal(t, 1, result.UnconfirmedItems)
+	assert.Equal(t, types.ItemOutcomeProcessed, result.ItemResults[0].Outcome)
+	assert.Equal(t, types.ItemOutcomeUnconfirmed, result.ItemResults[1].Outcome)
+	assert.Equal(t, types.ItemOutcomeFailed, result.ItemResults[2].Outcome)
 	require.Len(t, result.Errors, 1)
 	assert.Contains(t, result.Errors[0], items[2].Path)
 	assert.Contains(t, result.Errors[0], recycleErr.Error())

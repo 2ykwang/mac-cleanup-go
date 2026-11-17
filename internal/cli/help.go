@@ -37,7 +37,10 @@ Pass IDs to also show paths, blocking processes, and manual guides.
 Flags:
   --group <id>     Filter by group: system, browser, dev, app, storage
   --safety <lvl>   Filter by safety: safe, moderate, risky (comma-separated)
-  --json           Print JSON: {"targets":[{id,name,group,safety,method,note,...}]}
+  --json           Print JSON: {"targets":[{id,name,group,safety,method,disposal,note,...}]}
+
+disposal: trash | permanent | mixed | manual | unknown.
+method is dispatch; builtin does not imply recovery behavior.
 `
 
 const scanUsage = `Usage: mac-cleanup scan [<id>...] [flags]
@@ -52,9 +55,10 @@ Flags:
   --json           Print JSON
 
 JSON fields per target:
+  disposal         trash | permanent | mixed | manual | unknown
   status           ok | unavailable | blocked | error
   size_bytes       Everything found
-  cleanable_bytes  What ` + "`clean <id>`" + ` would remove: excludes locked and saved-excluded
+  cleanable_bytes  Eligible scan estimate: excludes locked and saved-excluded
                    items; 0 for risky (needs --item) and manual targets
   blocked_by       Running process that must quit first (status blocked)
   side_effect      What clean does beyond the listed items (e.g. homebrew)
@@ -65,8 +69,9 @@ JSON fields per target:
 const cleanUsage = `Usage: mac-cleanup clean <id>... [flags]
        mac-cleanup clean --selected [flags]
 
-Scan the given targets and clean them. Most targets move items to Trash;
-check "method" in scan output: permanent deletes, builtin runs brew/docker.
+Scan the given targets and clean them. Check "disposal" in scan output:
+trash moves to Trash, permanent has no undo, mixed does both, unknown is unspecified.
+"method" selects the executor; builtin alone says nothing about recovery.
 
 Flags:
   --dry-run        Show what would be cleaned; change nothing
@@ -82,6 +87,17 @@ Never cleaned: manual targets, risky targets without --item, locked items,
 targets whose blocking process is running. These appear under "skipped".
 JSON dry-runs include item_paths for each planned target. Clean rescans before
 execution; a dry-run is not a frozen plan.
+
+JSON size fields (totals and each target):
+  planned_bytes               Scan size of prepared items, including later failures/skips
+  trashed_bytes               Scan size of confirmed Trash movements, 0 in dry-run
+  permanently_deleted_bytes   Estimated size of successful permanent deletions, 0 in dry-run
+  freed_bytes                 Deprecated legacy estimate, preserved for compatibility
+All sizes are estimates, not measured free disk space. Trash retains data until emptied.
+already_absent_items and unconfirmed_items do not contribute to successful size fields.
+processed_items counts confirmed outcomes. cleaned_items/items retain legacy counts.
+Per-target sip_skipped_items is a legacy alias of skipped_items for all policy skips.
+Additional builtin cleanup outside scanned items has unmeasured size.
 
 Exit codes: 0 ok, 1 error, 2 usage error or confirmation needed, 3 some items failed.
 `

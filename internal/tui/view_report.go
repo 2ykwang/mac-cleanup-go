@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"charm.land/lipgloss/v2"
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
@@ -15,10 +17,28 @@ func (m *Model) reportHeader() string {
 	b.WriteString("\n\n")
 
 	// Summary
-	fmt.Fprintf(&b, "Freed:     %s\n", m.styles.SizeStyle.Render(formatSize(m.report.FreedSpace)))
-	fmt.Fprintf(&b, "Succeeded: %s\n", m.styles.SuccessStyle.Render(fmt.Sprintf("%d", m.report.CleanedItems)))
+	if m.report.TrashedBytes > 0 {
+		fmt.Fprintf(&b, "Moved to Trash: %s\n", formatSize(m.report.TrashedBytes))
+		b.WriteString(m.styles.MutedStyle.Render("Trash keeps data until emptied.") + "\n")
+	}
+	if m.report.PermanentlyDeletedBytes > 0 {
+		fmt.Fprintf(&b, "Deleted permanently (est.): %s\n", formatSize(m.report.PermanentlyDeletedBytes))
+	}
+	b.WriteString("Scan sizes, not freed disk space.\n")
+	if m.report.AlreadyAbsentItems > 0 {
+		fmt.Fprintf(&b, "Already absent: %d\n", m.report.AlreadyAbsentItems)
+	}
+	if m.report.UnconfirmedItems > 0 {
+		fmt.Fprintf(&b, "Unconfirmed: %d\n", m.report.UnconfirmedItems)
+	}
+	if m.report.SkippedItems > 0 {
+		fmt.Fprintf(&b, "Skipped: %d\n", m.report.SkippedItems)
+	}
+	if m.report.ProcessedItems > 0 {
+		fmt.Fprintf(&b, "Succeeded: %d\n", m.report.ProcessedItems)
+	}
 	if m.report.FailedItems > 0 {
-		fmt.Fprintf(&b, "Failed:    %s\n", m.styles.DangerStyle.Render(fmt.Sprintf("%d", m.report.FailedItems)))
+		fmt.Fprintf(&b, "Failed:    %d\n", m.report.FailedItems)
 	}
 	fmt.Fprintf(&b, "Time:      %s\n\n", m.report.Duration.Round(time.Millisecond))
 
@@ -56,7 +76,7 @@ func (m *Model) viewReport() string {
 
 	// Show scroll indicator at top if scrolled
 	if m.reportScroll > 0 {
-		b.WriteString(m.styles.MutedStyle.Render(fmt.Sprintf("  ↑ %d more lines above\n", m.reportScroll)))
+		fmt.Fprintf(&b, "%s%d %s\n", m.styles.MutedStyle.Render("  ↑ "), m.reportScroll, m.styles.MutedStyle.Render("more lines above"))
 	} else {
 		b.WriteString("\n")
 	}
@@ -70,7 +90,7 @@ func (m *Model) viewReport() string {
 	// Show scroll indicator at bottom if more content
 	remaining := totalLines - end
 	if remaining > 0 {
-		b.WriteString(m.styles.MutedStyle.Render(fmt.Sprintf("  ↓ %d more lines below\n", remaining)))
+		fmt.Fprintf(&b, "%s%d %s\n", m.styles.MutedStyle.Render("  ↓ "), remaining, m.styles.MutedStyle.Render("more lines below"))
 	} else {
 		b.WriteString("\n")
 	}
@@ -82,71 +102,50 @@ func (m *Model) viewReport() string {
 func (m *Model) buildReportLines() []string {
 	var lines []string
 	nameWidth, sizeWidth := m.reportColumnWidths()
-
-	// Successful items first (no errors at all)
-	hasSuccess := false
-	for _, result := range m.report.Results {
-		if len(result.Errors) == 0 && result.CleanedItems > 0 {
-			if !hasSuccess {
-				lines = append(lines, m.styles.SuccessStyle.Render("Succeeded:"))
-				hasSuccess = true
-			}
-			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(result.FreedSpace))
-			name := padToWidth(truncateToWidth(result.Category.Name, nameWidth, false), nameWidth)
-			lines = append(lines, fmt.Sprintf("  %s %s %s", m.styles.SuccessStyle.Render("✓"), name, m.styles.SizeStyle.Render(size)))
-		}
+	if len(m.report.Results) > 0 {
+		lines = append(lines, m.styles.MutedStyle.Render("Unmarked actions move to Trash."))
 	}
-
-	// Partial success items (some succeeded, some failed)
 	for _, result := range m.report.Results {
-		if len(result.Errors) > 0 && result.CleanedItems > 0 {
-			if !hasSuccess {
-				lines = append(lines, m.styles.SuccessStyle.Render("Succeeded:"))
-				hasSuccess = true
-			}
-			size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(result.FreedSpace))
-			name := padToWidth(truncateToWidth(result.Category.Name, nameWidth, false), nameWidth)
-			lines = append(lines, fmt.Sprintf("  %s %s %s",
-				m.styles.WarningStyle.Render("△"),
-				name,
-				m.styles.SizeStyle.Render(size)))
+		if result.PlannedBytes == 0 && result.CleanedItems == 0 && result.ProcessedItems == 0 && len(result.Errors) == 0 && result.AlreadyAbsentItems == 0 && result.UnconfirmedItems == 0 && result.SkippedItems == 0 {
+			continue
 		}
-	}
-
-	// Failed items
-	hasFailed := false
-	for _, result := range m.report.Results {
+		icon := m.styles.MutedStyle.Render("-")
+		switch {
+		case len(result.Errors) > 0 && result.ProcessedItems > 0:
+			icon = m.styles.WarningStyle.Render("△")
+		case len(result.Errors) > 0:
+			icon = m.styles.DangerStyle.Render("✗")
+		case result.ProcessedItems > 0:
+			icon = m.styles.SuccessStyle.Render("✓")
+		}
+		size := fmt.Sprintf("%*s", sizeWidth, utils.FormatSize(result.TrashedBytes+result.PermanentlyDeletedBytes))
+		name := padToWidth(truncateToWidth(result.Category.Name, nameWidth, false), nameWidth)
+		lines = append(lines, fmt.Sprintf("  %s %s %s", icon, name, size))
+		if result.Category.DisposalMode() != types.DisposalTrash {
+			lines = append(lines, "    "+result.Category.DisposalMode().Label())
+		}
+		if result.Category.DisposalMode() == types.DisposalMixed {
+			lines = append(lines, "    Additional cleanup size unknown")
+		}
+		var exceptions []string
 		if len(result.Errors) > 0 {
-			if !hasFailed {
-				if hasSuccess {
-					lines = append(lines, "") // blank line
-				}
-				lines = append(lines, m.styles.DangerStyle.Render("Failed:"))
-				hasFailed = true
-			}
-
-			// Show category with error count
-			if result.CleanedItems > 0 {
-				lines = append(lines, fmt.Sprintf("  %s %s: %s succeeded, %s failed",
-					m.styles.WarningStyle.Render("⚠"),
-					result.Category.Name,
-					m.styles.SuccessStyle.Render(fmt.Sprintf("%d", result.CleanedItems)),
-					m.styles.DangerStyle.Render(fmt.Sprintf("%d", len(result.Errors)))))
-			} else {
-				lines = append(lines, fmt.Sprintf("  %s %s: %s failed",
-					m.styles.DangerStyle.Render("✗"),
-					result.Category.Name,
-					m.styles.DangerStyle.Render(fmt.Sprintf("%d", len(result.Errors)))))
-			}
-
-			// Show individual errors (truncate long paths)
-			for _, err := range result.Errors {
-				displayErr := err
-				if len(displayErr) > 60 {
-					displayErr = "..." + displayErr[len(displayErr)-57:]
-				}
-				lines = append(lines, m.styles.MutedStyle.Render(fmt.Sprintf("    └ %s", displayErr)))
-			}
+			exceptions = append(exceptions, fmt.Sprintf("Failed: %d", len(result.Errors)))
+		}
+		if result.AlreadyAbsentItems > 0 {
+			exceptions = append(exceptions, fmt.Sprintf("Already absent: %d", result.AlreadyAbsentItems))
+		}
+		if result.UnconfirmedItems > 0 {
+			exceptions = append(exceptions, fmt.Sprintf("Unconfirmed: %d", result.UnconfirmedItems))
+		}
+		if result.SkippedItems > 0 {
+			exceptions = append(exceptions, fmt.Sprintf("Skipped: %d", result.SkippedItems))
+		}
+		if len(exceptions) > 0 {
+			note := lipgloss.NewStyle().Width(m.width).PaddingLeft(4).Render(strings.Join(exceptions, ", "))
+			lines = append(lines, strings.Split(note, "\n")...)
+		}
+		for _, err := range result.Errors {
+			lines = append(lines, m.styles.MutedStyle.Render("    └ ")+truncateToWidth(err, max(1, m.width-6), true))
 		}
 	}
 

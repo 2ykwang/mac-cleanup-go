@@ -20,6 +20,7 @@ type targetInfo struct {
 	Paths     []string            `json:"paths,omitempty"`
 	BlockedBy []string            `json:"blocked_by_processes,omitempty"`
 	Guide     string              `json:"guide,omitempty"`
+	Disposal  types.DisposalMode  `json:"disposal"`
 }
 
 type targetsOutput struct {
@@ -112,6 +113,7 @@ func (a *App) runTargets(args []string) error {
 		info := targetInfo{
 			ID: cat.ID, Name: cat.Name, Group: cat.Group,
 			Safety: cat.Safety, Method: cat.Method, Note: cat.Note,
+			Disposal: cat.DisposalMode(),
 		}
 		if detailed {
 			info.Paths = cat.Paths
@@ -134,9 +136,9 @@ func (a *App) runTargets(args []string) error {
 
 func (a *App) printTargetTable(targets []targetInfo) {
 	tw := tabwriter.NewWriter(a.Out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "ID\tGROUP\tSAFETY\tMETHOD\tNAME")
+	fmt.Fprintln(tw, "ID\tGROUP\tSAFETY\tMETHOD\tACTION\tNAME")
 	for _, t := range targets {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", t.ID, t.Group, t.Safety, t.Method, t.Name)
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", t.ID, t.Group, t.Safety, t.Method, t.Disposal.ShortLabel(), t.Name)
 	}
 	tw.Flush()
 	fmt.Fprintf(a.Out, "\n%d targets. Next: mac-cleanup scan [<id>...]\n", len(targets))
@@ -149,6 +151,7 @@ func (a *App) printTargetDetails(targets []targetInfo) {
 		}
 		fmt.Fprintf(a.Out, "%s (%s)\n", t.ID, t.Name)
 		fmt.Fprintf(a.Out, "  group: %s  safety: %s  method: %s\n", t.Group, t.Safety, t.Method)
+		fmt.Fprintf(a.Out, "  action: %s\n", t.Disposal.Label())
 		if t.Note != "" {
 			fmt.Fprintf(a.Out, "  note: %s\n", t.Note)
 		}

@@ -19,6 +19,47 @@ const (
 	MethodManual    CleanupMethod = "manual"
 )
 
+// DisposalMode describes recovery behavior independently of cleanup dispatch.
+type DisposalMode string
+
+const (
+	DisposalTrash     DisposalMode = "trash"
+	DisposalPermanent DisposalMode = "permanent"
+	DisposalMixed     DisposalMode = "mixed"
+	DisposalManual    DisposalMode = "manual"
+	DisposalUnknown   DisposalMode = "unknown"
+)
+
+func (d DisposalMode) Label() string {
+	switch d {
+	case DisposalTrash:
+		return "Move to Trash"
+	case DisposalPermanent:
+		return "Delete permanently"
+	case DisposalMixed:
+		return "Trash + permanent deletion"
+	case DisposalManual:
+		return "Manual cleanup"
+	default:
+		return "Unknown disposal"
+	}
+}
+
+func (d DisposalMode) ShortLabel() string {
+	switch d {
+	case DisposalTrash:
+		return "Trash"
+	case DisposalPermanent:
+		return "Permanent"
+	case DisposalMixed:
+		return "Trash + permanent"
+	case DisposalManual:
+		return "Manual"
+	default:
+		return "Unknown"
+	}
+}
+
 // SortOrder represents the sorting criterion for items
 type SortOrder string
 
@@ -60,6 +101,7 @@ type Category struct {
 	Group    string        `yaml:"group"`
 	Safety   SafetyLevel   `yaml:"safety"`
 	Method   CleanupMethod `yaml:"method"`
+	Disposal DisposalMode  `yaml:"disposal,omitempty"`
 	Note     string        `yaml:"note,omitempty"`
 	Guide    string        `yaml:"guide,omitempty"`
 	Paths    []string      `yaml:"paths,omitempty"`
@@ -67,6 +109,23 @@ type Category struct {
 
 	// BlockedByProcesses lists process names that, when running, make this target unavailable.
 	BlockedByProcesses []string `yaml:"blocked_by_processes,omitempty"`
+}
+
+func (c Category) DisposalMode() DisposalMode {
+	switch c.Method {
+	case MethodTrash:
+		return DisposalTrash
+	case MethodPermanent:
+		return DisposalPermanent
+	case MethodManual:
+		return DisposalManual
+	case MethodBuiltin:
+		switch c.Disposal {
+		case DisposalTrash, DisposalPermanent, DisposalMixed:
+			return c.Disposal
+		}
+	}
+	return DisposalUnknown
 }
 
 type Group struct {
@@ -107,12 +166,21 @@ type ScanResult struct {
 	Error          error
 }
 
+// CleanResult byte fields are scan estimates, never measured filesystem free space.
 type CleanResult struct {
 	Category     Category
 	CleanedItems int
-	SkippedItems int // SIP protected paths skipped during cleanup
-	FreedSpace   int64
-	Errors       []string
+	SkippedItems int
+	// FreedSpace is deprecated. It preserves legacy success estimates, including absent paths.
+	FreedSpace              int64
+	PlannedBytes            int64
+	TrashedBytes            int64
+	PermanentlyDeletedBytes int64
+	AlreadyAbsentItems      int
+	UnconfirmedItems        int
+	ProcessedItems          int
+	ItemResults             []ItemCleanedResult
+	Errors                  []string
 }
 
 // Merge accumulates another CleanResult's counters and errors into this one.
@@ -120,6 +188,13 @@ func (r *CleanResult) Merge(other *CleanResult) {
 	r.CleanedItems += other.CleanedItems
 	r.SkippedItems += other.SkippedItems
 	r.FreedSpace += other.FreedSpace
+	r.PlannedBytes += other.PlannedBytes
+	r.TrashedBytes += other.TrashedBytes
+	r.PermanentlyDeletedBytes += other.PermanentlyDeletedBytes
+	r.AlreadyAbsentItems += other.AlreadyAbsentItems
+	r.UnconfirmedItems += other.UnconfirmedItems
+	r.ProcessedItems += other.ProcessedItems
+	r.ItemResults = append(r.ItemResults, other.ItemResults...)
 	r.Errors = append(r.Errors, other.Errors...)
 }
 
@@ -138,14 +213,43 @@ func NewCleanResult(category Category) *CleanResult {
 }
 
 type Report struct {
-	BeforeSize   int64
-	AfterSize    int64
-	FreedSpace   int64
-	TotalItems   int
-	CleanedItems int
-	FailedItems  int
-	Results      []CleanResult
-	Duration     time.Duration
+	BeforeSize              int64
+	AfterSize               int64
+	FreedSpace              int64
+	PlannedBytes            int64
+	TrashedBytes            int64
+	PermanentlyDeletedBytes int64
+	AlreadyAbsentItems      int
+	UnconfirmedItems        int
+	ProcessedItems          int
+	SkippedItems            int
+	TotalItems              int
+	CleanedItems            int
+	FailedItems             int
+	Results                 []CleanResult
+	Duration                time.Duration
+}
+
+func (r *Report) AddResult(result *CleanResult) {
+	r.Results = append(r.Results, *result)
+	r.FreedSpace += result.FreedSpace
+	r.PlannedBytes += result.PlannedBytes
+	r.TrashedBytes += result.TrashedBytes
+	r.PermanentlyDeletedBytes += result.PermanentlyDeletedBytes
+	r.AlreadyAbsentItems += result.AlreadyAbsentItems
+	r.UnconfirmedItems += result.UnconfirmedItems
+	r.ProcessedItems += result.ProcessedItems
+	r.SkippedItems += result.SkippedItems
+	r.CleanedItems += result.CleanedItems
+	r.FailedItems += len(result.Errors)
+}
+
+func PlannedSize(items []CleanableItem) int64 {
+	var size int64
+	for _, item := range items {
+		size += item.Size
+	}
+	return size
 }
 
 type CleanProgress struct {
@@ -155,19 +259,34 @@ type CleanProgress struct {
 	Total        int
 }
 
+type ItemOutcome int
+
+const (
+	ItemOutcomeUnknown ItemOutcome = iota
+	ItemOutcomeProcessed
+	ItemOutcomeFailed
+	ItemOutcomeSkipped
+	ItemOutcomeAbsent
+	ItemOutcomeUnconfirmed
+)
+
 type ItemCleanedResult struct {
 	Path    string
 	Name    string
 	Size    int64
 	Success bool
 	ErrMsg  string
+	Outcome ItemOutcome
 }
 
 type CategoryCleanedResult struct {
-	CategoryName string
-	FreedSpace   int64
-	CleanedItems int
-	ErrorCount   int
+	CategoryName            string
+	FreedSpace              int64
+	TrashedBytes            int64
+	PermanentlyDeletedBytes int64
+	ProcessedItems          int
+	CleanedItems            int
+	ErrorCount              int
 }
 
 type CleanCallbacks struct {

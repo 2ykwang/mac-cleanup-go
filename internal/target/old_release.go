@@ -94,6 +94,7 @@ func (t *OldReleaseTarget) Clean(items []types.CleanableItem) (*types.CleanResul
 	allowed, err := t.removableNow()
 	if err != nil {
 		result.SkippedItems = len(items)
+		result.PlannedBytes = types.PlannedSize(items)
 		return result, fmt.Errorf("re-checking %s releases: %w", t.category.ID, err)
 	}
 

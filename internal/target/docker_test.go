@@ -512,6 +512,10 @@ func TestDockerTarget_Clean_AllTypes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, result.Errors)
 	assert.Equal(t, int64(8000), result.FreedSpace)
+	assert.Equal(t, int64(8000), result.PlannedBytes)
+	assert.Equal(t, int64(8000), result.PermanentlyDeletedBytes)
+	assert.Zero(t, result.TrashedBytes)
+	assert.Equal(t, 3, result.ProcessedItems)
 	assert.Equal(t, 3, result.CleanedItems)
 }
 
@@ -559,4 +563,6 @@ func TestDockerTarget_Clean_SkipsUnknownPath(t *testing.T) {
 	assert.Empty(t, result.Errors)
 	assert.Equal(t, int64(0), result.FreedSpace)
 	assert.Equal(t, 0, result.CleanedItems)
+	assert.Equal(t, 1, result.SkippedItems)
+	assert.Zero(t, result.PermanentlyDeletedBytes)
 }

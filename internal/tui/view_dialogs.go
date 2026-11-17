@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
 
@@ -163,6 +164,9 @@ func (m *Model) confirmDialog() string {
 		help.SetWidth(contentWidth)
 	}
 	helpView := help.View(ConfirmKeyMap)
+	selected := m.getSelectedResults()
+	disposals := m.selectedDisposals()
+	recoverable := len(disposals[types.DisposalTrash]) > 0 || len(disposals[types.DisposalMixed]) > 0
 
 	buildSections := func(compact bool) ([]string, []string) {
 		var head []string
@@ -172,15 +176,21 @@ func (m *Model) confirmDialog() string {
 		if !compact {
 			head = append(head, "")
 		}
-		head = append(head, m.styles.SuccessStyle.Render("Files will be moved to Trash"))
+		for _, action := range m.confirmActions() {
+			if contentWidth > 0 {
+				action = lipgloss.NewStyle().Width(contentWidth).Render(action)
+			}
+			for _, line := range splitLines(action) {
+				head = append(head, strings.TrimRight(line, " "))
+			}
+		}
 		if !compact {
 			head = append(head, "")
 		}
 		if contentWidth > 0 && !compact {
 			head = append(head, m.styles.Divider(contentWidth), "")
 		}
-		head = append(head, fmt.Sprintf("Total %s will be deleted.",
-			m.styles.DangerStyle.Render(formatSize(m.getSelectedSize()))))
+		head = append(head, fmt.Sprintf("Planned (estimate): %s", formatSize(m.getSelectedSize())))
 		if !compact {
 			head = append(head, "")
 		}
@@ -188,9 +198,11 @@ func (m *Model) confirmDialog() string {
 		if contentWidth > 0 && !compact {
 			tail = append(tail, m.styles.Divider(contentWidth), "")
 		}
-		tail = append(tail, m.styles.MutedStyle.Render("Items can be recovered from Trash"))
-		if !compact {
-			tail = append(tail, "")
+		if recoverable {
+			tail = append(tail, m.styles.MutedStyle.Render("Recover Trash before emptying."))
+			if !compact {
+				tail = append(tail, "")
+			}
 		}
 		tail = append(tail, buttons)
 		tail = append(tail, splitLines(helpView)...)
@@ -199,17 +211,16 @@ func (m *Model) confirmDialog() string {
 	}
 
 	head, tail := buildSections(false)
-	availableForItems := contentHeight - len(head) - len(tail)
-	if availableForItems < 0 && contentHeight > 0 {
+	availableForItems := contentHeight - lipgloss.Height(strings.Join(head, "\n")) - lipgloss.Height(strings.Join(tail, "\n"))
+	if availableForItems < min(2, len(selected)) && contentHeight > 0 {
 		head, tail = buildSections(true)
-		availableForItems = contentHeight - len(head) - len(tail)
+		availableForItems = contentHeight - lipgloss.Height(strings.Join(head, "\n")) - lipgloss.Height(strings.Join(tail, "\n"))
 	}
 	if availableForItems < 0 {
 		availableForItems = 0
 	}
 
 	var itemLines []string
-	selected := m.getSelectedResults()
 	totalSelected := len(selected)
 	nameWidth, sizeWidth := confirmItemColumns(contentWidth)
 	showScrollInfo := false
@@ -274,6 +285,41 @@ func (m *Model) confirmDialog() string {
 		Width(boxWidth)
 
 	return boxStyle.Render(content)
+}
+
+func (m *Model) selectedDisposals() map[types.DisposalMode][]string {
+	seen := make(map[types.DisposalMode][]string)
+	for _, r := range m.getSelectedResults() {
+		if r.Category.Method == types.MethodManual {
+			continue
+		}
+		for _, item := range r.Items {
+			if item.Status != types.ItemStatusProcessLocked && !m.isExcluded(r.Category.ID, item.Path) {
+				mode := r.Category.DisposalMode()
+				seen[mode] = append(seen[mode], r.Category.Name)
+				break
+			}
+		}
+	}
+	return seen
+}
+
+func (m *Model) confirmActions() []string {
+	seen := m.selectedDisposals()
+	var lines []string
+	for _, mode := range []types.DisposalMode{types.DisposalTrash, types.DisposalPermanent, types.DisposalMixed, types.DisposalUnknown} {
+		if len(seen[mode]) > 0 {
+			label := mode.Label()
+			if mode != types.DisposalTrash {
+				label += ": " + strings.Join(seen[mode], ", ")
+			}
+			lines = append(lines, label)
+		}
+	}
+	if len(seen[types.DisposalMixed]) > 0 {
+		lines = append(lines, "Extra cleanup size unknown")
+	}
+	return lines
 }
 
 func (m *Model) confirmButtons() string {

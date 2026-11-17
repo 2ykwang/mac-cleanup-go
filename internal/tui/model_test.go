@@ -1102,6 +1102,7 @@ func TestViewConfirm_ContainsWarning(t *testing.T) {
 	m := newTestModelWithResults()
 	m.view = ViewConfirm
 	m.selected["cat1"] = true
+	m.resultMap["cat1"].Category.Method = types.MethodTrash
 
 	output := m.viewConfirm()
 
@@ -1124,15 +1125,17 @@ func TestViewReport_ContainsSummary(t *testing.T) {
 	m := newTestModel()
 	m.view = ViewReport
 	m.report = &types.Report{
-		FreedSpace:   1024 * 1024 * 100, // 100 MB
-		CleanedItems: 10,
-		FailedItems:  2,
+		FreedSpace:     1024 * 1024 * 100, // 100 MB
+		TrashedBytes:   1024 * 1024 * 100,
+		ProcessedItems: 10,
+		CleanedItems:   10,
+		FailedItems:    2,
 	}
 
 	output := m.viewReport()
 
 	assert.Contains(t, output, "Cleanup Complete")
-	assert.Contains(t, output, "Freed:")
+	assert.Contains(t, output, "Moved to Trash:")
 	assert.Contains(t, output, "Succeeded:")
 	assert.Contains(t, output, "10")
 }
@@ -1152,6 +1155,7 @@ func TestUpdate_CleanItemDoneMsg_AddsToRecentDeleted(t *testing.T) {
 		size:    1024,
 		success: true,
 		errMsg:  "",
+		outcome: types.ItemOutcomeProcessed,
 	}
 
 	m.Update(msg)
@@ -1161,6 +1165,7 @@ func TestUpdate_CleanItemDoneMsg_AddsToRecentDeleted(t *testing.T) {
 	assert.Equal(t, "file.txt", items[0].Name)
 	assert.Equal(t, int64(1024), items[0].Size)
 	assert.True(t, items[0].Success)
+	assert.Equal(t, types.ItemOutcomeProcessed, items[0].Outcome)
 }
 
 func TestUpdate_CleanItemDoneMsg_FailedItem(t *testing.T) {

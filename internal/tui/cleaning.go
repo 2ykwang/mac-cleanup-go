@@ -42,13 +42,14 @@ func (m *Model) doClean() tea.Cmd {
 				size:    r.Size,
 				success: r.Success,
 				errMsg:  r.ErrMsg,
+				outcome: r.Outcome,
 			}
 		},
 		OnCategoryDone: func(r types.CategoryCleanedResult) {
 			m.cleanCategoryDoneCh <- cleanCategoryDoneMsg{
 				categoryName: r.CategoryName,
-				freedSpace:   r.FreedSpace,
-				cleanedItems: r.CleanedItems,
+				freedSpace:   r.TrashedBytes + r.PermanentlyDeletedBytes,
+				cleanedItems: r.ProcessedItems,
 				errorCount:   r.ErrorCount,
 			}
 		},

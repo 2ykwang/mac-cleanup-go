@@ -282,7 +282,7 @@ func TestRunClean_TerminalDeclined_ChangesNothing(t *testing.T) {
 	code := app.Run([]string{"clean", "logs"})
 
 	assert.Equal(t, ExitError, code)
-	assert.Contains(t, app.err.String(), "Permanently deletes")
+	assert.Contains(t, app.err.String(), "Delete permanently")
 	assert.Contains(t, app.err.String(), "cancelled")
 	assert.FileExists(t, files["a.log"])
 }

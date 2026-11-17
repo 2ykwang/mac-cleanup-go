@@ -37,6 +37,7 @@ func batchTrash(
 	recyclePaths recyclePathsFunc,
 ) *types.CleanResult {
 	result := types.NewCleanResult(opts.Category)
+	result.PlannedBytes = types.PlannedSize(items)
 	pending := prepareTrashItems(items, opts, result)
 
 	for start := 0; start < len(pending); start += trashBatchSize {
@@ -69,6 +70,7 @@ func prepareTrashItems(
 
 		if opts.Filter != nil && opts.Filter(item) {
 			result.SkippedItems++
+			result.ItemResults = append(result.ItemResults, types.ItemCleanedResult{Path: item.Path, ErrMsg: "skipped", Outcome: types.ItemOutcomeSkipped})
 			continue
 		}
 		if err := validateTrashPath(item.Path); err != nil {
@@ -84,7 +86,8 @@ func prepareTrashItems(
 
 		candidate := trashItem{path: item.Path, size: item.Size}
 		if _, err := os.Lstat(item.Path); os.IsNotExist(err) {
-			recordTrashSuccess(result, candidate)
+			result.AlreadyAbsentItems++
+			recordTrashUnconfirmed(result, candidate, "already absent", types.ItemOutcomeAbsent)
 			continue
 		}
 		pending = append(pending, candidate)
@@ -125,6 +128,9 @@ func recycleTrashBatch(
 	for _, item := range items {
 		if _, ok := moved[item.path]; ok {
 			recordTrashSuccess(result, item)
+			result.TrashedBytes += item.size
+			result.ProcessedItems++
+			result.ItemResults = append(result.ItemResults, types.ItemCleanedResult{Path: item.path, Size: item.size, Success: true, Outcome: types.ItemOutcomeProcessed})
 			continue
 		}
 		resolveUnreportedPath(item, recycleErr, result)
@@ -141,7 +147,8 @@ func callRecyclePaths(paths []string, recyclePaths recyclePathsFunc) ([]string, 
 func resolveUnreportedPath(item trashItem, recycleErr error, result *types.CleanResult) {
 	_, statErr := os.Lstat(item.path)
 	if os.IsNotExist(statErr) {
-		recordTrashSuccess(result, item)
+		result.UnconfirmedItems++
+		recordTrashUnconfirmed(result, item, "disappeared without confirmed Trash movement", types.ItemOutcomeUnconfirmed)
 		return
 	}
 	if statErr != nil {
@@ -155,6 +162,11 @@ func resolveUnreportedPath(item trashItem, recycleErr error, result *types.Clean
 	addTrashError(result, item.path, errPathNotRecycled)
 }
 
+func recordTrashUnconfirmed(result *types.CleanResult, item trashItem, reason string, outcome types.ItemOutcome) {
+	recordTrashSuccess(result, item)
+	result.ItemResults = append(result.ItemResults, types.ItemCleanedResult{Path: item.path, ErrMsg: reason, Outcome: outcome})
+}
+
 func recordTrashSuccess(result *types.CleanResult, item trashItem) {
 	result.CleanedItems++
 	result.FreedSpace += item.size
@@ -162,4 +174,5 @@ func recordTrashSuccess(result *types.CleanResult, item trashItem) {
 
 func addTrashError(result *types.CleanResult, path string, err error) {
 	result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", path, err))
+	result.ItemResults = append(result.ItemResults, types.ItemCleanedResult{Path: path, ErrMsg: err.Error(), Outcome: types.ItemOutcomeFailed})
 }

@@ -157,6 +157,7 @@ func (m *Model) handleCleanItemDone(msg cleanItemDoneMsg) (tea.Model, tea.Cmd) {
 		Size:    msg.size,
 		Success: msg.success,
 		ErrMsg:  msg.errMsg,
+		Outcome: msg.outcome,
 	})
 	return m, m.waitForCleanProgress()
 }

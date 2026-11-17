@@ -20,6 +20,7 @@ func NewExecutor(registry *target.Registry) *Executor {
 func (c *Executor) Trash(cat types.Category, items []types.CleanableItem) *types.CleanResult {
 	result := types.NewCleanResult(cat)
 	if !c.ensureMethod(cat, types.MethodTrash, result, items) {
+		result.PlannedBytes = types.PlannedSize(items)
 		return result
 	}
 
@@ -29,6 +30,7 @@ func (c *Executor) Trash(cat types.Category, items []types.CleanableItem) *types
 
 func (c *Executor) Permanent(cat types.Category, items []types.CleanableItem) *types.CleanResult {
 	result := types.NewCleanResult(cat)
+	result.PlannedBytes = types.PlannedSize(items)
 	if !c.ensureMethod(cat, types.MethodPermanent, result, items) {
 		return result
 	}
@@ -39,6 +41,7 @@ func (c *Executor) Permanent(cat types.Category, items []types.CleanableItem) *t
 
 func (c *Executor) Builtin(cat types.Category, items []types.CleanableItem) *types.CleanResult {
 	result := types.NewCleanResult(cat)
+	result.PlannedBytes = types.PlannedSize(items)
 	if !c.ensureMethod(cat, types.MethodBuiltin, result, items) {
 		return result
 	}
@@ -64,6 +67,11 @@ func (c *Executor) Builtin(cat types.Category, items []types.CleanableItem) *typ
 		}
 	}
 	if builtinResult != nil {
+		builtinResult.PlannedBytes = types.PlannedSize(items)
+		accounted := builtinResult.ProcessedItems + builtinResult.AlreadyAbsentItems + builtinResult.UnconfirmedItems
+		if builtinResult.CleanedItems > accounted {
+			builtinResult.UnconfirmedItems += builtinResult.CleanedItems - accounted
+		}
 		return builtinResult
 	}
 
@@ -72,6 +80,7 @@ func (c *Executor) Builtin(cat types.Category, items []types.CleanableItem) *typ
 
 func (c *Executor) Manual(cat types.Category, items []types.CleanableItem) *types.CleanResult {
 	result := types.NewCleanResult(cat)
+	result.PlannedBytes = types.PlannedSize(items)
 	if !c.ensureMethod(cat, types.MethodManual, result, items) {
 		return result
 	}
@@ -114,6 +123,8 @@ func (c *Executor) removePermanent(items []types.CleanableItem, result *types.Cl
 		}
 
 		var err error
+		_, statErr := os.Lstat(item.Path)
+		absent := os.IsNotExist(statErr)
 		if item.IsDirectory {
 			err = os.RemoveAll(item.Path)
 		} else {
@@ -126,6 +137,14 @@ func (c *Executor) removePermanent(items []types.CleanableItem, result *types.Cl
 		} else {
 			result.FreedSpace += item.Size
 			result.CleanedItems++
+			if statErr == nil {
+				result.PermanentlyDeletedBytes += item.Size
+				result.ProcessedItems++
+			} else if absent {
+				result.AlreadyAbsentItems++
+			} else {
+				result.UnconfirmedItems++
+			}
 		}
 	}
 

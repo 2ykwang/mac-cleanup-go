@@ -630,6 +630,7 @@ categories:
     group: dev
     safety: moderate
     method: builtin
+    disposal: trash
     note: "Stale build caches (7+ days) in project directories (.venv, node_modules, .tox)"
 
   - id: homebrew
@@ -637,6 +638,7 @@ categories:
     group: dev
     safety: safe
     method: builtin
+    disposal: mixed
     note: Runs brew cleanup, then moves cache to trash
 
   - id: docker
@@ -644,6 +646,7 @@ categories:
     group: dev
     safety: moderate
     method: builtin
+    disposal: permanent
     note: Unused images, containers, volumes, and build cache
 
   - id: flutter
@@ -1047,6 +1050,7 @@ categories:
     group: dev
     safety: safe
     method: builtin
+    disposal: trash
     note: Superseded Claude Code CLI binaries - keeps the active version, the one before it and any still running
     paths:
       - "~/.local/share/claude/versions/*"
@@ -1056,6 +1060,7 @@ categories:
     group: dev
     safety: safe
     method: builtin
+    disposal: trash
     note: Superseded Codex app-server releases - keeps the active and pending releases and any still running
     paths:
       - "~/.codex/packages/app-server-daemon/releases/*"
@@ -2183,6 +2188,7 @@ categories:
     group: storage
     safety: risky
     method: builtin
+    disposal: trash
     note: "CAUTION: Files older than 30 days - may contain important documents!"
     paths:
       - "~/Downloads/*"
