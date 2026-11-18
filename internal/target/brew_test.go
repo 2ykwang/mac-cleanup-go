@@ -1,9 +1,9 @@
 package target
 
 import (
-	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,6 +11,18 @@ import (
 
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
+
+func newTestScannedBrew(t *testing.T) (*BrewTarget, *types.ScanResult) {
+	t.Helper()
+	root := filepath.Join(t.TempDir(), "Homebrew")
+	newTestCacheFile(t, filepath.Join(root, "package"))
+	newTestBrewCommand(t, root)
+	tgt := NewBrewTarget(types.Category{ID: "homebrew", Name: "Homebrew Cache"})
+	result, err := tgt.Scan()
+	require.NoError(t, err)
+	require.Len(t, result.Items, 1)
+	return tgt, result
+}
 
 func TestNewBrewTarget_ReturnsNonNil(t *testing.T) {
 	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
@@ -49,194 +61,103 @@ func TestBrewTarget_Category_ReturnsConfiguredCategory(t *testing.T) {
 }
 
 func TestBrewTarget_Scan_ReturnsEmptyWhenNotAvailable(t *testing.T) {
-	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
-	s := NewBrewTarget(cat)
+	t.Setenv("PATH", t.TempDir())
+	tgt := NewBrewTarget(types.Category{ID: "homebrew"})
 
-	result, err := s.Scan()
+	result, err := tgt.Scan()
 
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Equal(t, "homebrew", result.Category.ID)
+	require.NoError(t, err)
+	assert.Empty(t, result.Items)
+	assert.False(t, tgt.IsAvailable())
 }
 
-func TestBrewTarget_GetBrewCachePath_CachesResult(t *testing.T) {
-	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
-	s := NewBrewTarget(cat)
+func TestBrewTarget_GetBrewCachePath_CachesConcurrentResolution(t *testing.T) {
+	root := t.TempDir()
+	calls := newTestBrewCommand(t, root)
+	tgt := NewBrewTarget(types.Category{ID: "homebrew"})
+	var wg sync.WaitGroup
+	paths := make([]string, 8)
 
-	// First call
-	path1 := s.getBrewCachePath()
-	// Second call should return cached value
-	path2 := s.getBrewCachePath()
-
-	assert.Equal(t, path1, path2)
-}
-
-func TestBrewTarget_Clean_ReturnsResult(t *testing.T) {
-	original := execCommand
-	defer func() { execCommand = original }()
-	execCommand = func(_ string, _ ...string) *exec.Cmd {
-		return exec.Command("true")
+	for i := range paths {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			paths[i] = tgt.getBrewCachePath()
+		}()
 	}
+	wg.Wait()
 
-	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
-	s := NewBrewTarget(cat)
-	s.cachePath = "/nonexistent/path"
-
-	items := []types.CleanableItem{
-		{Path: "/nonexistent/path", Size: 1000, Name: "Homebrew Cache", IsDirectory: true},
+	for _, path := range paths {
+		assert.Equal(t, root, path)
 	}
-
-	result, err := s.Clean(items)
-
-	assert.NoError(t, err)
-	assert.Equal(t, "homebrew", result.Category.ID)
-	// Nonexistent paths are treated as "already deleted" (success)
-	assert.Empty(t, result.Errors)
-	assert.Equal(t, 1, result.CleanedItems)
-	assert.Equal(t, int64(1000), result.FreedSpace)
+	assert.Equal(t, 1, *calls)
 }
 
-func TestBrewTarget_Scan_WithMockCachePath(t *testing.T) {
-	tmpDir := t.TempDir()
-	cacheDir := filepath.Join(tmpDir, "Homebrew")
-	require.NoError(t, os.MkdirAll(cacheDir, 0o755))
+func TestBrewTarget_GetBrewCachePath_CommandFailureIsCached(t *testing.T) {
+	calls := newTestBrewCommand(t, "")
+	execCommand = func(string, ...string) *exec.Cmd {
+		*calls++
+		return exec.Command("/bin/sh", "-c", "exit 1")
+	}
+	tgt := NewBrewTarget(types.Category{ID: "homebrew"})
 
-	testFile := filepath.Join(cacheDir, "test-package.tar.gz")
-	require.NoError(t, os.WriteFile(testFile, []byte("test content for brew cache"), 0o644))
+	first := tgt.getBrewCachePath()
+	second := tgt.getBrewCachePath()
 
-	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
-	s := NewBrewTarget(cat)
-	s.cachePath = cacheDir
+	assert.Empty(t, first)
+	assert.Empty(t, second)
+	assert.Equal(t, 1, *calls)
+}
 
-	result, err := s.Scan()
+func TestBrewTarget_Scan_MeasuresOnlyCacheFiles(t *testing.T) {
+	tgt, _ := newTestScannedBrew(t)
+	newTestCacheFile(t, filepath.Join(tgt.cachePath, ".DS_Store"))
 
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Len(t, result.Items, 1)
+	result, err := tgt.Scan()
+
+	require.NoError(t, err)
+	require.Len(t, result.Items, 1)
 	assert.Equal(t, "Homebrew Cache", result.Items[0].Name)
 	assert.True(t, result.Items[0].IsDirectory)
-	assert.Greater(t, result.TotalSize, int64(0))
+	assert.Equal(t, int64(5), result.TotalSize)
+	assert.Equal(t, int64(1), result.TotalFileCount)
 }
 
-func TestBrewTarget_Scan_NonexistentCachePath(t *testing.T) {
-	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
-	s := NewBrewTarget(cat)
-	s.cachePath = "/nonexistent/path/that/does/not/exist"
+func TestBrewTarget_Scan_NonexistentCacheIsEmpty(t *testing.T) {
+	newTestBrewCommand(t, filepath.Join(t.TempDir(), "missing"))
+	tgt := NewBrewTarget(types.Category{ID: "homebrew"})
 
-	result, err := s.Scan()
+	result, err := tgt.Scan()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, result.Items)
 }
 
-func TestBrewTarget_GetBrewCachePath_ReturnsEmpty_WhenCommandFails(t *testing.T) {
-	original := execCommand
-	defer func() { execCommand = original }()
-	execCommand = func(_ string, _ ...string) *exec.Cmd {
-		return exec.Command("false")
-	}
+func TestBrewTarget_Clean_ReturnsEmptyWhenNoItems(t *testing.T) {
+	calls := newTestBrewCommand(t, t.TempDir())
+	tgt := NewBrewTarget(types.Category{ID: "homebrew"})
 
-	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
-	s := NewBrewTarget(cat)
+	result, err := tgt.Clean(nil)
 
-	path := s.getBrewCachePath()
-
-	assert.Empty(t, path)
+	require.NoError(t, err)
+	assert.Zero(t, result.CleanedItems)
+	assert.Zero(t, *calls)
 }
 
-func TestBrewTarget_GetBrewCachePath_ReturnsPath_WhenCommandSucceeds(t *testing.T) {
-	original := execCommand
-	defer func() { execCommand = original }()
-	execCommand = func(_ string, _ ...string) *exec.Cmd {
-		return exec.Command("echo", "/opt/homebrew/cache")
-	}
-
-	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
-	s := NewBrewTarget(cat)
-
-	path := s.getBrewCachePath()
-
-	assert.Equal(t, "/opt/homebrew/cache", path)
-}
-
-func TestBrewTarget_Clean_ReturnsEmpty_WhenNoItems(t *testing.T) {
-	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
-	s := NewBrewTarget(cat)
-
-	result, err := s.Clean(nil)
-
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Equal(t, int64(0), result.FreedSpace)
-	assert.Equal(t, 0, result.CleanedItems)
-}
-
-func TestBrewTarget_Clean_ReturnsError_WhenPathNotInCache(t *testing.T) {
-	original := execCommand
-	defer func() { execCommand = original }()
-	execCommand = func(_ string, _ ...string) *exec.Cmd {
-		return exec.Command("true")
-	}
-
-	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
-	s := NewBrewTarget(cat)
-	s.cachePath = "/opt/homebrew/cache"
-
+func TestBrewTarget_Clean_RejectsUnscannedPaths(t *testing.T) {
+	tgt, scan := newTestScannedBrew(t)
+	root := scan.Items[0].Path
 	items := []types.CleanableItem{
-		{Path: "/malicious/path", Size: 1000},
+		{Path: root + "-other"},
+		{Path: filepath.Join(root, "package")},
+		{Path: filepath.Join(root, "..", "unrelated")},
+		{Path: filepath.Dir(root)},
 	}
 
-	result, err := s.Clean(items)
+	result, err := tgt.Clean(items)
 
-	assert.NoError(t, err)
-	assert.NotEmpty(t, result.Errors)
-	assert.Contains(t, result.Errors[0], "invalid path")
-}
-
-func TestBrewTarget_Clean_ReturnsError_WhenCachePathEmpty(t *testing.T) {
-	original := execCommand
-	defer func() { execCommand = original }()
-	execCommand = func(_ string, _ ...string) *exec.Cmd {
-		return exec.Command("false") // brew --cache fails
-	}
-
-	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
-	s := NewBrewTarget(cat)
-	// cachePath is empty
-
-	items := []types.CleanableItem{
-		{Path: "/some/path", Size: 1000},
-	}
-
-	result, err := s.Clean(items)
-
-	assert.NoError(t, err)
-	assert.NotEmpty(t, result.Errors)
-	assert.Contains(t, result.Errors[0], "invalid path")
-}
-
-func TestBrewTarget_Clean_Success(t *testing.T) {
-	original := execCommand
-	defer func() { execCommand = original }()
-
-	execCommand = func(_ string, _ ...string) *exec.Cmd {
-		return exec.Command("true")
-	}
-
-	tmpDir := t.TempDir()
-
-	cat := types.Category{ID: "homebrew", Name: "Homebrew"}
-	s := NewBrewTarget(cat)
-	s.cachePath = tmpDir
-
-	items := []types.CleanableItem{
-		{Path: filepath.Join(tmpDir, "test"), Size: 1000},
-	}
-
-	result, err := s.Clean(items)
-
-	assert.NoError(t, err)
-	assert.Empty(t, result.Errors)
-	assert.Equal(t, int64(1000), result.FreedSpace)
-	assert.Equal(t, 1, result.CleanedItems)
+	require.NoError(t, err)
+	assert.Len(t, result.Errors, len(items))
+	assert.Zero(t, result.CleanedItems)
+	assert.DirExists(t, root)
 }

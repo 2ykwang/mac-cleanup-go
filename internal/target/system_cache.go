@@ -13,6 +13,8 @@ import (
 type SystemCacheTarget struct {
 	*PathTarget
 	excludePaths []string
+	// brewCachePath is set by the registry; the homebrew target cleans that directory.
+	brewCachePath func() string
 }
 
 var getLockedPaths = utils.GetLockedPaths
@@ -61,6 +63,10 @@ func (s *SystemCacheTarget) Scan() (*types.ScanResult, error) {
 
 // collectFilteredPaths gathers paths excluding those defined in other categories
 func (s *SystemCacheTarget) collectFilteredPaths() []string {
+	var brewCache string
+	if s.brewCachePath != nil {
+		brewCache = s.brewCachePath()
+	}
 	var paths []string
 	for _, pattern := range s.category.Paths {
 		matched, err := utils.GlobPaths(pattern)
@@ -71,7 +77,7 @@ func (s *SystemCacheTarget) collectFilteredPaths() []string {
 			if isIgnoredName(filepath.Base(p)) {
 				continue
 			}
-			if !s.isExcluded(p) {
+			if p != brewCache && !s.isExcluded(p) {
 				paths = append(paths, p)
 			}
 		}

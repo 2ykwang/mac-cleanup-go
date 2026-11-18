@@ -82,6 +82,11 @@ func DefaultRegistry(cfg *types.Config) (*Registry, error) {
 		}
 		r.Register(s)
 	}
+	if brew, ok := r.targets["homebrew"].(*BrewTarget); ok {
+		if system, ok := r.targets["system-cache"].(*SystemCacheTarget); ok {
+			system.brewCachePath = brew.getBrewCachePath
+		}
+	}
 
 	logger.Info("registry initialized",
 		"total", len(cfg.Categories),

@@ -96,7 +96,7 @@ mac-cleanup clean npm go-build              # Clean (asks to confirm; --yes skip
 - `mac-cleanup targets` lists every target ID without scanning.
 - `mac-cleanup select` saves targets for `mac-cleanup clean --selected`.
 - Risky targets are only cleaned item by item with `--item <path>`.
-- Targets with a side effect (`homebrew` runs `brew cleanup`) are cleaned whole; `--item` is rejected for them.
+- `homebrew` moves only the scanned download cache to Trash. Installed formula versions are kept, and `--item` accepts the scanned cache root.
 - Exit codes: `0` ok, `1` error, `2` usage error or confirmation needed, `3` some items failed.
 - Run `mac-cleanup help <command>` for all flags.
 
@@ -135,13 +135,13 @@ Mode: Dry Run
 Summary                             Highlights
 Freed (dry-run): 8.6 GB             1. App Caches - 3.2 GB (523 items)
                                     2. Docker - 2.8 GB (12 items)
-                                    3. Homebrew Cache - 1.5 GB (34 items)
+                                    3. Homebrew Cache - 1.5 GB (1 items)
 
 Details
 STATUS  CATEGORY              ITEMS        SIZE
 OK      App Caches              523      3.2 GB
 OK      Docker                   12      2.8 GB
-OK      Homebrew Cache           34      1.5 GB
+OK      Homebrew Cache            1      1.5 GB
 OK      Go Build Cache           89    845.0 MB
 OK      System Logs              67    259.7 MB
 ```

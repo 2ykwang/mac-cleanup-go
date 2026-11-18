@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/logger"
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
@@ -12,6 +13,7 @@ import (
 
 type BrewTarget struct {
 	category  types.Category
+	cacheOnce sync.Once
 	cachePath string
 }
 
@@ -28,20 +30,20 @@ func (s *BrewTarget) IsAvailable() bool {
 }
 
 // getBrewCachePath returns the brew cache directory path.
+// The system-cache scan calls it concurrently with Scan.
 func (s *BrewTarget) getBrewCachePath() string {
-	if s.cachePath != "" {
-		return s.cachePath
-	}
-
-	cmd := execCommand("brew", "--cache")
-	output, err := cmd.Output()
-	if err != nil {
-		logger.Warn("brew --cache failed", "error", err)
-		return ""
-	}
-
-	s.cachePath = strings.TrimSpace(string(output))
-	logger.Debug("brew cache path resolved", "path", s.cachePath)
+	s.cacheOnce.Do(func() {
+		if !s.IsAvailable() {
+			return
+		}
+		output, err := execCommand("brew", "--cache").Output()
+		if err != nil {
+			logger.Warn("brew --cache failed", "error", err)
+			return
+		}
+		s.cachePath = strings.TrimSpace(string(output))
+		logger.Debug("brew cache path resolved", "path", s.cachePath)
+	})
 	return s.cachePath
 }
 
@@ -88,11 +90,6 @@ func (s *BrewTarget) Scan() (*types.ScanResult, error) {
 	return result, nil
 }
 
-// CleanSideEffect describes what Clean does outside the scanned cache.
-func (s *BrewTarget) CleanSideEffect() string {
-	return "runs `brew cleanup --prune=all -s`, which also removes old versions of installed formulae"
-}
-
 func (s *BrewTarget) Clean(items []types.CleanableItem) (*types.CleanResult, error) {
 	result := types.NewCleanResult(s.category)
 
@@ -100,20 +97,12 @@ func (s *BrewTarget) Clean(items []types.CleanableItem) (*types.CleanResult, err
 		return result, nil
 	}
 
-	// Run brew cleanup first
-	cmd := execCommand("brew", "cleanup", "--prune=all", "-s")
-	if err := cmd.Run(); err != nil {
-		logger.Warn("brew cleanup command failed", "error", err)
-	} else {
-		logger.Debug("brew cleanup command completed")
-	}
-
 	cachePath := s.getBrewCachePath()
 
 	batchResult := utils.BatchTrash(items, types.BatchTrashOptions{
 		Category: result.Category,
 		Validate: func(item types.CleanableItem) error {
-			if cachePath == "" || !strings.HasPrefix(item.Path, cachePath) {
+			if cachePath == "" || item.Path != cachePath {
 				return fmt.Errorf("invalid path: %s", item.Path)
 			}
 			return nil
