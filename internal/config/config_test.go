@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 )
@@ -22,6 +23,20 @@ func TestLoadEmbedded_HasCategories(t *testing.T) {
 	assert.NotEmpty(t, cfg.Categories)
 }
 
+func TestLoadEmbedded_DockerVolumesAreRiskyAndSeparate(t *testing.T) {
+	cfg, err := LoadEmbedded()
+	require.NoError(t, err)
+	categories := make(map[string]types.Category)
+	for _, cat := range cfg.Categories {
+		categories[cat.ID] = cat
+	}
+
+	assert.Equal(t, types.MethodBuiltin, categories["docker"].Method)
+	assert.Equal(t, types.SafetyLevelModerate, categories["docker"].Safety)
+	assert.Equal(t, types.MethodBuiltin, categories["docker-volumes"].Method)
+	assert.Equal(t, types.SafetyLevelRisky, categories["docker-volumes"].Safety)
+}
+
 func TestLoadEmbedded_KnownCategoriesExist(t *testing.T) {
 	cfg, _ := LoadEmbedded()
 
@@ -32,6 +47,7 @@ func TestLoadEmbedded_KnownCategoriesExist(t *testing.T) {
 
 	assert.True(t, categoryMap["system-cache"])
 	assert.True(t, categoryMap["docker"])
+	assert.True(t, categoryMap["docker-volumes"])
 	assert.True(t, categoryMap["homebrew"])
 }
 

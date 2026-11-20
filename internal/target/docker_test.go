@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
@@ -35,6 +36,40 @@ func TestDockerTarget_Category_ReturnsConfiguredCategory(t *testing.T) {
 
 	assert.Equal(t, "docker", result.ID)
 	assert.Equal(t, "Docker", result.Name)
+}
+
+func TestDockerTarget_Scan_ExcludesUnusedNamedDatabaseVolume(t *testing.T) {
+	verbose := `{"Images":[{"ID":"sha256:img1","Repository":"postgres","Tag":"latest","Size":"1GB"}],"Containers":[],"Volumes":[{"Name":"postgres-data","Size":"2GB"}]}`
+	defer stubDockerScan(t, verbose, `{"Type":"Build Cache","Reclaimable":"1GB"}`)()
+	s := NewDockerTarget(types.Category{ID: "docker"})
+
+	result, err := s.Scan()
+
+	require.NoError(t, err)
+	require.NoError(t, result.Error)
+	require.Len(t, result.Items, 2)
+	assert.Equal(t, dockerPathPrefixImage+"sha256:img1", result.Items[0].Path)
+	assert.Equal(t, dockerPathBuildCache, result.Items[1].Path)
+}
+
+func TestDockerTarget_Clean_RejectsVolumeInput(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+	var calls [][]string
+	execCommand = func(name string, args ...string) *exec.Cmd {
+		calls = append(calls, append([]string{name}, args...))
+		return exec.Command("true")
+	}
+	s := NewDockerTarget(types.Category{ID: "docker"})
+
+	result, err := s.Clean([]types.CleanableItem{{Path: dockerPathPrefixVolume + "postgres-data", Size: 100}})
+
+	require.NoError(t, err)
+	assert.Empty(t, calls)
+	require.Len(t, result.Errors, 1)
+	assert.Contains(t, result.Errors[0], "docker:volume:postgres-data")
+	assert.Contains(t, result.Errors[0], "docker")
+	assert.Zero(t, result.CleanedItems)
 }
 
 func TestParseDockerSize_KBWithPercentage(t *testing.T) {
@@ -327,16 +362,16 @@ func TestDockerTarget_Scan_ParsesOutput(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Nil(t, result.Error)
-	assert.Len(t, result.Items, 3)
+	assert.Len(t, result.Items, 2)
 
-	var imageItem, volumeItem, cacheItem *types.CleanableItem
+	var imageItem, cacheItem *types.CleanableItem
 	for i := range result.Items {
 		item := &result.Items[i]
 		switch {
 		case strings.HasPrefix(item.Path, dockerPathPrefixImage):
 			imageItem = item
 		case strings.HasPrefix(item.Path, dockerPathPrefixVolume):
-			volumeItem = item
+			t.Fatalf("docker must not scan volumes: %s", item.Path)
 		case item.Path == dockerPathBuildCache:
 			cacheItem = item
 		}
@@ -347,11 +382,6 @@ func TestDockerTarget_Scan_ParsesOutput(t *testing.T) {
 		assert.Contains(t, imageItem.DisplayName, "Used By: web")
 		assert.Equal(t, dockerPathPrefixImage+"sha256:img1", imageItem.Path)
 		assert.Equal(t, types.ItemStatusProcessLocked, imageItem.Status)
-	}
-	if assert.NotNil(t, volumeItem) {
-		assert.Contains(t, volumeItem.DisplayName, "Volume: vol1")
-		assert.Contains(t, volumeItem.DisplayName, "Used By: web")
-		assert.Equal(t, types.ItemStatusProcessLocked, volumeItem.Status)
 	}
 	assert.NotNil(t, cacheItem)
 }
@@ -448,7 +478,7 @@ func TestDockerTarget_Scan_BuildCacheMissing(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Nil(t, result.Error)
-	assert.Len(t, result.Items, 2)
+	assert.Len(t, result.Items, 1)
 	for _, item := range result.Items {
 		assert.NotEqual(t, dockerPathBuildCache, item.Path)
 	}
@@ -490,7 +520,7 @@ func TestDockerTarget_Scan_MultiTagImagesHaveUniquePaths(t *testing.T) {
 	}
 }
 
-func TestDockerTarget_Clean_AllTypes(t *testing.T) {
+func TestDockerTarget_Clean_ImagesAndBuildCacheOnly(t *testing.T) {
 	original := execCommand
 	defer func() { execCommand = original }()
 
@@ -503,7 +533,6 @@ func TestDockerTarget_Clean_AllTypes(t *testing.T) {
 
 	items := []types.CleanableItem{
 		{Path: dockerPathPrefixImage + "sha256:abc", Size: 1000},
-		{Path: dockerPathPrefixVolume + "vol1", Size: 3000},
 		{Path: dockerPathBuildCache, Size: 4000},
 	}
 
@@ -511,8 +540,8 @@ func TestDockerTarget_Clean_AllTypes(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Empty(t, result.Errors)
-	assert.Equal(t, int64(8000), result.FreedSpace)
-	assert.Equal(t, 3, result.CleanedItems)
+	assert.Equal(t, int64(5000), result.FreedSpace)
+	assert.Equal(t, 2, result.CleanedItems)
 }
 
 func TestDockerTarget_Clean_RecordsErrors(t *testing.T) {
@@ -538,7 +567,7 @@ func TestDockerTarget_Clean_RecordsErrors(t *testing.T) {
 	assert.Equal(t, 0, result.CleanedItems)
 }
 
-func TestDockerTarget_Clean_SkipsUnknownPath(t *testing.T) {
+func TestDockerTarget_Clean_RejectsUnknownPath(t *testing.T) {
 	original := execCommand
 	defer func() { execCommand = original }()
 
@@ -556,7 +585,8 @@ func TestDockerTarget_Clean_SkipsUnknownPath(t *testing.T) {
 	result, err := s.Clean(items)
 
 	assert.NoError(t, err)
-	assert.Empty(t, result.Errors)
+	require.Len(t, result.Errors, 1)
+	assert.Contains(t, result.Errors[0], "docker:unknown: unsupported item for docker")
 	assert.Equal(t, int64(0), result.FreedSpace)
 	assert.Equal(t, 0, result.CleanedItems)
 }

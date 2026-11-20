@@ -16,7 +16,8 @@ import (
 )
 
 type DockerTarget struct {
-	category types.Category
+	category    types.Category
+	volumesOnly bool
 }
 
 const (
@@ -30,6 +31,10 @@ const (
 
 func NewDockerTarget(cat types.Category) *DockerTarget {
 	return &DockerTarget{category: cat}
+}
+
+func NewDockerVolumesTarget(cat types.Category) *DockerTarget {
+	return &DockerTarget{category: cat, volumesOnly: true}
 }
 
 func (s *DockerTarget) Category() types.Category {
@@ -113,9 +118,12 @@ func (s *DockerTarget) Scan() (*types.ScanResult, error) {
 	}
 
 	usage := buildContainerUsage(verbose)
-	appendImageItems(result, verbose.Images, usage.imageUsedBy)
-	appendVolumeItems(result, verbose.Volumes, usage.volumeUsedBy)
-	s.appendBuildCache(result)
+	if s.volumesOnly {
+		appendVolumeItems(result, verbose.Volumes, usage.volumeUsedBy)
+	} else {
+		appendImageItems(result, verbose.Images, usage.imageUsedBy)
+		s.appendBuildCache(result)
+	}
 
 	logger.Info("docker scan completed",
 		"resourceTypes", len(result.Items),
@@ -287,37 +295,18 @@ func (s *DockerTarget) Clean(items []types.CleanableItem) (*types.CleanResult, e
 	result := types.NewCleanResult(s.category)
 
 	for _, item := range items {
-		var cmd *exec.Cmd
-		switch {
-		case strings.HasPrefix(item.Path, dockerPathPrefixImage):
-			imageID := strings.TrimPrefix(item.Path, dockerPathPrefixImage)
-			if imageID != "" {
-				cmd = execCommand("docker", "image", "rm", imageID)
-			} else {
-				logger.Debug("docker prune skipped empty image id", "path", item.Path)
-			}
-		case strings.HasPrefix(item.Path, dockerPathPrefixVolume):
-			volumeName := strings.TrimPrefix(item.Path, dockerPathPrefixVolume)
-			if volumeName != "" {
-				cmd = execCommand("docker", "volume", "rm", volumeName)
-			} else {
-				logger.Debug("docker prune skipped empty volume name", "path", item.Path)
-			}
-		case item.Path == dockerPathBuildCache:
-			cmd = execCommand("docker", "builder", "prune", "-af")
-		default:
-			logger.Debug("docker prune skipped unknown path", "path", item.Path)
+		cmd, err := s.cleanCommand(item.Path)
+		if err != nil {
+			result.Errors = append(result.Errors, err.Error())
+			continue
 		}
-
-		if cmd != nil {
-			if err := cmd.Run(); err != nil {
-				logger.Warn("docker prune failed", "resourceType", item.Path, "error", err)
-				result.Errors = append(result.Errors, err.Error())
-			} else {
-				logger.Debug("docker prune succeeded", "resourceType", item.Path, "size", item.Size)
-				result.FreedSpace += item.Size
-				result.CleanedItems++
-			}
+		if err := cmd.Run(); err != nil {
+			logger.Warn("docker prune failed", "resourceType", item.Path, "error", err)
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.Path, err))
+		} else {
+			logger.Debug("docker prune succeeded", "resourceType", item.Path, "size", item.Size)
+			result.FreedSpace += item.Size
+			result.CleanedItems++
 		}
 	}
 
@@ -327,6 +316,22 @@ func (s *DockerTarget) Clean(items []types.CleanableItem) (*types.CleanResult, e
 		"errors", len(result.Errors))
 
 	return result, nil
+}
+
+func (s *DockerTarget) cleanCommand(path string) (*exec.Cmd, error) {
+	switch {
+	case s.volumesOnly && strings.HasPrefix(path, dockerPathPrefixVolume):
+		if name := strings.TrimPrefix(path, dockerPathPrefixVolume); name != "" {
+			return execCommand("docker", "volume", "rm", name), nil
+		}
+	case !s.volumesOnly && strings.HasPrefix(path, dockerPathPrefixImage):
+		if id := strings.TrimPrefix(path, dockerPathPrefixImage); id != "" {
+			return execCommand("docker", "image", "rm", id), nil
+		}
+	case !s.volumesOnly && path == dockerPathBuildCache:
+		return execCommand("docker", "builder", "prune", "-af"), nil
+	}
+	return nil, fmt.Errorf("%s: unsupported item for %s", path, s.category.ID)
 }
 
 func (s *DockerTarget) fetchVerboseDf() (*dockerDfVerbose, error) {
