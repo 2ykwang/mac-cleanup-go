@@ -40,16 +40,23 @@ Post each finding on the changed line that introduces it with `mcp__github_inlin
 ```markdown
 **High: Short title of the defect**
 
-What triggers it and what goes wrong, in one or two sentences.
+What triggers it and what goes wrong.
 
-**Why:** The evidence, with a permalink to the code it rests on.
+<details>
+<summary>Why</summary>
+
+The evidence, with a permalink to the code it rests on.
+
+</details>
 
 **Fix:** The change that resolves it.
 ```
 
-Write each permalink on its own line so GitHub shows the code: `https://github.com/<REPO>/blob/<HEAD SHA>/<path>#L<start>-L<end>`
+Keep the comment brief. The title and description are what the maintainer reads first, so say only what breaks and when. Supporting detail belongs in the collapsed section.
 
-When the fix can be applied as written, give it as a suggestion block. When it only points in a direction, describe it in plain text.
+Link the code the evidence rests on with permalinks, each on its own line so GitHub shows the code: `https://github.com/<REPO>/blob/<HEAD SHA>/<path>#L<start>-L<end>`
+
+Give one fix. When it can be applied as written, give it as a suggestion block. When it only points in a direction, describe it briefly in plain text.
 
 ## Summary comment
 
@@ -59,32 +66,37 @@ Keep exactly one summary comment on the pull request. Write it to `review-summar
 gh pr comment <PR NUMBER> --edit-last --create-if-none --body-file review-summary.md
 ```
 
-Start with what the pull request changes, in one to three bullets. Then list every finding that still applies to the head commit, including findings from earlier runs. Use this format:
+Only the result stays visible. Put what the pull request changes and the findings in collapsed sections. List every finding that still applies to the head commit, including findings from earlier runs. Use this format:
 
 ```markdown
 ### Claude review
 
 ---
 
-**Changes**
-
-- What the pull request changes, one bullet per change.
-
 **Result:** 1 high, 2 medium, 0 low. Reviewed at `<first 7 characters of HEAD SHA>`.
+
+<details>
+<summary>Changes</summary>
+
+- What the pull request changes, one short line per change.
+
+</details>
 
 <details>
 <summary>Findings</summary>
 
 | Severity | Location | Finding |
 | --- | --- | --- |
-| High | `internal/target/brew.go:105` | One line that says what breaks |
+| High | `internal/target/brew.go:105` | One short line that says what breaks |
 
 </details>
 ```
 
-Below the collapsed table, add any finding that has no changed line to attach to, in the inline comment format.
+Keep the change lines brief. They orient the reader and don't need to cover every detail of the diff.
 
-When nothing applies, keep the heading, the divider and the changes, and end with this line in place of the result and the table:
+Below the collapsed sections, add any finding that has no changed line to attach to, in the inline comment format.
+
+When nothing applies, write this result line and leave out the findings section:
 
 ```markdown
 **Result:** No issues found. Reviewed at `<first 7 characters of HEAD SHA>`.
