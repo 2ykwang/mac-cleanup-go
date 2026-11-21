@@ -31,8 +31,8 @@ if ! otool -L "$binary" | grep -q '/System/Library/Frameworks/AppKit.framework/'
 fi
 
 minos=$(xcrun vtool -show-build "$binary" | awk '$1 == "minos" { print $2; exit }')
-if [[ "$minos" != "12.0" ]]; then
-  echo "unexpected minimum macOS version: expected 12.0, got ${minos:-missing}" >&2
+if [[ "$minos" != "13.0" ]]; then
+  echo "unexpected minimum macOS version: expected 13.0, got ${minos:-missing}" >&2
   exit 1
 fi
 

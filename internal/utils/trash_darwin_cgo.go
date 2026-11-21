@@ -3,8 +3,8 @@
 package utils
 
 /*
-#cgo CFLAGS: -fblocks -mmacosx-version-min=12.0
-#cgo LDFLAGS: -framework AppKit -framework Foundation -mmacosx-version-min=12.0
+#cgo CFLAGS: -fblocks -mmacosx-version-min=13.0
+#cgo LDFLAGS: -framework AppKit -framework Foundation -mmacosx-version-min=13.0
 #include <stdint.h>
 #include <stdlib.h>
 

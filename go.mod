@@ -1,6 +1,6 @@
 module github.com/2ykwang/mac-cleanup-go
 
-go 1.25.0
+go 1.27.4
 
 require (
 	charm.land/bubbles/v2 v2.1.1
