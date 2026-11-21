@@ -269,7 +269,7 @@ func (t *ProjectCacheTarget) calculateSizes(found []foundCache) ([]types.Cleanab
 				Name:        filepath.Base(fc.path),
 				DisplayName: formatDisplayName(t.scanRoot, fc.path),
 				IsDirectory: true,
-				ModifiedAt:  stats.NewestFileTime,
+				ModifiedAt:  stats.ModifiedAt,
 			}
 
 			mu.Lock()

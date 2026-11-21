@@ -22,7 +22,7 @@ func TestOlderThan_OverridesTargetDefaults(t *testing.T) {
 	downloads := t.TempDir()
 	download := writeFiles(t, downloads, map[string]int{"archive": 5})["archive"]
 	threeDaysAgo := time.Now().Add(-3 * day)
-	for _, path := range []string{cached, download} {
+	for _, path := range []string{cache, cached, download} {
 		require.NoError(t, os.Chtimes(path, threeDaysAgo, threeDaysAgo))
 	}
 	cfg := testConfig(
@@ -92,4 +92,25 @@ func TestOlderThan_ZeroDaysSkipsUndatedDockerItems(t *testing.T) {
 	assert.Zero(t, scan.Targets[0].ItemCount)
 	assert.Empty(t, clean.Targets)
 	assert.Empty(t, newTestDockerCalls(t, calls))
+}
+
+func TestOlderThan_RecentNestedFileKeepsDirectoryOutOfCleanup(t *testing.T) {
+	root := t.TempDir()
+	nested := filepath.Join(root, "cache", "nested")
+	require.NoError(t, os.MkdirAll(nested, 0o755))
+	file := writeFiles(t, nested, map[string]int{"data": 3})["data"]
+	older := time.Now().Add(-45 * day)
+	recent := older.Add(44 * day)
+	require.NoError(t, os.Chtimes(file, recent, recent))
+	require.NoError(t, os.Chtimes(filepath.Dir(nested), older, older))
+	cfg := testConfig(testCategory("logs", types.SafetyLevelSafe, types.MethodTrash, filepath.Join(root, "*")))
+	t.Cleanup(stubSession(cfg, emptyUserConfig()))
+
+	scan := runScanJSON(t, "logs", "--items")
+	require.Len(t, scan.Targets[0].Items, 1)
+	info, err := os.Lstat(file)
+	require.NoError(t, err)
+	assert.True(t, scan.Targets[0].Items[0].ModifiedAt.Equal(info.ModTime()))
+	assert.Zero(t, runScanJSON(t, "logs", "--older-than", "30d").SizeBytes)
+	assert.Empty(t, runCleanJSON(t, ExitOK, "logs", "--older-than", "30d", "--dry-run").Targets)
 }

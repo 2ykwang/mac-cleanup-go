@@ -160,18 +160,19 @@ func WithIgnoreNames(names ...string) SizeOption {
 }
 
 type DirStats struct {
-	Size           int64
-	FileCount      int64
-	NewestFileTime time.Time
+	Size       int64
+	FileCount  int64
+	ModifiedAt time.Time
 }
 
 func (s *DirStats) updateNewest(modified time.Time) {
-	if modified.After(s.NewestFileTime) {
-		s.NewestFileTime = modified
+	if modified.After(s.ModifiedAt) {
+		s.ModifiedAt = modified
 	}
 }
 
-// GetDirStats includes ignored files in the newest timestamp, but not in size or count.
+// GetDirStats returns the latest modification time of the root or any file below it.
+// Ignored files contribute only their modification time.
 func GetDirStats(path string, opts ...SizeOption) (DirStats, error) {
 	return getDirStats(path, true, opts...)
 }
@@ -191,23 +192,22 @@ func getDirStats(path string, collectNewest bool, opts ...SizeOption) (DirStats,
 	if err != nil {
 		return DirStats{}, err
 	}
+	var stats DirStats
+	if collectNewest {
+		stats.ModifiedAt = info.ModTime()
+	}
 	if !info.IsDir() {
-		stats := DirStats{Size: info.Size(), FileCount: 1}
-		if collectNewest {
-			stats.NewestFileTime = info.ModTime()
-			if cfg.ignoreNames[info.Name()] {
-				stats.Size, stats.FileCount = 0, 0
-			}
+		if !collectNewest || !cfg.ignoreNames[info.Name()] {
+			stats.Size, stats.FileCount = info.Size(), 1
 		}
 		return stats, nil
 	}
 
 	dirWorkers := DefaultWorkers()
 	if dirWorkers < 2 {
-		return getDirStatsSequential(path, cfg, collectNewest)
+		return getDirStatsSequential(path, cfg, collectNewest, stats)
 	}
 
-	var stats DirStats
 	var (
 		mu      sync.Mutex
 		cond    = sync.NewCond(&mu)
@@ -302,7 +302,7 @@ func getDirStats(path string, collectNewest bool, opts ...SizeOption) (DirStats,
 				stats.Size += local.Size
 				stats.FileCount += local.FileCount
 				if collectNewest {
-					stats.updateNewest(local.NewestFileTime)
+					stats.updateNewest(local.ModifiedAt)
 				}
 				if len(subDirs) > 0 {
 					queue = append(queue, subDirs...)
@@ -323,8 +323,7 @@ func getDirStats(path string, collectNewest bool, opts ...SizeOption) (DirStats,
 	return stats, nil
 }
 
-func getDirStatsSequential(path string, cfg sizeOpts, collectNewest bool) (DirStats, error) {
-	var stats DirStats
+func getDirStatsSequential(path string, cfg sizeOpts, collectNewest bool, stats DirStats) (DirStats, error) {
 	err := filepath.Walk(path, func(walkPath string, info os.FileInfo, err error) error {
 		if err != nil {
 			logger.Debug("getDirStatsSequential walk error", "path", walkPath, "error", err)

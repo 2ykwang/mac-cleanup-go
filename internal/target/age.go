@@ -16,7 +16,6 @@ type ageFilter struct {
 }
 
 func (f ageFilter) apply(result *types.ScanResult) {
-	// Empty project caches have no timestamp and are eligible under the default policy.
 	useDefault := f.cutoff.IsZero()
 	if useDefault {
 		f.cutoff = time.Now().AddDate(0, 0, -f.defaultDays)
