@@ -1,7 +1,6 @@
 package target
 
 import (
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -244,7 +243,7 @@ func (t *ProjectCacheTarget) calculateSizes(found []foundCache) ([]types.Cleanab
 	var (
 		wg         sync.WaitGroup
 		mu         sync.Mutex
-		items      []types.CleanableItem
+		items      = make([]types.CleanableItem, 0, len(found))
 		totalSize  int64
 		totalCount int64
 	)
@@ -258,25 +257,25 @@ func (t *ProjectCacheTarget) calculateSizes(found []foundCache) ([]types.Cleanab
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			size, count, err := utils.GetDirSizeWithCount(fc.path, utils.WithIgnoreNames(ignoredNames...))
+			stats, err := utils.GetDirStats(fc.path, utils.WithIgnoreNames(ignoredNames...))
 			if err != nil {
 				return
 			}
 
 			item := types.CleanableItem{
 				Path:        fc.path,
-				Size:        size,
-				FileCount:   count,
+				Size:        stats.Size,
+				FileCount:   stats.FileCount,
 				Name:        filepath.Base(fc.path),
 				DisplayName: formatDisplayName(t.scanRoot, fc.path),
 				IsDirectory: true,
-				ModifiedAt:  newestFileTime(fc.path),
+				ModifiedAt:  stats.NewestFileTime,
 			}
 
 			mu.Lock()
 			items = append(items, item)
-			totalSize += size
-			totalCount += count
+			totalSize += stats.Size
+			totalCount += stats.FileCount
 			mu.Unlock()
 		}(fc)
 	}
@@ -296,27 +295,6 @@ func hasMarker(parentDir string, markers []string) bool {
 		}
 	}
 	return false
-}
-
-// newestFileTime walks dir and returns the most recent file mtime.
-// Directory mtime only reflects direct child add/remove, not deeper file updates,
-// so we must check actual file mtimes to determine staleness.
-func newestFileTime(dir string) time.Time {
-	var newest time.Time
-	_ = filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil
-		}
-		info, err := d.Info()
-		if err != nil {
-			return nil
-		}
-		if mt := info.ModTime(); mt.After(newest) {
-			newest = mt
-		}
-		return nil
-	})
-	return newest
 }
 
 func formatDisplayName(scanRoot, cachePath string) string {

@@ -269,6 +269,54 @@ func TestGetDirSizeWithCount_SymlinkDir(t *testing.T) {
 	assert.Equal(t, int64(3), count)
 }
 
+func TestGetDirStats_IgnoredFileDeterminesNewestTime(t *testing.T) {
+	root := t.TempDir()
+	nested := filepath.Join(root, "nested")
+	require.NoError(t, os.Mkdir(nested, 0o755))
+	data := filepath.Join(root, "data")
+	metadata := filepath.Join(nested, ".DS_Store")
+	require.NoError(t, os.WriteFile(data, []byte("abc"), 0o644))
+	require.NoError(t, os.WriteFile(metadata, []byte("metadata"), 0o644))
+	old := time.Unix(1600000000, 0)
+	newest := old.Add(time.Hour)
+	require.NoError(t, os.Chtimes(data, old, old))
+	require.NoError(t, os.Chtimes(metadata, newest, newest))
+
+	stats, err := GetDirStats(root, WithIgnoreNames(".DS_Store"))
+
+	require.NoError(t, err)
+	assert.EqualValues(t, 3, stats.Size)
+	assert.EqualValues(t, 1, stats.FileCount)
+	assert.True(t, newest.Equal(stats.NewestFileTime))
+}
+
+func TestGetDirStats_SymlinkCountsOnlyTheLink(t *testing.T) {
+	root := t.TempDir()
+	external := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(external, "outside"), []byte("outside"), 0o644))
+	link := filepath.Join(root, "link")
+	require.NoError(t, os.Symlink(external, link))
+	info, err := os.Lstat(link)
+	require.NoError(t, err)
+
+	stats, err := GetDirStats(root)
+
+	require.NoError(t, err)
+	assert.Equal(t, info.Size(), stats.Size)
+	assert.EqualValues(t, 1, stats.FileCount)
+	assert.True(t, info.ModTime().Equal(stats.NewestFileTime))
+}
+
+func TestGetDirStats_EmptyTreeHasNoFileTime(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(root, "empty"), 0o755))
+
+	stats, err := GetDirStats(root)
+
+	require.NoError(t, err)
+	assert.Equal(t, DirStats{}, stats)
+}
+
 func TestGetFileSize_File(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "test-file-size")
 	require.NoError(t, err)
