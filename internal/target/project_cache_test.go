@@ -204,6 +204,8 @@ func TestScan_FiltersStaleCachesOnly(t *testing.T) {
 	staleFile := filepath.Join(staleProject, ".venv", "lib", "site.py")
 	require.NoError(t, os.WriteFile(staleFile, []byte(""), 0o644))
 	makeStale(t, staleFile)
+	staleInfo, err := os.Stat(staleFile)
+	require.NoError(t, err)
 
 	// Active project — file inside .venv is recent
 	activeProject := filepath.Join(root, "active")
@@ -211,14 +213,16 @@ func TestScan_FiltersStaleCachesOnly(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(activeProject, "requirements.txt"), []byte(""), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(activeProject, ".venv", "lib", "site.py"), []byte(""), 0o644))
 
-	target := newTestProjectCacheTarget(root)
-	target.staleDays = 7
+	target := NewProjectCacheTarget(types.Category{ID: "project-cache"})
+	target.scanRoot = root
 
 	result, err := target.Scan()
 
 	require.NoError(t, err)
 	require.Len(t, result.Items, 1)
-	assert.Contains(t, result.Items[0].DisplayName, "stale")
+	assert.Equal(t, filepath.Join(staleProject, ".venv"), result.Items[0].Path)
+	assert.True(t, staleInfo.ModTime().Equal(result.Items[0].ModifiedAt))
+	assert.EqualValues(t, 1, result.TotalFileCount)
 }
 
 // --- Scan: Edge cases ---

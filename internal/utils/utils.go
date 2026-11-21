@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/2ykwang/mac-cleanup-go/internal/logger"
@@ -160,7 +159,29 @@ func WithIgnoreNames(names ...string) SizeOption {
 	}
 }
 
+type DirStats struct {
+	Size           int64
+	FileCount      int64
+	NewestFileTime time.Time
+}
+
+func (s *DirStats) updateNewest(modified time.Time) {
+	if modified.After(s.NewestFileTime) {
+		s.NewestFileTime = modified
+	}
+}
+
+// GetDirStats includes ignored files in the newest timestamp, but not in size or count.
+func GetDirStats(path string, opts ...SizeOption) (DirStats, error) {
+	return getDirStats(path, true, opts...)
+}
+
 func GetDirSizeWithCount(path string, opts ...SizeOption) (int64, int64, error) {
+	stats, err := getDirStats(path, false, opts...)
+	return stats.Size, stats.FileCount, err
+}
+
+func getDirStats(path string, collectNewest bool, opts ...SizeOption) (DirStats, error) {
 	var cfg sizeOpts
 	for _, opt := range opts {
 		opt(&cfg)
@@ -168,21 +189,25 @@ func GetDirSizeWithCount(path string, opts ...SizeOption) (int64, int64, error) 
 
 	info, err := os.Lstat(path)
 	if err != nil {
-		return 0, 0, err
-	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return info.Size(), 1, nil
+		return DirStats{}, err
 	}
 	if !info.IsDir() {
-		return info.Size(), 1, nil
+		stats := DirStats{Size: info.Size(), FileCount: 1}
+		if collectNewest {
+			stats.NewestFileTime = info.ModTime()
+			if cfg.ignoreNames[info.Name()] {
+				stats.Size, stats.FileCount = 0, 0
+			}
+		}
+		return stats, nil
 	}
 
 	dirWorkers := DefaultWorkers()
 	if dirWorkers < 2 {
-		return getDirSizeWithCountSequential(path, cfg)
+		return getDirStatsSequential(path, cfg, collectNewest)
 	}
 
-	var size, count int64
+	var stats DirStats
 	var (
 		mu      sync.Mutex
 		cond    = sync.NewCond(&mu)
@@ -212,9 +237,8 @@ func GetDirSizeWithCount(path string, opts ...SizeOption) (int64, int64, error) 
 				mu.Unlock()
 
 				var (
-					localSize  int64
-					localCount int64
-					subDirs    []string
+					local   DirStats
+					subDirs []string
 				)
 
 				dirFile, err := os.Open(dir)
@@ -244,7 +268,8 @@ func GetDirSizeWithCount(path string, opts ...SizeOption) (int64, int64, error) 
 								continue
 							}
 
-							if cfg.ignoreNames[entryName] {
+							ignored := cfg.ignoreNames[entryName]
+							if ignored && !collectNewest {
 								continue
 							}
 
@@ -258,8 +283,13 @@ func GetDirSizeWithCount(path string, opts ...SizeOption) (int64, int64, error) 
 								subDirs = append(subDirs, entryPath)
 								continue
 							}
-							localSize += stat.Size
-							localCount++
+							if collectNewest {
+								local.updateNewest(time.Unix(stat.Mtim.Sec, stat.Mtim.Nsec))
+							}
+							if !ignored {
+								local.Size += stat.Size
+								local.FileCount++
+							}
 						}
 						if statErrs != 0 {
 							logger.Debug("GetDirSizeWithCount stat skipped", "path", dir, "errors", statErrs)
@@ -268,14 +298,12 @@ func GetDirSizeWithCount(path string, opts ...SizeOption) (int64, int64, error) 
 					_ = dirFile.Close()
 				}
 
-				if localSize != 0 {
-					atomic.AddInt64(&size, localSize)
-				}
-				if localCount != 0 {
-					atomic.AddInt64(&count, localCount)
-				}
-
 				mu.Lock()
+				stats.Size += local.Size
+				stats.FileCount += local.FileCount
+				if collectNewest {
+					stats.updateNewest(local.NewestFileTime)
+				}
 				if len(subDirs) > 0 {
 					queue = append(queue, subDirs...)
 					pending += len(subDirs)
@@ -292,27 +320,30 @@ func GetDirSizeWithCount(path string, opts ...SizeOption) (int64, int64, error) 
 	}
 
 	wg.Wait()
-	return size, count, nil
+	return stats, nil
 }
 
-func getDirSizeWithCountSequential(path string, cfg sizeOpts) (int64, int64, error) {
-	var size, count int64
+func getDirStatsSequential(path string, cfg sizeOpts, collectNewest bool) (DirStats, error) {
+	var stats DirStats
 	err := filepath.Walk(path, func(walkPath string, info os.FileInfo, err error) error {
 		if err != nil {
-			logger.Debug("getDirSizeWithCountSequential walk error", "path", walkPath, "error", err)
+			logger.Debug("getDirStatsSequential walk error", "path", walkPath, "error", err)
 			return nil
 		}
 		if info.IsDir() {
 			return nil
 		}
+		if collectNewest {
+			stats.updateNewest(info.ModTime())
+		}
 		if cfg.ignoreNames[info.Name()] {
 			return nil
 		}
-		size += info.Size()
-		count++
+		stats.Size += info.Size()
+		stats.FileCount++
 		return nil
 	})
-	return size, count, err
+	return stats, err
 }
 
 func GetDirSize(path string) (int64, error) {
