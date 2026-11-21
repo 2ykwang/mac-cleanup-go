@@ -1,0 +1,56 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    # Pull requests from forks can't read the token secret.
+    if: >-
+      github.event.label.name == 'ai-review' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+
+    steps:
+      # Removed first so the label can be added again to request another review.
+      - name: Remove the trigger label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          LABEL: ${{ github.event.label.name }}
+        run: gh api -X DELETE "repos/$REPO/issues/$PR/labels/$LABEL"
+
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - uses: anthropics/claude-code-action@v1.0.286
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+            HEAD SHA: ${{ github.event.pull_request.head.sha }}
+
+            Review this pull request by following `.github/review-prompt.md`.
+          claude_args: |
+            --model claude-opus-5-5
+            --effort xhigh
+            --max-turns 60
+            --allowedTools "Read,Grep,Glob,Write,mcp__github_inline_comment__create_inline_comment,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments:*)"
+            --disallowedTools "Edit,NotebookEdit,WebFetch,WebSearch,Read(/${{ runner.temp }}/**)"
