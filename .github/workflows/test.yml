@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
-      - uses: actions/setup-go@v6.2.0
+      - uses: actions/setup-go@v7.1.0
         with:
           go-version-file: go.mod
 
@@ -38,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
-      - uses: actions/setup-go@v6.2.0
+      - uses: actions/setup-go@v7.1.0
         with:
           go-version-file: go.mod
 
@@ -70,7 +70,7 @@ jobs:
           echo '</details>' >> $GITHUB_STEP_SUMMARY
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v7.0.0
+        uses: codecov/codecov-action@v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: 2ykwang/mac-cleanup-go
