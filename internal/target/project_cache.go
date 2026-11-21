@@ -105,6 +105,10 @@ func (t *ProjectCacheTarget) Category() types.Category { return t.category }
 func (t *ProjectCacheTarget) IsAvailable() bool        { return t.scanRoot != "" }
 
 func (t *ProjectCacheTarget) Scan() (*types.ScanResult, error) {
+	return t.scanWithAge(ageFilter{defaultDays: t.staleDays})
+}
+
+func (t *ProjectCacheTarget) scanWithAge(filter ageFilter) (*types.ScanResult, error) {
 	result := types.NewScanResult(t.category)
 	if !t.IsAvailable() {
 		return result, nil
@@ -124,20 +128,12 @@ func (t *ProjectCacheTarget) Scan() (*types.ScanResult, error) {
 		"found", len(found),
 		"walk_ms", walkDuration.Milliseconds())
 
-	allItems, _, _ := t.calculateSizes(found)
-
-	// Filter to stale caches only — protect active projects
-	cutoff := time.Now().AddDate(0, 0, -t.staleDays)
-	for _, item := range allItems {
-		if item.ModifiedAt.Before(cutoff) {
-			result.Items = append(result.Items, item)
-			result.TotalSize += item.Size
-			result.TotalFileCount += item.FileCount
-		}
-	}
+	result.Items, _, _ = t.calculateSizes(found)
+	count := len(result.Items)
+	filter.apply(result)
 
 	logger.Info("project cache scan complete",
-		"found", len(allItems),
+		"found", count,
 		"stale", len(result.Items),
 		"total_size", result.TotalSize,
 		"total_ms", time.Since(start).Milliseconds())

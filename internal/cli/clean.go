@@ -70,6 +70,7 @@ type cleanOutput struct {
 }
 
 type cleanOptions struct {
+	cutoff   time.Time
 	ids      []string
 	items    []string
 	selected bool
@@ -140,7 +141,7 @@ func prepareClean(opts cleanOptions) (*cleanPlan, *cleaner.CleanService, error) 
 		return nil, nil, err
 	}
 
-	plan, err := planClean(scanCategories(sess.registry, cats), sess.userCfg, opts.items)
+	plan, err := planClean(scanCategories(sess.registry, cats, opts.cutoff), sess.userCfg, opts.items)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -150,6 +151,7 @@ func prepareClean(opts cleanOptions) (*cleanPlan, *cleaner.CleanService, error) 
 
 func (a *App) parseCleanOptions(args []string) (cleanOptions, error) {
 	fs := newFlagSet("clean")
+	age := registerOlderThan(fs)
 	var opts cleanOptions
 	fs.BoolVar(&opts.dryRun, "dry-run", false, "")
 	fs.BoolVar(&opts.yes, "yes", false, "")
@@ -164,6 +166,7 @@ func (a *App) parseCleanOptions(args []string) (cleanOptions, error) {
 		return opts, a.flagError("clean", err)
 	}
 	opts.ids = ids
+	opts.cutoff = ageCutoff(*age)
 
 	switch {
 	case opts.selected && len(ids) > 0:
@@ -267,7 +270,7 @@ func planClean(results []scanned, userCfg *userconfig.UserConfig, itemPaths []st
 		if found[cleanItemPath(p)] {
 			continue
 		}
-		hint := "use exact paths from `mac-cleanup scan <id> --items --limit 0 --json` and include that target ID"
+		hint := "use exact paths from `mac-cleanup scan <id> --items --limit 0 --json` with the same target IDs and age filter"
 		if len(unscanned) > 0 {
 			hint += "; not scanned: " + strings.Join(unscanned, ", ")
 		}

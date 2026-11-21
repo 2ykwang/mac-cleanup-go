@@ -1,8 +1,6 @@
 package target
 
 import (
-	"time"
-
 	"github.com/2ykwang/mac-cleanup-go/internal/types"
 	"github.com/2ykwang/mac-cleanup-go/internal/utils"
 )
@@ -24,29 +22,17 @@ func NewOldDownloadTarget(cat types.Category, daysOld int) *OldDownloadTarget {
 
 // Scan returns files older than the configured days' threshold.
 func (s *OldDownloadTarget) Scan() (*types.ScanResult, error) {
+	return s.scanWithAge(ageFilter{defaultDays: s.daysOld})
+}
+
+func (s *OldDownloadTarget) scanWithAge(filter ageFilter) (*types.ScanResult, error) {
 	// Get all items from PathTarget
 	result, err := s.PathTarget.Scan()
 	if err != nil {
 		return nil, err
 	}
 
-	// Filter to only include old files
-	cutoff := time.Now().AddDate(0, 0, -s.daysOld)
-	filtered := make([]types.CleanableItem, 0)
-	var totalSize int64
-	var totalFileCount int64
-
-	for _, item := range result.Items {
-		if item.ModifiedAt.Before(cutoff) {
-			filtered = append(filtered, item)
-			totalSize += item.Size
-			totalFileCount += item.FileCount
-		}
-	}
-
-	result.Items = filtered
-	result.TotalSize = totalSize
-	result.TotalFileCount = totalFileCount
+	filter.apply(result)
 
 	return result, nil
 }

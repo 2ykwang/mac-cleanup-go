@@ -39,6 +39,8 @@ is using their disk, say this up front. Use `df -h /` if they want the total.
    Each target has `status`, `safety`, `method`, `size_bytes`, and
    `cleanable_bytes` (what `clean <id>` would actually remove). Ignore
    targets with `status` `unavailable` or `item_count` 0.
+   If the user specifies an age, pass the same `--older-than Nd` to scan,
+   dry-run, and clean. It replaces target age defaults and skips undated items.
 2. Look inside targets before proposing them, especially large ones.
    ```sh
    mac-cleanup scan system-cache --items --json   # top 20 items by size

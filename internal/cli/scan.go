@@ -35,7 +35,7 @@ type scanned struct {
 }
 
 // scanCategories scans in parallel and returns results in input order.
-func scanCategories(registry *target.Registry, cats []types.Category) []scanned {
+func scanCategories(registry *target.Registry, cats []types.Category, cutoff time.Time) []scanned {
 	out := make([]scanned, len(cats))
 	sem := make(chan struct{}, utils.DefaultWorkers())
 	var wg sync.WaitGroup
@@ -45,14 +45,14 @@ func scanCategories(registry *target.Registry, cats []types.Category) []scanned 
 		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-			out[i] = scanOne(registry, cat)
+			out[i] = scanOne(registry, cat, cutoff)
 		}()
 	}
 	wg.Wait()
 	return out
 }
 
-func scanOne(registry *target.Registry, cat types.Category) scanned {
+func scanOne(registry *target.Registry, cat types.Category, cutoff time.Time) scanned {
 	s := scanned{cat: cat, status: statusOK}
 	for _, proc := range cat.BlockedByProcesses {
 		if utils.IsProcessRunning(proc) {
@@ -69,7 +69,7 @@ func scanOne(registry *target.Registry, cat types.Category) scanned {
 		s.status = statusUnavailable
 		return s
 	}
-	result, err := tgt.Scan()
+	result, err := target.ScanBefore(tgt, cutoff)
 	if err != nil || result == nil {
 		s.status, s.err = statusError, err
 		if s.err == nil {
@@ -122,6 +122,7 @@ func (a *App) runScan(args []string) error {
 	fs := newFlagSet("scan")
 	var filter targetFilter
 	filter.register(fs)
+	age := registerOlderThan(fs)
 	withItems := fs.Bool("items", false, "")
 	limit := fs.Int("limit", defaultItemLimit, "")
 	jsonOutput := fs.Bool("json", false, "")
@@ -143,11 +144,11 @@ func (a *App) runScan(args []string) error {
 		return err
 	}
 
-	out := buildScanOutput(scanCategories(sess.registry, cats), sess.userCfg, *withItems, *limit)
+	out := buildScanOutput(scanCategories(sess.registry, cats, ageCutoff(*age)), sess.userCfg, *withItems, *limit)
 	if *jsonOutput {
 		return writeJSON(a.Out, out)
 	}
-	a.printScan(out, *withItems)
+	a.printScan(out, *withItems, *age)
 	return nil
 }
 
@@ -208,7 +209,7 @@ func newScanEntry(s scanned, userCfg *userconfig.UserConfig, withItems bool, lim
 	return entry
 }
 
-func (a *App) printScan(out scanOutput, withItems bool) {
+func (a *App) printScan(out scanOutput, withItems bool, age time.Duration) {
 	tw := tabwriter.NewWriter(a.Out, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(tw, "ID\tSAFETY\tMETHOD\tITEMS\tSIZE\tNAME")
 	var empty, unavailable int
@@ -246,7 +247,11 @@ func (a *App) printScan(out scanOutput, withItems bool) {
 	for _, n := range notes {
 		fmt.Fprintln(a.Out, "Note: "+n)
 	}
-	fmt.Fprintln(a.Out, "Next: mac-cleanup clean <id>... --dry-run")
+	next := "Next: mac-cleanup clean <id>... --dry-run"
+	if age >= 0 {
+		next += fmt.Sprintf(" --older-than %dd", age/day)
+	}
+	fmt.Fprintln(a.Out, next)
 }
 
 func reviewBytes(targets []scanEntry) int64 {
