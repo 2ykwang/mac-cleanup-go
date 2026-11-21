@@ -4,7 +4,7 @@ BINARY_DIR := bin
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 GO ?= go
 GOFLAGS := -ldflags "-X main.version=$(VERSION)"
-MACOSX_DEPLOYMENT_TARGET ?= 12.0
+MACOSX_DEPLOYMENT_TARGET ?= 13.0
 
 ifeq ($(shell uname -s),Darwin)
 export MACOSX_DEPLOYMENT_TARGET
