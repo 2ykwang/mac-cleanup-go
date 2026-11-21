@@ -67,19 +67,19 @@ func (s *BrewTarget) Scan() (*types.ScanResult, error) {
 	}
 
 	// Scan the cache directory
-	size, fileCount, _ := utils.GetDirSizeWithCount(cachePath, utils.WithIgnoreNames(ignoredNames...))
-	if size > 0 {
+	stats, err := utils.GetDirStats(cachePath, utils.WithIgnoreNames(ignoredNames...))
+	if err == nil && stats.Size > 0 {
 		item := types.CleanableItem{
 			Path:        cachePath,
-			Size:        size,
-			FileCount:   fileCount,
+			Size:        stats.Size,
+			FileCount:   stats.FileCount,
 			Name:        "Homebrew Cache",
 			IsDirectory: true,
-			ModifiedAt:  info.ModTime(),
+			ModifiedAt:  stats.ModifiedAt,
 		}
 		result.Items = append(result.Items, item)
-		result.TotalSize = size
-		result.TotalFileCount = fileCount
+		result.TotalSize = stats.Size
+		result.TotalFileCount = stats.FileCount
 	}
 
 	logger.Info("brew scan completed",

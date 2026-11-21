@@ -203,6 +203,7 @@ func TestScan_FiltersStaleCachesOnly(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(staleProject, "requirements.txt"), []byte(""), 0o644))
 	staleFile := filepath.Join(staleProject, ".venv", "lib", "site.py")
 	require.NoError(t, os.WriteFile(staleFile, []byte(""), 0o644))
+	makeStale(t, filepath.Join(staleProject, ".venv"))
 	makeStale(t, staleFile)
 	staleInfo, err := os.Stat(staleFile)
 	require.NoError(t, err)

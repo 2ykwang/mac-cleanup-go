@@ -281,13 +281,14 @@ func TestGetDirStats_IgnoredFileDeterminesNewestTime(t *testing.T) {
 	newest := old.Add(time.Hour)
 	require.NoError(t, os.Chtimes(data, old, old))
 	require.NoError(t, os.Chtimes(metadata, newest, newest))
+	require.NoError(t, os.Chtimes(root, old, old))
 
 	stats, err := GetDirStats(root, WithIgnoreNames(".DS_Store"))
 
 	require.NoError(t, err)
 	assert.EqualValues(t, 3, stats.Size)
 	assert.EqualValues(t, 1, stats.FileCount)
-	assert.True(t, newest.Equal(stats.NewestFileTime))
+	assert.True(t, newest.Equal(stats.ModifiedAt))
 }
 
 func TestGetDirStats_SymlinkCountsOnlyTheLink(t *testing.T) {
@@ -298,23 +299,27 @@ func TestGetDirStats_SymlinkCountsOnlyTheLink(t *testing.T) {
 	require.NoError(t, os.Symlink(external, link))
 	info, err := os.Lstat(link)
 	require.NoError(t, err)
+	old := info.ModTime().Add(-time.Hour)
+	require.NoError(t, os.Chtimes(root, old, old))
 
 	stats, err := GetDirStats(root)
 
 	require.NoError(t, err)
 	assert.Equal(t, info.Size(), stats.Size)
 	assert.EqualValues(t, 1, stats.FileCount)
-	assert.True(t, info.ModTime().Equal(stats.NewestFileTime))
+	assert.True(t, info.ModTime().Equal(stats.ModifiedAt))
 }
 
-func TestGetDirStats_EmptyTreeHasNoFileTime(t *testing.T) {
+func TestGetDirStats_EmptyTreeUsesRootTime(t *testing.T) {
 	root := t.TempDir()
 	require.NoError(t, os.Mkdir(filepath.Join(root, "empty"), 0o755))
 
 	stats, err := GetDirStats(root)
 
 	require.NoError(t, err)
-	assert.Equal(t, DirStats{}, stats)
+	info, err := os.Lstat(root)
+	require.NoError(t, err)
+	assert.Equal(t, DirStats{ModifiedAt: info.ModTime()}, stats)
 }
 
 func TestGetFileSize_File(t *testing.T) {

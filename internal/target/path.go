@@ -147,9 +147,14 @@ func (s *PathTarget) scanPath(path string) (types.CleanableItem, error) {
 		return types.CleanableItem{}, err
 	}
 
+	modified := info.ModTime()
 	var size, fileCount int64
 	if info.IsDir() {
-		size, fileCount, _ = utils.GetDirSizeWithCount(path, utils.WithIgnoreNames(ignoredNames...))
+		stats, err := utils.GetDirStats(path, utils.WithIgnoreNames(ignoredNames...))
+		if err != nil {
+			return types.CleanableItem{}, err
+		}
+		size, fileCount, modified = stats.Size, stats.FileCount, stats.ModifiedAt
 	} else {
 		size = info.Size()
 		fileCount = 1
@@ -161,6 +166,6 @@ func (s *PathTarget) scanPath(path string) (types.CleanableItem, error) {
 		FileCount:   fileCount,
 		Name:        filepath.Base(path),
 		IsDirectory: info.IsDir(),
-		ModifiedAt:  info.ModTime(),
+		ModifiedAt:  modified,
 	}, nil
 }

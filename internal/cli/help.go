@@ -47,6 +47,8 @@ Scan targets and report sizes. Read-only. Without IDs, scans every target.
 Flags:
   --group <id>     Filter by group
   --safety <lvl>   Filter by safety (comma-separated)
+  --older-than <Nd>  Match items last modified more than N days ago (1d = 24h).
+                     Overrides target age defaults. Skips undated items.
   --items          Include items per target, largest first
   --limit <n>      Max items per target with --items (default 20, 0 = all)
   --json           Print JSON
@@ -69,6 +71,8 @@ check "method" in scan output: permanent deletes, builtin uses target-specific
 cleanup. Homebrew moves only its scanned cache to Trash and keeps formula versions.
 
 Flags:
+  --older-than <Nd>  Match items last modified more than N days ago (1d = 24h).
+                     Overrides target age defaults. Skips undated items.
   --dry-run        Show what would be cleaned; change nothing
   --yes            Skip the confirmation prompt (required without a terminal)
   --item <path>    Clean only this scanned item path (repeatable). Required

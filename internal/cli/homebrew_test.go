@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,4 +34,20 @@ func TestRunClean_HomebrewAcceptsScannedCacheItem(t *testing.T) {
 	assert.Equal(t, []string{root}, out.Targets[0].ItemPaths)
 	assert.Equal(t, int64(10), out.FreedBytes)
 	assert.FileExists(t, filepath.Join(root, "package"))
+}
+
+func TestRunClean_HomebrewPreservesCacheWithRecentContents(t *testing.T) {
+	root := newTestHomebrewSession(t)
+	nested := filepath.Join(root, "api")
+	require.NoError(t, os.Mkdir(nested, 0o755))
+	writeFiles(t, nested, map[string]int{"metadata": 1})
+	old := time.Now().Add(-45 * day)
+	for _, path := range []string{filepath.Join(root, "package"), root} {
+		require.NoError(t, os.Chtimes(path, old, old))
+	}
+
+	out := runCleanJSON(t, ExitOK, "homebrew", "--older-than", "30d", "--dry-run")
+
+	assert.Empty(t, out.Targets)
+	assert.Equal(t, skipNothing, skipReasons(out)["homebrew"])
 }
